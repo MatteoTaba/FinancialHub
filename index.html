@@ -174,6 +174,37 @@ tbody tr:hover td{background:var(--surface2)}
 .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
 .legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
 
+/* ── Category accordion ── */
+.cat-block { margin-bottom: 12px; }
+.cat-header {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.125rem 1.375rem;
+  cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s;
+  box-shadow: var(--shadow); user-select: none;
+}
+.cat-header:hover { border-color: var(--border2); box-shadow: var(--shadow-md); }
+.cat-header.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+.cat-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.cat-info { flex: 1; }
+.cat-name { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+.cat-count { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.cat-total { text-align: right; }
+.cat-total-val { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; }
+.cat-total-pct { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.cat-chevron { color: var(--text3); font-size: 18px; transition: transform 0.2s; flex-shrink: 0; }
+.cat-header.open .cat-chevron { transform: rotate(180deg); }
+.cat-body {
+  display: none; background: var(--surface);
+  border: 1px solid var(--border2); border-top: none;
+  border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius);
+  overflow: hidden;
+}
+.cat-body.open { display: block; }
+.cat-body table { margin: 0; }
+.cat-body th { background: var(--surface2); }
+.cat-body tr:last-child td { border-bottom: none; }
+
 /* Spinner */
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -267,13 +298,10 @@ tbody tr:hover td{background:var(--surface2)}
       <div><div class="page-title">Holdings</div><div class="page-sub">All your current positions</div></div>
       <button class="btn btn-primary" onclick="openModal('modal-holding')"><i class="ti ti-plus"></i> Add holding</button>
     </div>
-    <div class="card">
-      <div class="empty" id="h-empty"><i class="ti ti-briefcase"></i><p>No holdings yet. Add your first position.</p></div>
-      <table id="h-table" style="display:none">
-        <thead><tr><th>Asset</th><th>Type</th><th>Qty</th><th>Avg cost</th><th>Price</th><th>Value</th><th>Gain / loss</th><th></th></tr></thead>
-        <tbody id="h-tbody"></tbody>
-      </table>
+    <div id="h-empty-state" style="display:none">
+      <div class="card"><div class="empty"><i class="ti ti-briefcase"></i><p>No holdings yet. Add your first position.</p></div></div>
     </div>
+    <div id="h-categories"></div>
   </div>
 
   <!-- TRANSACTIONS -->
@@ -443,24 +471,74 @@ function getGain(h){ return getVal(h)-getCost(h); }
 function getGainPct(h){ const c=getCost(h); return c>0?getGain(h)/c*100:0; }
 
 function renderHoldings(){
-  const empty=document.getElementById('h-empty'), table=document.getElementById('h-table'), tbody=document.getElementById('h-tbody');
-  if(!holdings.length){ empty.style.display=''; table.style.display='none'; return; }
-  empty.style.display='none'; table.style.display='';
-  tbody.innerHTML = holdings.map((h)=>{
-    const price=prices[h.ticker];
-    const gain=getGain(h), pct=getGainPct(h);
-    const gainClass=gain>=0?'pos-bg':'neg-bg';
-    return `<tr>
-      <td><strong style="font-weight:600">${h.ticker}</strong><br><span style="color:var(--text2);font-size:12px">${h.name||''}</span></td>
-      <td><span class="badge badge-${h.type}">${TYPE_LABELS[h.type]||h.type}</span></td>
-      <td>${fmtN(h.qty)}</td>
-      <td>${fmt(h.avg_cost)}</td>
-      <td>${price?fmt(price):'<span style="color:var(--text3)">—</span>'}</td>
-      <td style="font-weight:600">${fmt(getVal(h))}</td>
-      <td><span class="${gainClass}">${fmt(gain)}</span><br><span style="font-size:11px;color:${gain>=0?'var(--green)':'var(--red)'}">${fmtPct(pct)}</span></td>
-      <td><button class="btn btn-sm btn-danger" onclick="deleteHolding('${h.id}')"><i class="ti ti-trash"></i></button></td>
-    </tr>`;
+  const emptyState = document.getElementById('h-empty-state');
+  const container  = document.getElementById('h-categories');
+  if(!holdings.length){ emptyState.style.display=''; container.innerHTML=''; return; }
+  emptyState.style.display='none';
+
+  // Group by type
+  const byType = {};
+  holdings.forEach(h=>{ if(!byType[h.type]) byType[h.type]=[]; byType[h.type].push(h); });
+  const totalPortfolio = holdings.reduce((s,h)=>s+getVal(h),0)||1;
+  const typeColorMap = {bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
+
+  // Sort categories alphabetically
+  const sortedTypes = Object.keys(byType).sort((a,b)=>(TYPE_LABELS[a]||a).localeCompare(TYPE_LABELS[b]||b));
+
+  container.innerHTML = sortedTypes.map(type => {
+    const items = byType[type];
+    const catTotal = items.reduce((s,h)=>s+getVal(h),0);
+    const catPct   = (catTotal/totalPortfolio*100).toFixed(1);
+    const color    = typeColorMap[type]||'#888';
+    const icon     = TYPE_ICONS[type]||'ti-wallet';
+    const isSimple = type==='bank'||type==='cash';
+
+    const rows = items.map(h => {
+      const price = prices[h.ticker];
+      const gain  = getGain(h), pct = getGainPct(h);
+      const gainClass = gain>=0?'pos-bg':'neg-bg';
+      return `<tr>
+        <td><strong style="font-weight:600">${h.name||h.ticker}</strong>${!isSimple?`<br><span style="color:var(--text2);font-size:12px">${h.ticker}</span>`:''}
+        </td>
+        ${!isSimple?`<td>${fmtN(h.qty)}</td>`:''}
+        ${!isSimple?`<td>${fmt(h.avg_cost)}</td>`:''}
+        ${!isSimple?`<td>${price?fmt(price):'<span style="color:var(--text3)">—</span>'}</td>`:''}
+        <td style="font-weight:600">${fmt(getVal(h))}</td>
+        ${!isSimple?`<td><span class="${gainClass}">${fmt(gain)}</span><br><span style="font-size:11px;color:${gain>=0?'var(--green)':'var(--red)'}">${fmtPct(pct)}</span></td>`:''}
+        <td><button class="btn btn-sm btn-danger" onclick="deleteHolding('${h.id}')"><i class="ti ti-trash"></i></button></td>
+      </tr>`;
+    }).join('');
+
+    const thead = isSimple
+      ? `<tr><th>Account</th><th>Balance</th><th></th></tr>`
+      : `<tr><th>Asset</th><th>Qty</th><th>Avg cost</th><th>Price</th><th>Value</th><th>Gain / loss</th><th></th></tr>`;
+
+    return `<div class="cat-block">
+      <div class="cat-header" onclick="toggleCat(this)" role="button" aria-expanded="false">
+        <div class="cat-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
+        <div class="cat-info">
+          <div class="cat-name">${TYPE_LABELS[type]||type}</div>
+          <div class="cat-count">${items.length} holding${items.length>1?'s':''}</div>
+        </div>
+        <div class="cat-total">
+          <div class="cat-total-val">${fmt(catTotal)}</div>
+          <div class="cat-total-pct">${catPct}% of portfolio</div>
+        </div>
+        <i class="ti ti-chevron-down cat-chevron"></i>
+      </div>
+      <div class="cat-body">
+        <table><thead>${thead}</thead><tbody>${rows}</tbody></table>
+      </div>
+    </div>`;
   }).join('');
+}
+
+function toggleCat(header){
+  const body = header.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+  header.setAttribute('aria-expanded', String(!isOpen));
 }
 
 function onHoldingTypeChange(type){
