@@ -78,7 +78,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ov-hero-label{font-size:12px;font-weight:500;opacity:0.75;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px}
 .ov-hero-value{font-size:44px;font-weight:700;letter-spacing:-1.5px;line-height:1}
 .ov-hero-change{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:13px;background:rgba(255,255,255,0.15);border-radius:20px;padding:3px 10px}
-.ov-hero-date{position:absolute;top:1.75rem;right:2rem;font-size:12px;opacity:0.6}
 
 /* ── Chart card ── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
@@ -238,7 +237,23 @@ tbody tr:hover td{background:var(--surface2)}
 <!-- ── SIDEBAR ── -->
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-icon"><i class="ti ti-chart-pie-2"></i></div>
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <rect width="30" height="30" rx="8" fill="url(#lg)"/>
+      <!-- Bar chart bars -->
+      <rect x="5" y="16" width="4" height="9" rx="1.2" fill="rgba(255,255,255,0.55)"/>
+      <rect x="11" y="11" width="4" height="14" rx="1.2" fill="rgba(255,255,255,0.78)"/>
+      <rect x="17" y="7" width="4" height="18" rx="1.2" fill="#fff"/>
+      <!-- Trend line -->
+      <polyline points="7,17 13,12 19,8 24,5" stroke="rgba(255,255,255,0.9)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <!-- Dot at tip -->
+      <circle cx="24" cy="5" r="2" fill="#fff"/>
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#6366f1"/>
+          <stop offset="100%" stop-color="#7c3aed"/>
+        </linearGradient>
+      </defs>
+    </svg>
     Financial Hub
   </div>
   <div class="nav-section">Menu</div>
@@ -260,7 +275,6 @@ tbody tr:hover td{background:var(--surface2)}
 
     <!-- Hero: net worth -->
     <div class="ov-hero">
-      <div class="ov-hero-date" id="ov-date"></div>
       <div class="ov-hero-label">Total Net Worth</div>
       <div class="ov-hero-value" id="ov-total">€ —</div>
       <div class="ov-hero-change" id="ov-change"><i class="ti ti-minus" style="font-size:13px"></i> —</div>
@@ -715,7 +729,6 @@ function renderOverview(){
   // Hero
   const totalVal=holdings.reduce((s,h)=>s+getVal(h),0);
   document.getElementById('ov-total').textContent=fmt(totalVal);
-  document.getElementById('ov-date').textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
   // Change vs yesterday snapshot
   const snaps=[...snapshots].sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date));
