@@ -3,258 +3,319 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Portfolio Tracker</title>
+<title>Financial Hub</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface2: #eef0f3;
+  --surface3: #e5e7eb;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.15);
+  --text: #111827;
+  --text2: #6b7280;
+  --text3: #9ca3af;
+  --green: #059669;
+  --green-bg: #d1fae5;
+  --red: #dc2626;
+  --red-bg: #fee2e2;
+  --blue: #2563eb;
+  --accent: #4f46e5;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 5px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+}
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #f9f9f8;
-    --surface: #ffffff;
-    --surface2: #f2f2f0;
-    --border: rgba(0,0,0,0.1);
-    --border2: rgba(0,0,0,0.18);
-    --text: #1a1a1a;
-    --text2: #666;
-    --text3: #999;
-    --green: #1D9E75;
-    --red: #E24B4A;
-    --blue: #378ADD;
-    --radius: 10px;
-    --radius-sm: 6px;
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222535;
+    --surface3: #2a2d3e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --green: #34d399;
+    --green-bg: rgba(52,211,153,0.15);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,0.15);
+    --blue: #60a5fa;
+    --accent: #818cf8;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #141414;
-      --surface: #1e1e1e;
-      --surface2: #272727;
-      --border: rgba(255,255,255,0.08);
-      --border2: rgba(255,255,255,0.15);
-      --text: #f0f0f0;
-      --text2: #999;
-      --text3: #666;
-    }
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
-  .layout { display: flex; min-height: 100vh; }
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.layout{display:flex;min-height:100vh}
 
-  /* Sidebar */
-  .sidebar { width: 220px; background: var(--surface); border-right: 0.5px solid var(--border); padding: 1.5rem 1rem; display: flex; flex-direction: column; gap: 4px; position: fixed; top: 0; left: 0; height: 100vh; z-index: 10; }
-  .sidebar-logo { font-size: 16px; font-weight: 600; padding: 0 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; color: var(--text); }
-  .sidebar-logo i { font-size: 20px; color: var(--blue); }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text2); font-size: 14px; border: none; background: none; width: 100%; text-align: left; font-family: inherit; transition: background 0.15s, color 0.15s; }
-  .nav-item:hover { background: var(--surface2); color: var(--text); }
-  .nav-item.active { background: var(--surface2); color: var(--text); font-weight: 500; }
-  .nav-item i { font-size: 18px; }
-  .sidebar-bottom { margin-top: auto; }
-  .refresh-btn { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text2); font-size: 13px; border: none; background: none; width: 100%; font-family: inherit; transition: background 0.15s; }
-  .refresh-btn:hover { background: var(--surface2); color: var(--text); }
-  .refresh-info { font-size: 11px; color: var(--text3); padding: 4px 10px; }
+/* ── Sidebar ── */
+.sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);padding:1.25rem 0.875rem;display:flex;flex-direction:column;gap:2px;position:fixed;top:0;left:0;height:100vh;z-index:10;box-shadow:var(--shadow)}
+.sidebar-logo{font-size:15px;font-weight:700;padding:0.25rem 0.625rem 1.25rem;display:flex;align-items:center;gap:9px;color:var(--text);letter-spacing:-0.3px}
+.sidebar-logo .logo-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;flex-shrink:0}
+.nav-section{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;padding:0.75rem 0.625rem 0.35rem}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius-xs);cursor:pointer;color:var(--text2);font-size:13.5px;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:background 0.12s,color 0.12s}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--surface2);color:var(--accent);font-weight:500}
+.nav-item i{font-size:17px;flex-shrink:0}
+.sidebar-bottom{margin-top:auto;border-top:1px solid var(--border);padding-top:0.75rem}
+.refresh-btn{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-xs);cursor:pointer;color:var(--text2);font-size:13px;border:none;background:none;width:100%;font-family:inherit;transition:background 0.12s}
+.refresh-btn:hover{background:var(--surface2);color:var(--text)}
+.refresh-info{font-size:11px;color:var(--text3);padding:3px 10px 0}
 
-  /* Main */
-  .main { margin-left: 220px; padding: 2rem; flex: 1; max-width: 1100px; }
-  .page { display: none; }
-  .page.active { display: block; }
-  .page-header { margin-bottom: 1.5rem; }
-  .page-title { font-size: 22px; font-weight: 600; }
-  .page-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
+/* ── Main ── */
+.main{margin-left:230px;padding:2rem 2.25rem;flex:1;max-width:1160px}
+.page{display:none}.page.active{display:block}
 
-  /* Metrics */
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
-  .metric { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
-  .metric-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
-  .metric-value { font-size: 22px; font-weight: 600; line-height: 1.2; }
-  .metric-sub { font-size: 12px; margin-top: 4px; }
+/* ── Overview hero ── */
+.ov-hero{background:linear-gradient(135deg,var(--accent) 0%,#7c3aed 100%);border-radius:var(--radius);padding:2rem 2.25rem;margin-bottom:1.25rem;color:#fff;position:relative;overflow:hidden;box-shadow:var(--shadow-md)}
+.ov-hero::after{content:'';position:absolute;right:-60px;top:-60px;width:260px;height:260px;background:rgba(255,255,255,0.06);border-radius:50%}
+.ov-hero-label{font-size:12px;font-weight:500;opacity:0.75;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px}
+.ov-hero-value{font-size:44px;font-weight:700;letter-spacing:-1.5px;line-height:1}
+.ov-hero-change{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:13px;background:rgba(255,255,255,0.15);border-radius:20px;padding:3px 10px}
+.ov-hero-date{position:absolute;top:1.75rem;right:2rem;font-size:12px;opacity:0.6}
 
-  /* Cards */
-  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
-  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-  .card-title { font-size: 13px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+/* ── Chart card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
+.card-title{font-size:13px;font-weight:600;color:var(--text);letter-spacing:-0.1px}
+.card-sub{font-size:12px;color:var(--text2)}
+.chart-wrap{position:relative;width:100%}
 
-  /* Table */
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; color: var(--text3); font-weight: 400; padding: 6px 10px; border-bottom: 0.5px solid var(--border); font-size: 12px; }
-  td { padding: 10px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface2); }
+/* Period selector */
+.period-tabs{display:flex;gap:3px;background:var(--surface2);border-radius:var(--radius-xs);padding:3px}
+.period-btn{padding:4px 12px;border-radius:4px;border:none;background:none;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;transition:all 0.12s;font-weight:500}
+.period-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
 
-  /* Badges */
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
-  .badge-stock { background: #E6F1FB; color: #0C447C; }
-  .badge-etf { background: #EAF3DE; color: #27500A; }
-  .badge-crypto { background: #FAEEDA; color: #633806; }
-  .badge-bond { background: #FBEAF0; color: #72243E; }
-  .badge-cash { background: #F1EFE8; color: #444441; }
-  @media (prefers-color-scheme: dark) {
-    .badge-stock { background: #0C447C; color: #B5D4F4; }
-    .badge-etf { background: #27500A; color: #C0DD97; }
-    .badge-crypto { background: #633806; color: #FAC775; }
-    .badge-bond { background: #72243E; color: #F4C0D1; }
-    .badge-cash { background: #444441; color: #D3D1C7; }
-  }
+/* ── Holding boxes ── */
+.holding-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:1.25rem}
+.holding-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.125rem 1.25rem;box-shadow:var(--shadow);transition:transform 0.12s,box-shadow 0.12s;cursor:default}
+.holding-box:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.holding-box-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:0.75rem}
+.holding-box-label{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:4px}
+.holding-box-value{font-size:20px;font-weight:700;letter-spacing:-0.5px;line-height:1.2}
+.holding-box-pct{font-size:12px;margin-top:4px}
 
-  /* Buttons */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; cursor: pointer; border: 0.5px solid var(--border2); background: none; color: var(--text); transition: background 0.15s; }
-  .btn:hover { background: var(--surface2); }
-  .btn-primary { background: var(--text); color: var(--bg); border-color: transparent; }
-  .btn-primary:hover { opacity: 0.85; background: var(--text); }
-  .btn-sm { padding: 4px 10px; font-size: 12px; }
-  .btn-danger { color: var(--red); border-color: rgba(226,75,74,0.3); }
-  .btn-danger:hover { background: rgba(226,75,74,0.08); }
+/* Type colors */
+.type-bank{--tc:#0ea5e9;--tb:rgba(14,165,233,0.12)}
+.type-bond{--tc:#ec4899;--tb:rgba(236,72,153,0.12)}
+.type-cash{--tc:#84cc16;--tb:rgba(132,204,22,0.12)}
+.type-crypto{--tc:#f59e0b;--tb:rgba(245,158,11,0.12)}
+.type-etf{--tc:#10b981;--tb:rgba(16,185,129,0.12)}
+.type-stock{--tc:#6366f1;--tb:rgba(99,102,241,0.12)}
+.holding-box-icon{background:var(--tb);color:var(--tc)}
 
-  /* Colors */
-  .pos { color: var(--green); }
-  .neg { color: var(--red); }
+/* ── Holdings page table ── */
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-0.4px}
+.page-sub{font-size:13px;color:var(--text2);margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--text3);font-weight:500;padding:7px 10px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.04em}
+td{padding:11px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface2)}
 
-  /* Modal */
-  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
-  .overlay.open { display: flex; }
-  .modal { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border2); padding: 1.5rem; width: 100%; max-width: 460px; }
-  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 1.25rem; }
-  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; }
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.02em}
+.badge-stock{background:rgba(99,102,241,0.12);color:#6366f1}
+.badge-etf{background:rgba(16,185,129,0.12);color:#10b981}
+.badge-crypto{background:rgba(245,158,11,0.12);color:#f59e0b}
+.badge-bond{background:rgba(236,72,153,0.12);color:#ec4899}
+.badge-cash{background:rgba(132,204,22,0.12);color:#65a30d}
+.badge-bank{background:rgba(14,165,233,0.12);color:#0ea5e9}
 
-  /* Form */
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-  .form-full { grid-column: 1/-1; }
-  .form-group { display: flex; flex-direction: column; gap: 4px; }
-  .form-group label { font-size: 12px; color: var(--text2); }
-  .form-group input, .form-group select {
-    border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
-    padding: 8px 10px; font-size: 14px; background: var(--surface);
-    color: var(--text); font-family: inherit;
-  }
-  .form-group input:focus, .form-group select:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-family:inherit;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--text);transition:background 0.12s;font-weight:500}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:transparent}
+.btn-primary:hover{opacity:0.88;background:var(--accent)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-danger{color:var(--red);border-color:rgba(220,38,38,0.25)}
+.btn-danger:hover{background:var(--red-bg)}
 
-  /* Filters */
-  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
-  .filter-btn { padding: 4px 12px; border-radius: 20px; border: 0.5px solid var(--border2); background: none; color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
-  .filter-btn.active { background: var(--text); color: var(--bg); border-color: transparent; }
+/* Colors */
+.pos{color:var(--green)}.neg{color:var(--red)}
+.pos-bg{background:var(--green-bg);color:var(--green);border-radius:4px;padding:1px 6px;font-size:12px;font-weight:600}
+.neg-bg{background:var(--red-bg);color:var(--red);border-radius:4px;padding:1px 6px;font-size:12px;font-weight:600}
 
-  /* Empty state */
-  .empty { text-align: center; padding: 3rem 1rem; color: var(--text2); }
-  .empty i { font-size: 36px; margin-bottom: 12px; display: block; color: var(--text3); }
-  .empty p { font-size: 14px; }
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(2px)}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border2);padding:1.75rem;width:100%;max-width:480px;box-shadow:var(--shadow-md)}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:1.5rem;letter-spacing:-0.3px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.5rem}
 
-  /* Chart */
-  .chart-wrap { position: relative; width: 100%; }
-  .alloc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
-  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group label{font-size:12px;color:var(--text2);font-weight:500}
+.form-group input,.form-group select{border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;background:var(--surface2);color:var(--text);font-family:inherit;transition:border 0.12s}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent)}
 
-  /* Spinner */
-  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--text); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* Filters */
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.filter-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.12s;font-weight:500}
+.filter-btn.active{background:var(--accent);color:#fff;border-color:transparent}
 
-  /* Toast */
-  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; opacity: 0; transform: translateY(8px); transition: all 0.2s; z-index: 200; pointer-events: none; }
-  .toast.show { opacity: 1; transform: translateY(0); }
+/* Empty */
+.empty{text-align:center;padding:3.5rem 1rem;color:var(--text2)}
+.empty i{font-size:40px;margin-bottom:14px;display:block;color:var(--text3)}
+.empty p{font-size:14px}
 
-  /* Mobile */
-  @media (max-width: 700px) {
-    .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; padding: 0.75rem; border-right: none; border-bottom: 0.5px solid var(--border); }
-    .sidebar-logo { margin-bottom: 0; flex: 1; }
-    .sidebar-bottom { display: none; }
-    .nav-item span { display: none; }
-    .nav-item { padding: 8px; }
-    .layout { flex-direction: column; }
-    .main { margin-left: 0; padding: 1rem; }
-    .form-grid { grid-template-columns: 1fr; }
-    .alloc-grid { grid-template-columns: 1fr; }
-    .metrics { grid-template-columns: 1fr 1fr; }
-  }
+/* Alloc grid */
+.alloc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+
+/* Spinner */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Toast */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:var(--bg);padding:10px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;opacity:0;transform:translateY(8px);transition:all 0.2s;z-index:200;pointer-events:none;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ── SQL notice ── */
+.sql-box{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:1rem 1.25rem;font-family:monospace;font-size:12px;color:var(--text2);white-space:pre;overflow-x:auto;margin:0.75rem 0}
+
+/* Mobile */
+@media(max-width:700px){
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:0.75rem;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar-logo{margin-bottom:0;flex:1}
+  .sidebar-bottom,.nav-section{display:none}
+  .nav-item span{display:none}
+  .nav-item{padding:8px}
+  .layout{flex-direction:column}
+  .main{margin-left:0;padding:1rem}
+  .form-grid{grid-template-columns:1fr}
+  .alloc-grid{grid-template-columns:1fr}
+  .ov-hero-value{font-size:32px}
+  .holding-grid{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
-
 <div class="layout">
-  <nav class="sidebar">
-    <div class="sidebar-logo"><i class="ti ti-chart-pie"></i><span>Portfolio</span></div>
-    <button class="nav-item active" onclick="showPage('overview',this)"><i class="ti ti-home"></i><span>Overview</span></button>
-    <button class="nav-item" onclick="showPage('holdings',this)"><i class="ti ti-briefcase"></i><span>Holdings</span></button>
-    <button class="nav-item" onclick="showPage('transactions',this)"><i class="ti ti-list"></i><span>Transactions</span></button>
-    <button class="nav-item" onclick="showPage('allocation',this)"><i class="ti ti-chart-donut"></i><span>Allocation</span></button>
-    <div class="sidebar-bottom">
-      <button class="refresh-btn" onclick="refreshPrices()" id="refresh-btn"><i class="ti ti-refresh"></i><span>Refresh prices</span></button>
-      <div class="refresh-info" id="refresh-info">Prices not loaded</div>
-    </div>
-  </nav>
 
-  <main class="main">
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon"><i class="ti ti-chart-pie-2"></i></div>
+    Financial Hub
+  </div>
+  <div class="nav-section">Menu</div>
+  <button class="nav-item active" onclick="showPage('overview',this)"><i class="ti ti-home-2"></i><span>Overview</span></button>
+  <button class="nav-item" onclick="showPage('holdings',this)"><i class="ti ti-briefcase"></i><span>Holdings</span></button>
+  <button class="nav-item" onclick="showPage('transactions',this)"><i class="ti ti-arrows-exchange"></i><span>Transactions</span></button>
+  <button class="nav-item" onclick="showPage('allocation',this)"><i class="ti ti-chart-donut"></i><span>Allocation</span></button>
+  <div class="sidebar-bottom">
+    <button class="refresh-btn" onclick="refreshPrices()" id="refresh-btn"><i class="ti ti-refresh"></i><span>Refresh prices</span></button>
+    <div class="refresh-info" id="refresh-info">Prices not loaded</div>
+  </div>
+</nav>
 
-    <!-- OVERVIEW -->
-    <div class="page active" id="page-overview">
-      <div class="page-header">
-        <div class="page-title">Overview</div>
-        <div class="page-sub" id="overview-date"></div>
-      </div>
-      <div class="metrics">
-        <div class="metric"><div class="metric-label">Total value</div><div class="metric-value" id="mv-total">€0.00</div><div class="metric-sub" id="mv-gain">—</div></div>
-        <div class="metric"><div class="metric-label">Cost basis</div><div class="metric-value" id="mv-cost">€0.00</div></div>
-        <div class="metric"><div class="metric-label">Total return</div><div class="metric-value" id="mv-ret">—</div></div>
-        <div class="metric"><div class="metric-label">Holdings</div><div class="metric-value" id="mv-count">0</div></div>
-      </div>
-      <div class="card">
-        <div class="card-header"><div class="card-title">Value by asset type</div></div>
-        <div class="chart-wrap" style="height:240px"><canvas id="overview-chart" role="img" aria-label="Bar chart showing portfolio value by asset type">Portfolio value by asset type.</canvas></div>
-      </div>
-    </div>
+<!-- ── MAIN ── -->
+<main class="main">
 
-    <!-- HOLDINGS -->
-    <div class="page" id="page-holdings">
-      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div><div class="page-title">Holdings</div><div class="page-sub">Your current positions</div></div>
-        <button class="btn btn-primary" onclick="openModal('modal-holding')"><i class="ti ti-plus"></i> Add holding</button>
-      </div>
-      <div class="card">
-        <div class="empty" id="h-empty"><i class="ti ti-briefcase"></i><p>No holdings yet. Add your first position.</p></div>
-        <table id="h-table" style="display:none">
-          <thead><tr><th>Asset</th><th>Type</th><th>Qty</th><th>Avg cost</th><th>Price</th><th>Value</th><th>Gain / loss</th><th></th></tr></thead>
-          <tbody id="h-tbody"></tbody>
-        </table>
-      </div>
+  <!-- OVERVIEW -->
+  <div class="page active" id="page-overview">
+
+    <!-- Hero: net worth -->
+    <div class="ov-hero">
+      <div class="ov-hero-date" id="ov-date"></div>
+      <div class="ov-hero-label">Total Net Worth</div>
+      <div class="ov-hero-value" id="ov-total">€ —</div>
+      <div class="ov-hero-change" id="ov-change"><i class="ti ti-minus" style="font-size:13px"></i> —</div>
     </div>
 
-    <!-- TRANSACTIONS -->
-    <div class="page" id="page-transactions">
-      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div><div class="page-title">Transactions</div><div class="page-sub">Your trade history</div></div>
-        <button class="btn btn-primary" onclick="openModal('modal-tx')"><i class="ti ti-plus"></i> Add transaction</button>
-      </div>
-      <div class="filters">
-        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
-        <button class="filter-btn" onclick="setFilter('buy',this)">Buy</button>
-        <button class="filter-btn" onclick="setFilter('sell',this)">Sell</button>
-        <button class="filter-btn" onclick="setFilter('dividend',this)">Dividend</button>
-        <button class="filter-btn" onclick="setFilter('transfer',this)">Transfer</button>
-      </div>
-      <div class="card">
-        <div class="empty" id="tx-empty"><i class="ti ti-list"></i><p>No transactions yet.</p></div>
-        <table id="tx-table" style="display:none">
-          <thead><tr><th>Date</th><th>Asset</th><th>Type</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
-          <tbody id="tx-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ALLOCATION -->
-    <div class="page" id="page-allocation">
-      <div class="page-header"><div class="page-title">Allocation</div><div class="page-sub">How your portfolio is distributed</div></div>
-      <div class="alloc-grid">
-        <div class="card">
-          <div class="card-title" style="margin-bottom:1rem">By asset type</div>
-          <div class="chart-wrap" style="height:200px"><canvas id="alloc-type-chart" role="img" aria-label="Doughnut chart by asset type">Allocation by asset type.</canvas></div>
-          <div class="legend" id="alloc-type-legend"></div>
+    <!-- Net worth trend chart -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Net Worth Trend</div>
+          <div class="card-sub" id="chart-range-label"></div>
         </div>
-        <div class="card">
-          <div class="card-title" style="margin-bottom:1rem">By holding</div>
-          <div class="chart-wrap" style="height:200px"><canvas id="alloc-hold-chart" role="img" aria-label="Doughnut chart by holding">Allocation by holding.</canvas></div>
-          <div class="legend" id="alloc-hold-legend"></div>
+        <div class="period-tabs">
+          <button class="period-btn" onclick="setPeriod(1,this)">1D</button>
+          <button class="period-btn active" onclick="setPeriod(30,this)">1M</button>
+          <button class="period-btn" onclick="setPeriod(180,this)">6M</button>
+          <button class="period-btn" onclick="setPeriod(365,this)">1Y</button>
         </div>
       </div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="trend-chart" role="img" aria-label="Net worth over time">Net worth trend chart.</canvas>
+      </div>
     </div>
 
-  </main>
+    <!-- Holding boxes -->
+    <div class="card-title" style="margin-bottom:0.75rem;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Holdings by category</div>
+    <div class="holding-grid" id="holding-grid">
+      <div class="empty" style="grid-column:1/-1;padding:2rem"><i class="ti ti-wallet" style="font-size:28px;display:block;margin-bottom:8px;color:var(--text3)"></i><p>No holdings yet</p></div>
+    </div>
+  </div>
+
+  <!-- HOLDINGS -->
+  <div class="page" id="page-holdings">
+    <div class="page-header">
+      <div><div class="page-title">Holdings</div><div class="page-sub">All your current positions</div></div>
+      <button class="btn btn-primary" onclick="openModal('modal-holding')"><i class="ti ti-plus"></i> Add holding</button>
+    </div>
+    <div class="card">
+      <div class="empty" id="h-empty"><i class="ti ti-briefcase"></i><p>No holdings yet. Add your first position.</p></div>
+      <table id="h-table" style="display:none">
+        <thead><tr><th>Asset</th><th>Type</th><th>Qty</th><th>Avg cost</th><th>Price</th><th>Value</th><th>Gain / loss</th><th></th></tr></thead>
+        <tbody id="h-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TRANSACTIONS -->
+  <div class="page" id="page-transactions">
+    <div class="page-header">
+      <div><div class="page-title">Transactions</div><div class="page-sub">Your full trade history</div></div>
+      <button class="btn btn-primary" onclick="openModal('modal-tx')"><i class="ti ti-plus"></i> Add transaction</button>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('buy',this)">Buy</button>
+      <button class="filter-btn" onclick="setFilter('sell',this)">Sell</button>
+      <button class="filter-btn" onclick="setFilter('dividend',this)">Dividend</button>
+      <button class="filter-btn" onclick="setFilter('transfer',this)">Transfer</button>
+    </div>
+    <div class="card">
+      <div class="empty" id="tx-empty"><i class="ti ti-list"></i><p>No transactions yet.</p></div>
+      <table id="tx-table" style="display:none">
+        <thead><tr><th>Date</th><th>Asset</th><th>Type</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
+        <tbody id="tx-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ALLOCATION -->
+  <div class="page" id="page-allocation">
+    <div class="page-header"><div><div class="page-title">Allocation</div><div class="page-sub">How your portfolio is distributed</div></div></div>
+    <div class="alloc-grid">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem">By asset type</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="alloc-type-chart" role="img" aria-label="Doughnut chart by asset type">Allocation by asset type.</canvas></div>
+        <div class="legend" id="alloc-type-legend"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem">By holding</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="alloc-hold-chart" role="img" aria-label="Doughnut chart by holding">Allocation by holding.</canvas></div>
+        <div class="legend" id="alloc-hold-legend"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
 </div>
 
 <!-- ADD HOLDING MODAL -->
@@ -262,16 +323,20 @@
   <div class="modal">
     <div class="modal-title">Add holding</div>
     <div class="form-grid">
-      <div class="form-group form-full"><label>Ticker symbol</label><input type="text" id="h-ticker" placeholder="e.g. AAPL, BTC-EUR, VWCE.DE" style="text-transform:uppercase"></div>
-      <div class="form-group"><label>Name</label><input type="text" id="h-name" placeholder="e.g. Apple Inc."></div>
+      <div class="form-group form-full"><label>Ticker symbol <span style="color:var(--text3);font-weight:400">(or a short name for bank accounts / cash)</span></label><input type="text" id="h-ticker" placeholder="e.g. AAPL, BTC-EUR, VWCE.DE, My Bank" style="text-transform:uppercase"></div>
+      <div class="form-group"><label>Display name</label><input type="text" id="h-name" placeholder="e.g. Apple Inc."></div>
       <div class="form-group"><label>Asset type</label>
         <select id="h-type">
-          <option value="stock">Stock</option><option value="etf">ETF</option>
-          <option value="crypto">Crypto</option><option value="bond">Bond / Fixed income</option><option value="cash">Cash</option>
+          <option value="bank">Bank account</option>
+          <option value="bond">Bond / Fixed income</option>
+          <option value="cash">Cash</option>
+          <option value="crypto">Crypto</option>
+          <option value="etf">ETF</option>
+          <option value="stock">Stock</option>
         </select>
       </div>
       <div class="form-group"><label>Quantity</label><input type="number" id="h-qty" placeholder="0" step="any" min="0"></div>
-      <div class="form-group"><label>Average cost (€)</label><input type="number" id="h-cost" placeholder="0.00" step="any" min="0"></div>
+      <div class="form-group"><label>Average cost / current value (€)</label><input type="number" id="h-cost" placeholder="0.00" step="any" min="0"></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-holding')">Cancel</button>
@@ -312,25 +377,23 @@ const SUPABASE_URL = 'https://qyikbifqxoufiplacwpn.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWtiaWZxeG91ZmlwbGFjd3BuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4OTU5NDYsImV4cCI6MjA5NzQ3MTk0Nn0.crIoYfcqGYpSa9hqCAL25kG9phRYYVLFj_iTA7V7HwQ';
 
 const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-  headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation', ...opts.headers },
+  headers:{ apikey:SUPABASE_KEY, Authorization:`Bearer ${SUPABASE_KEY}`, 'Content-Type':'application/json', Prefer:'return=representation', ...opts.headers },
   ...opts
-}).then(r => r.json());
+}).then(r=>r.json());
 
-let holdings = [], transactions = [], prices = {}, txFilter = 'all';
-let overviewChart, allocTypeChart, allocHoldChart;
+let holdings=[], transactions=[], prices={}, snapshots=[], txFilter='all', activePeriod=30;
+let trendChart, allocTypeChart, allocHoldChart;
 
-const TYPE_COLORS = {stock:'#378ADD',etf:'#639922',crypto:'#EF9F27',bond:'#D4537E',cash:'#888780'};
-const TYPE_LABELS = {stock:'Stock',etf:'ETF',crypto:'Crypto',bond:'Bond',cash:'Cash'};
-const PALETTE = ['#378ADD','#1D9E75','#EF9F27','#D4537E','#534AB7','#D85A30','#888780','#97C459','#FAC775','#5DCAA5'];
-const TX_COLORS = {buy:'#1D9E75',sell:'#E24B4A',dividend:'#378ADD',transfer:'#888780'};
+const TYPE_LABELS = {bank:'Bank',bond:'Bond',cash:'Cash',crypto:'Crypto',etf:'ETF',stock:'Stock'};
+const TYPE_ICONS  = {bank:'ti-building-bank',bond:'ti-certificate',cash:'ti-cash',crypto:'ti-currency-bitcoin',etf:'ti-trending-up',stock:'ti-chart-candle'};
+const PALETTE = ['#6366f1','#10b981','#f59e0b','#ec4899','#0ea5e9','#84cc16','#f97316','#8b5cf6','#06b6d4','#a3e635'];
 
-function fmt(n){ return '€' + Number(n).toLocaleString('it-IT', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-function fmtN(n, d=6){ return Number(n).toLocaleString('it-IT', {maximumFractionDigits:d}); }
+function fmt(n){ return '€\u00a0'+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtN(n,d=6){ return Number(n).toLocaleString('it-IT',{maximumFractionDigits:d}); }
 function fmtPct(n){ return (n>=0?'+':'')+Number(n).toFixed(2)+'%'; }
-
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
-function showPage(name, btn){
+function showPage(name,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
@@ -338,194 +401,295 @@ function showPage(name, btn){
   if(name==='overview') renderOverview();
   if(name==='allocation') renderAllocation();
 }
-
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }));
 
 // ── LOAD ──
 async function loadAll(){
-  [holdings, transactions] = await Promise.all([
+  [holdings, transactions, snapshots] = await Promise.all([
     api('holdings?order=created_at.asc'),
-    api('transactions?order=created_at.desc')
+    api('transactions?order=created_at.desc'),
+    api('net_worth_snapshots?order=snapshot_date.asc')
   ]);
+  await maybeTakeSnapshot();
   renderHoldings(); renderTx(); renderOverview();
-  document.getElementById('overview-date').textContent = new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+}
+
+// ── SNAPSHOT ──
+async function maybeTakeSnapshot(){
+  const today = new Date().toISOString().split('T')[0];
+  const alreadyToday = snapshots.some(s=>s.snapshot_date===today);
+  if(alreadyToday || !holdings.length) return;
+  const totalVal = holdings.reduce((s,h)=>s+getVal(h),0);
+  if(totalVal===0) return;
+  const row = await api('net_worth_snapshots',{method:'POST',body:JSON.stringify({snapshot_date:today,total_value:totalVal})});
+  if(Array.isArray(row) && row[0]) snapshots.push(row[0]);
 }
 
 // ── HOLDINGS ──
 function getVal(h){ return (prices[h.ticker] ?? h.avg_cost) * h.qty; }
 function getCost(h){ return h.avg_cost * h.qty; }
-function getGain(h){ return getVal(h) - getCost(h); }
-function getGainPct(h){ const c=getCost(h); return c>0 ? getGain(h)/c*100 : 0; }
+function getGain(h){ return getVal(h)-getCost(h); }
+function getGainPct(h){ const c=getCost(h); return c>0?getGain(h)/c*100:0; }
 
 function renderHoldings(){
   const empty=document.getElementById('h-empty'), table=document.getElementById('h-table'), tbody=document.getElementById('h-tbody');
   if(!holdings.length){ empty.style.display=''; table.style.display='none'; return; }
   empty.style.display='none'; table.style.display='';
-  tbody.innerHTML = holdings.map((h,i)=>{
-    const price = prices[h.ticker];
-    const gain = getGain(h), pct = getGainPct(h);
+  tbody.innerHTML = holdings.map((h)=>{
+    const price=prices[h.ticker];
+    const gain=getGain(h), pct=getGainPct(h);
+    const gainClass=gain>=0?'pos-bg':'neg-bg';
     return `<tr>
-      <td><strong style="font-weight:500">${h.ticker}</strong><br><span style="color:var(--text2);font-size:12px">${h.name||''}</span></td>
+      <td><strong style="font-weight:600">${h.ticker}</strong><br><span style="color:var(--text2);font-size:12px">${h.name||''}</span></td>
       <td><span class="badge badge-${h.type}">${TYPE_LABELS[h.type]||h.type}</span></td>
       <td>${fmtN(h.qty)}</td>
       <td>${fmt(h.avg_cost)}</td>
-      <td>${price ? fmt(price) : '<span style="color:var(--text3)">—</span>'}</td>
-      <td style="font-weight:500">${fmt(getVal(h))}</td>
-      <td class="${gain>=0?'pos':'neg'}">${fmt(gain)}<br><span style="font-size:11px">${fmtPct(pct)}</span></td>
+      <td>${price?fmt(price):'<span style="color:var(--text3)">—</span>'}</td>
+      <td style="font-weight:600">${fmt(getVal(h))}</td>
+      <td><span class="${gainClass}">${fmt(gain)}</span><br><span style="font-size:11px;color:${gain>=0?'var(--green)':'var(--red)'}">${fmtPct(pct)}</span></td>
       <td><button class="btn btn-sm btn-danger" onclick="deleteHolding('${h.id}')"><i class="ti ti-trash"></i></button></td>
     </tr>`;
   }).join('');
 }
 
 async function saveHolding(){
-  const ticker = document.getElementById('h-ticker').value.trim().toUpperCase();
-  const name = document.getElementById('h-name').value.trim() || ticker;
-  const type = document.getElementById('h-type').value;
-  const qty = parseFloat(document.getElementById('h-qty').value) || 0;
-  const avg_cost = parseFloat(document.getElementById('h-cost').value) || 0;
-  if(!ticker || qty <= 0){ alert('Please enter ticker and quantity.'); return; }
-  const existing = holdings.find(h=>h.ticker===ticker);
+  const ticker=document.getElementById('h-ticker').value.trim().toUpperCase();
+  const name=document.getElementById('h-name').value.trim()||ticker;
+  const type=document.getElementById('h-type').value;
+  const qty=parseFloat(document.getElementById('h-qty').value)||0;
+  const avg_cost=parseFloat(document.getElementById('h-cost').value)||0;
+  if(!ticker||qty<=0){alert('Please enter a ticker/name and quantity.');return;}
+  const existing=holdings.find(h=>h.ticker===ticker);
   if(existing){
-    const totalCost = existing.qty * existing.avg_cost + qty * avg_cost;
-    const newQty = existing.qty + qty;
-    const newCost = totalCost / newQty;
-    await api(`holdings?id=eq.${existing.id}`, { method:'PATCH', body: JSON.stringify({qty: newQty, avg_cost: newCost}) });
+    const totalCost=existing.qty*existing.avg_cost+qty*avg_cost;
+    const newQty=existing.qty+qty;
+    await api(`holdings?id=eq.${existing.id}`,{method:'PATCH',body:JSON.stringify({qty:newQty,avg_cost:totalCost/newQty})});
   } else {
-    await api('holdings', { method:'POST', body: JSON.stringify({ticker, name, type, qty, avg_cost}) });
+    await api('holdings',{method:'POST',body:JSON.stringify({ticker,name,type,qty,avg_cost})});
   }
-  closeModal('modal-holding');
-  await loadAll();
-  toast('Holding saved');
+  closeModal('modal-holding'); await loadAll(); toast('Holding saved ✓');
 }
 
 async function deleteHolding(id){
   if(!confirm('Remove this holding?')) return;
-  await api(`holdings?id=eq.${id}`, { method:'DELETE' });
-  await loadAll();
-  toast('Holding removed');
+  await api(`holdings?id=eq.${id}`,{method:'DELETE'}); await loadAll(); toast('Holding removed');
 }
 
 // ── TRANSACTIONS ──
+const TX_COLORS={buy:'var(--green)',sell:'var(--red)',dividend:'var(--blue)',transfer:'var(--text2)'};
+
 function renderTx(){
-  const filtered = txFilter==='all' ? transactions : transactions.filter(t=>t.type===txFilter);
+  const filtered=txFilter==='all'?transactions:transactions.filter(t=>t.type===txFilter);
   const empty=document.getElementById('tx-empty'), table=document.getElementById('tx-table'), tbody=document.getElementById('tx-tbody');
-  if(!filtered.length){ empty.style.display=''; table.style.display='none'; return; }
+  if(!filtered.length){empty.style.display='';table.style.display='none';return;}
   empty.style.display='none'; table.style.display='';
-  tbody.innerHTML = filtered.map(t=>`<tr>
+  tbody.innerHTML=filtered.map(t=>`<tr>
     <td style="color:var(--text2)">${t.date||'—'}</td>
-    <td><strong style="font-weight:500">${t.ticker}</strong><br><span style="color:var(--text2);font-size:12px">${t.name||''}</span></td>
-    <td><span style="color:${TX_COLORS[t.type]||'var(--text2)'};font-weight:500;text-transform:capitalize">${t.type}</span></td>
-    <td>${t.qty ? fmtN(t.qty) : '—'}</td>
-    <td>${t.price ? fmt(t.price) : '—'}</td>
-    <td style="font-weight:500">${t.total ? fmt(t.total) : '—'}</td>
+    <td><strong style="font-weight:600">${t.ticker}</strong><br><span style="color:var(--text2);font-size:12px">${t.name||''}</span></td>
+    <td><span style="color:${TX_COLORS[t.type]||'var(--text2)'};font-weight:600;text-transform:capitalize">${t.type}</span></td>
+    <td>${t.qty?fmtN(t.qty):'—'}</td>
+    <td>${t.price?fmt(t.price):'—'}</td>
+    <td style="font-weight:600">${t.total?fmt(t.total):'—'}</td>
     <td><button class="btn btn-sm btn-danger" onclick="deleteTx('${t.id}')"><i class="ti ti-trash"></i></button></td>
   </tr>`).join('');
 }
 
 async function saveTx(){
-  const ticker = document.getElementById('tx-ticker').value.trim().toUpperCase();
-  if(!ticker){ alert('Please enter a ticker.'); return; }
-  const row = {
-    date: document.getElementById('tx-date').value,
-    type: document.getElementById('tx-type').value,
-    ticker,
-    name: document.getElementById('tx-name').value.trim() || ticker,
-    qty: parseFloat(document.getElementById('tx-qty').value) || null,
-    price: parseFloat(document.getElementById('tx-price').value) || null,
-    notes: document.getElementById('tx-notes').value.trim() || null
+  const ticker=document.getElementById('tx-ticker').value.trim().toUpperCase();
+  if(!ticker){alert('Please enter a ticker.');return;}
+  const row={
+    date:document.getElementById('tx-date').value,
+    type:document.getElementById('tx-type').value,
+    ticker, name:document.getElementById('tx-name').value.trim()||ticker,
+    qty:parseFloat(document.getElementById('tx-qty').value)||null,
+    price:parseFloat(document.getElementById('tx-price').value)||null,
+    notes:document.getElementById('tx-notes').value.trim()||null
   };
-  row.total = (row.qty && row.price) ? row.qty * row.price : null;
-  await api('transactions', { method:'POST', body: JSON.stringify(row) });
-  closeModal('modal-tx');
-  await loadAll();
-  toast('Transaction saved');
+  row.total=(row.qty&&row.price)?row.qty*row.price:null;
+  await api('transactions',{method:'POST',body:JSON.stringify(row)});
+  closeModal('modal-tx'); await loadAll(); toast('Transaction saved ✓');
 }
 
 async function deleteTx(id){
   if(!confirm('Remove this transaction?')) return;
-  await api(`transactions?id=eq.${id}`, { method:'DELETE' });
-  await loadAll();
-  toast('Transaction removed');
+  await api(`transactions?id=eq.${id}`,{method:'DELETE'}); await loadAll(); toast('Transaction removed');
 }
 
-function setFilter(f, btn){
-  txFilter = f;
+function setFilter(f,btn){
+  txFilter=f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderTx();
+  btn.classList.add('active'); renderTx();
 }
 
 // ── PRICES ──
 async function fetchPrice(ticker){
   try{
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
-    const r = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-    const d = await r.json();
-    return d?.chart?.result?.[0]?.meta?.regularMarketPrice ?? null;
-  }catch{ return null; }
+    const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
+    const r=await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+    const d=await r.json();
+    return d?.chart?.result?.[0]?.meta?.regularMarketPrice??null;
+  }catch{return null;}
 }
 
 async function refreshPrices(){
-  if(!holdings.length){ toast('No holdings to refresh'); return; }
-  const btn = document.getElementById('refresh-btn');
-  btn.innerHTML = '<span class="spin"></span> Loading…';
-  btn.disabled = true;
-  const tickers = [...new Set(holdings.map(h=>h.ticker))];
-  await Promise.all(tickers.map(async t=>{ const p=await fetchPrice(t); if(p!==null) prices[t]=p; }));
-  btn.innerHTML = '<i class="ti ti-refresh"></i><span>Refresh prices</span>';
-  btn.disabled = false;
-  document.getElementById('refresh-info').textContent = 'Updated ' + new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  if(!holdings.length){toast('No holdings to refresh');return;}
+  const btn=document.getElementById('refresh-btn');
+  btn.innerHTML='<span class="spin"></span> Loading…'; btn.disabled=true;
+  const tickers=[...new Set(holdings.filter(h=>!['bank','cash'].includes(h.type)).map(h=>h.ticker))];
+  await Promise.all(tickers.map(async t=>{const p=await fetchPrice(t);if(p!==null)prices[t]=p;}));
+  btn.innerHTML='<i class="ti ti-refresh"></i><span>Refresh prices</span>'; btn.disabled=false;
+  document.getElementById('refresh-info').textContent='Updated '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   renderHoldings(); renderOverview(); renderAllocation();
-  toast('Prices updated');
+  toast('Prices updated ✓');
 }
 
 // ── OVERVIEW ──
+function setPeriod(days,btn){
+  activePeriod=days;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTrendChart();
+}
+
 function renderOverview(){
-  const totalVal = holdings.reduce((s,h)=>s+getVal(h),0);
-  const totalCost = holdings.reduce((s,h)=>s+getCost(h),0);
-  const gain = totalVal - totalCost;
-  const pct = totalCost > 0 ? gain/totalCost*100 : 0;
-  document.getElementById('mv-total').textContent = fmt(totalVal);
-  document.getElementById('mv-cost').textContent = fmt(totalCost);
-  document.getElementById('mv-gain').innerHTML = `<span class="${gain>=0?'pos':'neg'}">${fmt(gain)} (${fmtPct(pct)})</span>`;
-  document.getElementById('mv-ret').innerHTML = `<span class="${gain>=0?'pos':'neg'}">${fmtPct(pct)}</span>`;
-  document.getElementById('mv-count').textContent = holdings.length;
+  // Hero
+  const totalVal=holdings.reduce((s,h)=>s+getVal(h),0);
+  document.getElementById('ov-total').textContent=fmt(totalVal);
+  document.getElementById('ov-date').textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  const byType = {};
-  holdings.forEach(h=>{ byType[h.type] = (byType[h.type]||0) + getVal(h); });
-  const labels = Object.keys(byType).map(k=>TYPE_LABELS[k]||k);
-  const data = Object.values(byType);
-  const colors = Object.keys(byType).map(k=>TYPE_COLORS[k]||'#888');
+  // Change vs yesterday snapshot
+  const snaps=[...snapshots].sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date));
+  const changeEl=document.getElementById('ov-change');
+  if(snaps.length>=2){
+    const prev=snaps[snaps.length-2].total_value;
+    const diff=totalVal-prev;
+    const pct=prev>0?diff/prev*100:0;
+    const up=diff>=0;
+    changeEl.innerHTML=`<i class="ti ti-trending-${up?'up':'down'}" style="font-size:13px"></i> ${fmt(Math.abs(diff))} (${fmtPct(pct)}) vs yesterday`;
+    changeEl.style.background=up?'rgba(255,255,255,0.18)':'rgba(255,255,255,0.18)';
+  } else {
+    changeEl.innerHTML='<i class="ti ti-minus" style="font-size:13px"></i> No history yet';
+  }
 
-  if(overviewChart) overviewChart.destroy();
-  overviewChart = new Chart(document.getElementById('overview-chart'),{
-    type:'bar',
-    data:{ labels, datasets:[{ data, backgroundColor:colors, borderRadius:6, borderSkipped:false }] },
-    options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>fmt(ctx.raw) } } },
-      scales:{ x:{ grid:{display:false} }, y:{ grid:{color:'rgba(128,128,128,0.08)'}, ticks:{ callback:v=>'€'+Number(v).toLocaleString('it-IT') } } }
+  renderTrendChart();
+  renderHoldingBoxes();
+}
+
+function renderTrendChart(){
+  const today=new Date();
+  const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-activePeriod);
+  const filtered=snapshots.filter(s=>new Date(s.snapshot_date)>=cutoff);
+
+  // Always include today's value
+  const todayStr=today.toISOString().split('T')[0];
+  const todayVal=holdings.reduce((s,h)=>s+getVal(h),0);
+  let points=[...filtered];
+  if(!points.find(p=>p.snapshot_date===todayStr) && todayVal>0) points.push({snapshot_date:todayStr,total_value:todayVal});
+  points.sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date));
+
+  const labels=points.map(p=>new Date(p.snapshot_date).toLocaleDateString('it-IT',{day:'2-digit',month:'short'}));
+  const data=points.map(p=>p.total_value);
+
+  const isDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const lineColor='#818cf8';
+  const gridColor=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';
+  const textColor=isDark?'#94a3b8':'#6b7280';
+
+  if(trendChart) trendChart.destroy();
+  trendChart=new Chart(document.getElementById('trend-chart'),{
+    type:'line',
+    data:{labels,datasets:[{
+      data,
+      borderColor:lineColor,
+      backgroundColor:(ctx)=>{
+        const g=ctx.chart.ctx.createLinearGradient(0,0,0,220);
+        g.addColorStop(0,'rgba(129,140,248,0.22)');
+        g.addColorStop(1,'rgba(129,140,248,0)');
+        return g;
+      },
+      borderWidth:2.5,
+      pointRadius:points.length>14?0:4,
+      pointHoverRadius:6,
+      pointBackgroundColor:lineColor,
+      tension:0.4,
+      fill:true
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:isDark?'#1a1d27':'#fff',
+          titleColor:textColor, bodyColor:isDark?'#f1f5f9':'#111',
+          borderColor:isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)',
+          borderWidth:1,
+          callbacks:{label:ctx=>fmt(ctx.raw)}
+        }
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:textColor,font:{size:11},maxTicksLimit:8}},
+        y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:11},callback:v=>'€'+Number(v).toLocaleString('it-IT')}}
+      }
     }
   });
+
+  const labelEl=document.getElementById('chart-range-label');
+  if(points.length>0){
+    const first=new Date(points[0].snapshot_date).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});
+    const last=new Date(points[points.length-1].snapshot_date).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});
+    labelEl.textContent=`${first} – ${last}`;
+  } else {
+    labelEl.textContent='No historical data yet — data builds up daily';
+  }
+}
+
+function renderHoldingBoxes(){
+  // Group by type, sum values, sort alphabetically by type label
+  const byType={};
+  holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
+  const total=Object.values(byType).reduce((a,b)=>a+b,0)||1;
+  const sorted=Object.keys(byType).sort((a,b)=>(TYPE_LABELS[a]||a).localeCompare(TYPE_LABELS[b]||b));
+
+  const grid=document.getElementById('holding-grid');
+  if(!sorted.length){
+    grid.innerHTML='<div class="empty" style="grid-column:1/-1;padding:2rem"><i class="ti ti-wallet" style="font-size:28px;display:block;margin-bottom:8px;color:var(--text3)"></i><p>No holdings yet</p></div>';
+    return;
+  }
+  grid.innerHTML=sorted.map(type=>{
+    const val=byType[type];
+    const pct=(val/total*100).toFixed(1);
+    const icon=TYPE_ICONS[type]||'ti-wallet';
+    const label=TYPE_LABELS[type]||type;
+    return `<div class="holding-box type-${type}">
+      <div class="holding-box-icon"><i class="ti ${icon}"></i></div>
+      <div class="holding-box-label">${label}</div>
+      <div class="holding-box-value">${fmt(val)}</div>
+      <div class="holding-box-pct" style="color:var(--text2)">${pct}% of portfolio</div>
+    </div>`;
+  }).join('');
 }
 
 // ── ALLOCATION ──
 function renderAllocation(){
-  const total = holdings.reduce((s,h)=>s+getVal(h),0) || 1;
+  const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
   const byType={};
   holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
-
-  const tLabels=Object.keys(byType).map(k=>TYPE_LABELS[k]||k);
-  const tData=Object.values(byType);
-  const tColors=Object.keys(byType).map(k=>TYPE_COLORS[k]||'#888');
+  const tKeys=Object.keys(byType);
+  const tLabels=tKeys.map(k=>TYPE_LABELS[k]||k);
+  const tData=tKeys.map(k=>byType[k]);
+  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
+  const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
 
   if(allocTypeChart) allocTypeChart.destroy();
-  allocTypeChart = new Chart(document.getElementById('alloc-type-chart'),{
-    type:'doughnut', data:{ labels:tLabels, datasets:[{data:tData, backgroundColor:tColors, borderWidth:0}] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)` } } } }
+  allocTypeChart=new Chart(document.getElementById('alloc-type-chart'),{
+    type:'doughnut', data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}
   });
-  document.getElementById('alloc-type-legend').innerHTML = tLabels.map((l,i)=>
+  document.getElementById('alloc-type-legend').innerHTML=tLabels.map((l,i)=>
     `<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l} ${(tData[i]/total*100).toFixed(1)}%</div>`).join('');
 
   const hLabels=holdings.map(h=>h.ticker);
@@ -533,16 +697,14 @@ function renderAllocation(){
   const hColors=hLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
 
   if(allocHoldChart) allocHoldChart.destroy();
-  allocHoldChart = new Chart(document.getElementById('alloc-hold-chart'),{
-    type:'doughnut', data:{ labels:hLabels, datasets:[{data:hData, backgroundColor:hColors, borderWidth:0}] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)` } } } }
+  allocHoldChart=new Chart(document.getElementById('alloc-hold-chart'),{
+    type:'doughnut', data:{labels:hLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}
   });
-  document.getElementById('alloc-hold-legend').innerHTML = hLabels.map((l,i)=>
+  document.getElementById('alloc-hold-legend').innerHTML=hLabels.map((l,i)=>
     `<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
 }
 
-// ── INIT ──
-document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
 loadAll();
 </script>
 </body>
