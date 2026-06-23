@@ -94,8 +94,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* ── Holding boxes ── */
 .holding-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:1.25rem}
-.holding-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.125rem 1.25rem;box-shadow:var(--shadow);transition:transform 0.12s,box-shadow 0.12s;cursor:default}
-.holding-box:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.holding-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.125rem 1.25rem;box-shadow:var(--shadow);transition:transform 0.12s,box-shadow 0.12s,border-color 0.12s;cursor:pointer}
+.holding-box:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--border2)}
 .holding-box-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:0.75rem}
 .holding-box-label{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:4px}
 .holding-box-value{font-size:20px;font-weight:700;letter-spacing:-0.5px;line-height:1.2}
@@ -425,9 +425,47 @@ function showPage(name,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
-  if(btn) btn.classList.add('active');
+  if(btn){
+    btn.classList.add('active');
+  } else {
+    // activate the matching nav item by page name
+    document.querySelectorAll('.nav-item').forEach(b=>{
+      if(b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+name+"'")) b.classList.add('active');
+    });
+  }
   if(name==='overview') renderOverview();
   if(name==='allocation') renderAllocation();
+}
+
+function navigateToCategory(type){
+  // Switch to holdings page
+  showPage('holdings');
+  // Find the category block whose header contains the right type class and open it
+  // We need a brief delay to ensure renderHoldings has populated the DOM
+  setTimeout(()=>{
+    const blocks = document.querySelectorAll('.cat-block');
+    let target = null;
+    blocks.forEach(block=>{
+      const header = block.querySelector('.cat-header');
+      const icon = header.querySelector('.cat-icon i');
+      // match by data-type attribute we'll embed
+      if(block.dataset.type === type) target = block;
+    });
+    if(!target) return;
+    const header = target.querySelector('.cat-header');
+    const body   = target.querySelector('.cat-body');
+    // close all others first
+    document.querySelectorAll('.cat-header.open').forEach(h=>{
+      h.classList.remove('open');
+      h.nextElementSibling.classList.remove('open');
+    });
+    // open target
+    header.classList.add('open');
+    body.classList.add('open');
+    header.setAttribute('aria-expanded','true');
+    // scroll into view
+    target.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 50);
 }
 function openModal(id){
   document.getElementById(id).classList.add('open');
@@ -513,7 +551,7 @@ function renderHoldings(){
       ? `<tr><th>Account</th><th>Balance</th><th></th></tr>`
       : `<tr><th>Asset</th><th>Qty</th><th>Avg cost</th><th>Price</th><th>Value</th><th>Gain / loss</th><th></th></tr>`;
 
-    return `<div class="cat-block">
+    return `<div class="cat-block" data-type="${type}">
       <div class="cat-header" onclick="toggleCat(this)" role="button" aria-expanded="false">
         <div class="cat-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
         <div class="cat-info">
@@ -778,11 +816,12 @@ function renderHoldingBoxes(){
     const pct=(val/total*100).toFixed(1);
     const icon=TYPE_ICONS[type]||'ti-wallet';
     const label=TYPE_LABELS[type]||type;
-    return `<div class="holding-box type-${type}">
+    return `<div class="holding-box type-${type}" onclick="navigateToCategory('${type}')" role="button" title="View ${label} holdings">
       <div class="holding-box-icon"><i class="ti ${icon}"></i></div>
       <div class="holding-box-label">${label}</div>
       <div class="holding-box-value">${fmt(val)}</div>
       <div class="holding-box-pct" style="color:var(--text2)">${pct}% of portfolio</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:3px"><i class="ti ti-arrow-right" style="font-size:12px"></i> View details</div>
     </div>`;
   }).join('');
 }
