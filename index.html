@@ -323,10 +323,8 @@ tbody tr:hover td{background:var(--surface2)}
   <div class="modal">
     <div class="modal-title">Add holding</div>
     <div class="form-grid">
-      <div class="form-group form-full"><label>Ticker symbol <span style="color:var(--text3);font-weight:400">(or a short name for bank accounts / cash)</span></label><input type="text" id="h-ticker" placeholder="e.g. AAPL, BTC-EUR, VWCE.DE, My Bank" style="text-transform:uppercase"></div>
-      <div class="form-group"><label>Display name</label><input type="text" id="h-name" placeholder="e.g. Apple Inc."></div>
       <div class="form-group"><label>Asset type</label>
-        <select id="h-type">
+        <select id="h-type" onchange="onHoldingTypeChange(this.value)">
           <option value="bank">Bank account</option>
           <option value="bond">Bond / Fixed income</option>
           <option value="cash">Cash</option>
@@ -335,8 +333,10 @@ tbody tr:hover td{background:var(--surface2)}
           <option value="stock">Stock</option>
         </select>
       </div>
-      <div class="form-group"><label>Quantity</label><input type="number" id="h-qty" placeholder="0" step="any" min="0"></div>
-      <div class="form-group"><label>Average cost / current value (€)</label><input type="number" id="h-cost" placeholder="0.00" step="any" min="0"></div>
+      <div class="form-group"><label id="h-name-label">Account name</label><input type="text" id="h-name" placeholder="e.g. Intesa Sanpaolo"></div>
+      <div class="form-group form-full" id="h-ticker-wrap" style="display:none"><label>Ticker symbol</label><input type="text" id="h-ticker" placeholder="e.g. AAPL, BTC-EUR, VWCE.DE" style="text-transform:uppercase"></div>
+      <div class="form-group" id="h-qty-wrap" style="display:none"><label>Quantity</label><input type="number" id="h-qty" placeholder="0" step="any" min="0"></div>
+      <div class="form-group"><label id="h-cost-label">Current balance (€)</label><input type="number" id="h-cost" placeholder="0.00" step="any" min="0"></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-holding')">Cancel</button>
@@ -401,7 +401,15 @@ function showPage(name,btn){
   if(name==='overview') renderOverview();
   if(name==='allocation') renderAllocation();
 }
-function openModal(id){ document.getElementById(id).classList.add('open'); }
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  if(id==='modal-holding'){
+    // reset fields
+    ['h-ticker','h-name','h-qty','h-cost'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('h-type').value='bank';
+    onHoldingTypeChange('bank');
+  }
+}
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }));
 
@@ -455,20 +463,48 @@ function renderHoldings(){
   }).join('');
 }
 
+function onHoldingTypeChange(type){
+  const isSimple = type==='bank' || type==='cash';
+  // ticker row: hidden for bank/cash
+  document.getElementById('h-ticker-wrap').style.display = isSimple ? 'none' : '';
+  // qty row: hidden for bank/cash (we use qty=1, value=balance)
+  document.getElementById('h-qty-wrap').style.display = isSimple ? 'none' : '';
+  // dynamic labels
+  document.getElementById('h-name-label').textContent = type==='bank' ? 'Account name' : type==='cash' ? 'Label' : 'Display name';
+  document.getElementById('h-cost-label').textContent = isSimple ? 'Current balance (€)' : 'Average cost / current value (€)';
+  document.getElementById('h-name').placeholder = type==='bank' ? 'e.g. Intesa Sanpaolo' : type==='cash' ? 'e.g. Wallet cash' : 'e.g. Apple Inc.';
+}
+
 async function saveHolding(){
-  const ticker=document.getElementById('h-ticker').value.trim().toUpperCase();
-  const name=document.getElementById('h-name').value.trim()||ticker;
   const type=document.getElementById('h-type').value;
-  const qty=parseFloat(document.getElementById('h-qty').value)||0;
+  const isSimple = type==='bank' || type==='cash';
+  const name=document.getElementById('h-name').value.trim();
   const avg_cost=parseFloat(document.getElementById('h-cost').value)||0;
-  if(!ticker||qty<=0){alert('Please enter a ticker/name and quantity.');return;}
-  const existing=holdings.find(h=>h.ticker===ticker);
-  if(existing){
-    const totalCost=existing.qty*existing.avg_cost+qty*avg_cost;
-    const newQty=existing.qty+qty;
-    await api(`holdings?id=eq.${existing.id}`,{method:'PATCH',body:JSON.stringify({qty:newQty,avg_cost:totalCost/newQty})});
+
+  if(isSimple){
+    // Bank/cash: no ticker needed, qty=1, ticker = sanitised name
+    if(!name){ alert('Please enter an account name.'); return; }
+    if(avg_cost<=0){ alert('Please enter the current balance.'); return; }
+    const ticker = name.toUpperCase().replace(/\s+/g,'_').slice(0,30);
+    const existing = holdings.find(h=>h.ticker===ticker);
+    if(existing){
+      await api(`holdings?id=eq.${existing.id}`,{method:'PATCH',body:JSON.stringify({avg_cost, qty:1, name})});
+    } else {
+      await api('holdings',{method:'POST',body:JSON.stringify({ticker, name, type, qty:1, avg_cost})});
+    }
   } else {
-    await api('holdings',{method:'POST',body:JSON.stringify({ticker,name,type,qty,avg_cost})});
+    const ticker=document.getElementById('h-ticker').value.trim().toUpperCase();
+    const qty=parseFloat(document.getElementById('h-qty').value)||0;
+    if(!ticker){ alert('Please enter a ticker symbol.'); return; }
+    if(qty<=0){ alert('Please enter a quantity.'); return; }
+    const existing=holdings.find(h=>h.ticker===ticker);
+    if(existing){
+      const totalCost=existing.qty*existing.avg_cost+qty*avg_cost;
+      const newQty=existing.qty+qty;
+      await api(`holdings?id=eq.${existing.id}`,{method:'PATCH',body:JSON.stringify({qty:newQty,avg_cost:totalCost/newQty})});
+    } else {
+      await api('holdings',{method:'POST',body:JSON.stringify({ticker,name:name||ticker,type,qty,avg_cost})});
+    }
   }
   closeModal('modal-holding'); await loadAll(); toast('Holding saved ✓');
 }
