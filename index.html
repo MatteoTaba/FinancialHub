@@ -477,6 +477,7 @@ function fmtPct(n){ return (n>=0?'+':'')+Number(n).toFixed(2)+'%'; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
 function showPage(name,btn){
+  localStorage.setItem('fh_page', name);
   // Collapse all accordions when leaving holdings
   document.querySelectorAll('.cat-header.open').forEach(h=>{
     h.classList.remove('open');
@@ -495,7 +496,7 @@ function showPage(name,btn){
   }
   if(name==='overview') renderOverview();
   if(name==='allocation') renderAllocation();
-  if(name==='holdings') refreshPrices();
+  if(name==='holdings'){ setTimeout(()=>refreshPrices(), 50); }
 }
 
 function navigateToCategory(type){
@@ -684,6 +685,7 @@ function renderHoldings(){
         <div class="cat-total">
           <div class="cat-total-val">${fmt(catTotal)}</div>
           <div class="cat-total-pct">${catPct}% of portfolio</div>
+          ${!isSimple && catHasPrices ? `<div style="font-size:12px;font-weight:600;margin-top:3px;color:${catGain>=0?'var(--green)':'var(--red)'}">${fmt(catGain)} (${fmtPct(catGainPct)})</div>` : ''}
         </div>
         <i class="ti ti-chevron-down cat-chevron"></i>
       </div>
