@@ -400,7 +400,7 @@ tbody tr:hover td{background:var(--surface2)}
         <label>Search asset</label>
         <div style="position:relative">
           <input type="text" id="h-search" placeholder="Type name or ticker… e.g. Apple, BTC, VWCE" autocomplete="off" oninput="onTickerSearch(this.value)">
-          <div id="h-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);z-index:50;max-height:200px;overflow-y:auto;box-shadow:var(--shadow-md)"></div>
+          <div id="h-search-results" style="display:none;background:var(--surface);border:1px solid var(--border2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);max-height:180px;overflow-y:auto;margin-top:0"></div>
         </div>
         <div id="h-selected-ticker" style="display:none;margin-top:6px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <span id="h-selected-label" style="font-size:13px;font-weight:500"></span>
@@ -699,44 +699,97 @@ function selectTicker(symbol, name, exchDisp){
   document.getElementById('h-search-results').style.display  = 'none';
 }
 
+async function searchCoinGecko(q){
+  // Search CoinGecko coins list
+  try{
+    const r = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`,{signal:AbortSignal.timeout(6000)});
+    if(!r.ok) return null;
+    const d = await r.json();
+    return (d?.coins||[]).slice(0,8).map(c=>({
+      symbol: c.symbol.toUpperCase(),
+      name: c.name,
+      cgId: c.id,
+      exch: 'CoinGecko'
+    }));
+  }catch{ return null; }
+}
+
+async function searchYahoo(q){
+  const yhSearch = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=en-US&region=US&quotesCount=8&newsCount=0&enableFuzzyQuery=false&enableCb=false`;
+  const proxies = [
+    u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  ];
+  for(const proxy of proxies){
+    try{
+      const r = await fetch(proxy(yhSearch),{signal:AbortSignal.timeout(5000)});
+      if(!r.ok) continue;
+      const text = await r.text();
+      if(!text.startsWith('{')) continue;
+      const d = JSON.parse(text);
+      return (d?.quotes||[]).filter(q=>q.symbol && q.quoteType!=='CURRENCY').map(r=>({
+        symbol: r.symbol,
+        name: r.longname||r.shortname||r.symbol,
+        exch: r.exchDisp||r.exchange||''
+      }));
+    }catch{ continue; }
+  }
+  return null;
+}
+
 async function onTickerSearch(q){
-  const box = document.getElementById('h-search-results');
+  const box  = document.getElementById('h-search-results');
+  const type = document.getElementById('h-type').value;
   clearTimeout(tickerSearchTimeout);
   if(q.trim().length < 2){ box.style.display='none'; return; }
   box.style.display = '';
   box.innerHTML = '<div class="sr-loading">Searching…</div>';
   tickerSearchTimeout = setTimeout(async ()=>{
     try{
-      const yhSearch = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=en-US&region=US&quotesCount=8&newsCount=0&enableFuzzyQuery=false&enableCb=false`;
-      const proxies = [
-        u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-        u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
-        u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-      ];
       let results = null;
-      for(const proxy of proxies){
-        try{
-          const r = await fetch(proxy(yhSearch), {signal:AbortSignal.timeout(5000)});
-          if(!r.ok) continue;
-          const text = await r.text();
-          if(!text.startsWith('{')) continue;
-          const d = JSON.parse(text);
-          results = d?.quotes?.filter(q=>q.symbol && q.quoteType !== 'CURRENCY') || [];
-          break;
-        }catch{ continue; }
+      if(type === 'crypto'){
+        // Use CoinGecko for crypto search
+        results = await searchCoinGecko(q);
+        if(!results||!results.length){ box.innerHTML='<div class="sr-loading">No crypto found — try full name (e.g. "Kaspa")</div>'; return; }
+        // Store cgId on the element so selectTicker can register it
+        box.innerHTML = results.map(r=>{
+          const safeSymbol = r.symbol.replace(/'/g,'\\\'');
+          const safeName   = r.name.replace(/'/g,'\\\'');
+          const safeCgId   = r.cgId.replace(/'/g,'\\\'');
+          return `<div onclick="selectCryptoTicker('${safeSymbol}','${safeName}','${safeCgId}')">
+            <span class="sr-ticker">${r.symbol}</span>
+            <span class="sr-name">${r.name}</span>
+            <span class="sr-exch">CoinGecko</span>
+          </div>`;
+        }).join('');
+      } else {
+        // Use Yahoo for stocks/ETFs/bonds
+        results = await searchYahoo(q);
+        if(!results){ box.innerHTML='<div class="sr-loading">Search failed — try again</div>'; return; }
+        if(!results.length){ box.innerHTML='<div class="sr-loading">No results found</div>'; return; }
+        box.innerHTML = results.map(r=>{
+          const safeSymbol = r.symbol.replace(/'/g,'\\\'');
+          const safeName   = r.name.replace(/'/g,'\\\'');
+          const safeExch   = r.exch.replace(/'/g,'\\\'');
+          return `<div onclick="selectTicker('${safeSymbol}','${safeName}','${safeExch}')">
+            <span class="sr-ticker">${r.symbol}</span>
+            <span class="sr-name">${r.name}</span>
+            <span class="sr-exch">${r.exch}</span>
+          </div>`;
+        }).join('');
       }
-      if(!results){ box.innerHTML='<div class="sr-loading">Search failed — try again</div>'; return; }
-      if(!results.length){ box.innerHTML='<div class="sr-loading">No results found</div>'; return; }
-      box.innerHTML = results.map(r=>`
-        <div onclick="selectTicker('${r.symbol}','${(r.longname||r.shortname||r.symbol).replace(/'/g,"\'")}','${(r.exchDisp||'').replace(/'/g,"\'")}')">
-          <span class="sr-ticker">${r.symbol}</span>
-          <span class="sr-name">${r.longname||r.shortname||''}</span>
-          <span class="sr-exch">${r.exchDisp||r.exchange||''}</span>
-        </div>`).join('');
     }catch(e){
       box.innerHTML='<div class="sr-loading">Search error</div>';
     }
   }, 350);
+}
+
+// For crypto: store cgId so CoinGecko price fetch knows which coin to call
+function selectCryptoTicker(symbol, name, cgId){
+  // Register the cgId mapping so fetchCryptoPrice can use it
+  COINGECKO_IDS[symbol] = cgId;
+  selectTicker(symbol, name, 'Crypto');
 }
 
 async function saveHolding(){
@@ -827,8 +880,7 @@ function setFilter(f,btn){
 }
 
 // ── PRICES ──
-// ── CoinGecko symbol → ID map (extended) ──
-// Ticker stored in DB (uppercase) → CoinGecko coin ID
+// CoinGecko symbol/ticker → coin ID map (runtime, extended on search selection)
 const COINGECKO_IDS = {
   'BTC':'bitcoin','ETH':'ethereum','SOL':'solana','BNB':'binancecoin',
   'XRP':'ripple','ADA':'cardano','AVAX':'avalanche-2','DOT':'polkadot',
@@ -845,34 +897,47 @@ const COINGECKO_IDS = {
   'TON':'the-open-network','NOT':'notcoin','TRUMP':'maga',
 };
 
-// Derive base coin from various ticker formats:
-// BTC-EUR, BTCEUR, BTC/EUR, BTC → all → "BTC"
-function cryptoBase(ticker){
-  return ticker.replace(/[-/](EUR|USD|USDT|USDC|BTC|ETH)$/i,'').replace(/(EUR|USD|USDT|USDC)$/i,'').toUpperCase();
+// Resolve ticker → CoinGecko ID.
+// Ticker may be the raw symbol (e.g. KAS) or whatever Yahoo would use.
+// selectCryptoTicker() always registers the correct cgId at selection time.
+function cgIdForTicker(ticker){
+  // Direct match first (set at search-select time or from built-in map)
+  if(COINGECKO_IDS[ticker]) return COINGECKO_IDS[ticker];
+  // Strip common suffixes: BTC-EUR → BTC, KASUSDT → KAS
+  const base = ticker.replace(/[-/](EUR|USD|USDT|USDC|BTC|ETH)$/i,'')
+                      .replace(/(EUR|USD|USDT|USDC)$/i,'').toUpperCase();
+  return COINGECKO_IDS[base] || null;
 }
 
-async function fetchCryptoPrice(ticker){
-  const base = cryptoBase(ticker);
-  const cgId = COINGECKO_IDS[base];
-  if(!cgId){ console.warn(`No CoinGecko ID for ${ticker} (base: ${base})`); return null; }
+// Fetch prices for ALL crypto holdings in one CoinGecko batch call
+async function fetchAllCryptoPrices(tickers){
+  const cgIds = [...new Set(tickers.map(t=>cgIdForTicker(t)).filter(Boolean))];
+  if(!cgIds.length) return {};
   try{
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=eur`;
-    const r = await fetch(url, {signal: AbortSignal.timeout(8000)});
-    if(!r.ok) throw new Error('CoinGecko HTTP '+r.status);
-    const d = await r.json();
-    return d?.[cgId]?.eur ?? null;
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds.join(',')}&vs_currencies=eur`;
+    const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+    if(!r.ok) throw new Error('CoinGecko HTTP ' + r.status);
+    const data = await r.json();
+    // Build ticker → price map
+    const result = {};
+    tickers.forEach(t=>{
+      const id = cgIdForTicker(t);
+      if(id && data[id]?.eur != null) result[t] = data[id].eur;
+    });
+    return result;
   }catch(e){
-    console.warn(`CoinGecko failed for ${ticker}:`, e.message);
-    return null;
+    console.warn('CoinGecko batch fetch failed:', e.message);
+    return {};
   }
 }
 
-async function fetchPrice(ticker){
+// Yahoo Finance via CORS proxy for stocks/ETFs/bonds
+async function fetchYahooPrice(ticker){
   const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
   const proxies = [
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
   ];
   for(const proxy of proxies){
     try{
@@ -883,9 +948,9 @@ async function fetchPrice(ticker){
       const d = JSON.parse(text);
       const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
       if(price != null) return price;
-    }catch(e){ continue; }
+    }catch{ continue; }
   }
-  console.warn(`Could not fetch price for ${ticker} via Yahoo`);
+  console.warn(`Yahoo: could not fetch price for ${ticker}`);
   return null;
 }
 
@@ -898,24 +963,19 @@ async function refreshPrices(){
   sideBtn.innerHTML = loadHTML; sideBtn.disabled = true;
   if(hBtn){ hBtn.innerHTML = loadHTML; hBtn.disabled = true; }
 
-  // Split crypto vs non-crypto holdings
-  const cryptoHoldings    = investable.filter(h=>h.type==='crypto');
-  const nonCryptoHoldings = investable.filter(h=>h.type!=='crypto');
-  const cryptoTickers     = [...new Set(cryptoHoldings.map(h=>h.ticker))];
-  const nonCryptoTickers  = [...new Set(nonCryptoHoldings.map(h=>h.ticker))];
+  const cryptoTickers    = [...new Set(investable.filter(h=>h.type==='crypto').map(h=>h.ticker))];
+  const nonCryptoTickers = [...new Set(investable.filter(h=>h.type!=='crypto').map(h=>h.ticker))];
 
-  // Fetch in parallel: CoinGecko for crypto, Yahoo for the rest
-  await Promise.all([
-    ...cryptoTickers.map(async t=>{
-      const p = await fetchCryptoPrice(t);
+  // CoinGecko: one batch call for all cryptos
+  // Yahoo: parallel calls for stocks/ETFs/bonds
+  const [cryptoPrices] = await Promise.all([
+    fetchAllCryptoPrices(cryptoTickers),
+    Promise.all(nonCryptoTickers.map(async t=>{
+      const p = await fetchYahooPrice(t);
       if(p != null) prices[t] = p;
-      else console.warn(`CoinGecko: no price for ${t}`);
-    }),
-    ...nonCryptoTickers.map(async t=>{
-      const p = await fetchPrice(t);
-      if(p != null) prices[t] = p;
-    }),
+    }))
   ]);
+  Object.assign(prices, cryptoPrices);
 
   const timeStr = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   sideBtn.innerHTML = '<i class="ti ti-refresh"></i><span>Refresh prices</span>'; sideBtn.disabled = false;
