@@ -622,24 +622,35 @@ function renderHoldings(){
     const isSimple = type==='bank'||type==='cash';
     const isOpen   = openTypes.has(type);
 
+    // Category-level gain/loss (only for investment types)
+    const catCost = isSimple ? 0 : items.reduce((s,h)=>s+getCost(h),0);
+    const catGain = isSimple ? 0 : catTotal - catCost;
+    const catGainPct = catCost > 0 ? catGain/catCost*100 : 0;
+    const catHasPrices = isSimple ? false : items.some(h=>{
+      const t = h.type==='crypto' ? cleanCryptoTicker(h.ticker) : h.ticker;
+      return prices[t] != null || prices[h.ticker] != null;
+    });
+
     const rows = items.map(h => {
-      const price    = prices[h.ticker];
+      const isCrypto  = h.type==='crypto';
+      const dispTicker = isCrypto ? cleanCryptoTicker(h.ticker) : h.ticker;
+      const dispName   = isCrypto ? cleanCryptoName(h.name||h.ticker) : (h.name||h.ticker);
+      if(isCrypto && COINGECKO_IDS[cleanCryptoTicker(h.ticker)] && !COINGECKO_IDS[dispTicker])
+        COINGECKO_IDS[dispTicker] = COINGECKO_IDS[cleanCryptoTicker(h.ticker)];
+      const price    = prices[dispTicker] ?? prices[h.ticker];
       const gain     = getGain(h), gainPct = getGainPct(h);
       const gainClass = gain>=0?'pos-bg':'neg-bg';
       const hasPrice  = price != null;
-      // price cell: live badge if fetched, dash if not
       const priceCell = isSimple ? '' : hasPrice
         ? `<td><span style="display:inline-flex;align-items:center;gap:5px;font-weight:500">${fmt(price)}<span style="font-size:10px;background:var(--green-bg);color:var(--green);border-radius:3px;padding:1px 5px;font-weight:600">LIVE</span></span></td>`
         : `<td><span style="color:var(--text3);font-size:12px">— no price</span></td>`;
-      // value: use live price if available, avg_cost as fallback (show warning if fallback)
       const valCell = `<td style="font-weight:700">${fmt(getVal(h))}${!isSimple && !hasPrice ? '<br><span style="font-size:10px;color:var(--text3)">est. cost basis</span>' : ''}</td>`;
-      // gain: only meaningful if we have a live price
       const gainCell = isSimple ? '' : hasPrice
         ? `<td><span class="${gainClass}">${fmt(gain)}</span><br><span style="font-size:11px;color:${gain>=0?'var(--green)':'var(--red)'}">${fmtPct(gainPct)}</span></td>`
         : `<td><span style="color:var(--text3);font-size:12px">—</span></td>`;
 
       return `<tr>
-        <td><strong style="font-weight:600">${h.name||h.ticker}</strong>${!isSimple?`<br><span style="color:var(--text2);font-size:12px">${h.ticker}</span>`:''}</td>
+        <td><strong style="font-weight:600">${dispName}</strong>${!isSimple?`<br><span style="color:var(--text2);font-size:12px">${dispTicker}</span>`:''}</td>
         ${!isSimple?`<td>${fmtN(h.qty)}</td>`:''}
         ${!isSimple?`<td style="color:var(--text2)">${fmt(h.avg_cost)}</td>`:''}
         ${priceCell}
@@ -648,6 +659,16 @@ function renderHoldings(){
         <td><button class="btn btn-sm btn-danger" onclick="deleteHolding('${h.id}')"><i class="ti ti-trash"></i></button></td>
       </tr>`;
     }).join('');
+
+    // Total row for investment categories
+    const totalRow = (!isSimple && catHasPrices) ? `
+      <tr style="background:var(--surface2);font-weight:600;border-top:2px solid var(--border2)">
+        <td colspan="${4}" style="color:var(--text2);font-size:12px;text-transform:uppercase;letter-spacing:0.04em">Total</td>
+        <td style="font-weight:700">${fmt(catTotal)}</td>
+        <td><span class="${catGain>=0?'pos-bg':'neg-bg'}">${fmt(catGain)}</span><br>
+          <span style="font-size:11px;color:${catGain>=0?'var(--green)':'var(--red)'}">${fmtPct(catGainPct)}</span></td>
+        <td></td>
+      </tr>` : '';
 
     const thead = isSimple
       ? `<tr><th>Account</th><th>Balance</th><th></th></tr>`
@@ -667,7 +688,7 @@ function renderHoldings(){
         <i class="ti ti-chevron-down cat-chevron"></i>
       </div>
       <div class="cat-body${isOpen?' open':''}">
-        <table><thead>${thead}</thead><tbody>${rows}</tbody></table>
+        <table><thead>${thead}</thead><tbody>${rows}${totalRow}</tbody></table>
       </div>
     </div>`;
   }).join('');
