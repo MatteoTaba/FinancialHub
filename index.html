@@ -827,6 +827,46 @@ function setFilter(f,btn){
 }
 
 // ── PRICES ──
+// ── CoinGecko symbol → ID map (extended) ──
+// Ticker stored in DB (uppercase) → CoinGecko coin ID
+const COINGECKO_IDS = {
+  'BTC':'bitcoin','ETH':'ethereum','SOL':'solana','BNB':'binancecoin',
+  'XRP':'ripple','ADA':'cardano','AVAX':'avalanche-2','DOT':'polkadot',
+  'DOGE':'dogecoin','SHIB':'shiba-inu','MATIC':'matic-network','LINK':'chainlink',
+  'UNI':'uniswap','LTC':'litecoin','BCH':'bitcoin-cash','ATOM':'cosmos',
+  'XLM':'stellar','ALGO':'algorand','VET':'vechain','FIL':'filecoin',
+  'ICP':'internet-computer','APT':'aptos','ARB':'arbitrum','OP':'optimism',
+  'INJ':'injective-protocol','SUI':'sui','TIA':'celestia','SEI':'sei-network',
+  'KAS':'kaspa','NEAR':'near','FTM':'fantom','SAND':'the-sandbox',
+  'MANA':'decentraland','AXS':'axie-infinity','GRT':'the-graph',
+  'AAVE':'aave','MKR':'maker','CRV':'curve-dao-token','SNX':'havven',
+  'COMP':'compound-governance-token','YFI':'yearn-finance','SUSHI':'sushi',
+  'PEPE':'pepe','WIF':'dogwifcoin','BONK':'bonk','FLOKI':'floki',
+  'TON':'the-open-network','NOT':'notcoin','TRUMP':'maga',
+};
+
+// Derive base coin from various ticker formats:
+// BTC-EUR, BTCEUR, BTC/EUR, BTC → all → "BTC"
+function cryptoBase(ticker){
+  return ticker.replace(/[-/](EUR|USD|USDT|USDC|BTC|ETH)$/i,'').replace(/(EUR|USD|USDT|USDC)$/i,'').toUpperCase();
+}
+
+async function fetchCryptoPrice(ticker){
+  const base = cryptoBase(ticker);
+  const cgId = COINGECKO_IDS[base];
+  if(!cgId){ console.warn(`No CoinGecko ID for ${ticker} (base: ${base})`); return null; }
+  try{
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=eur`;
+    const r = await fetch(url, {signal: AbortSignal.timeout(8000)});
+    if(!r.ok) throw new Error('CoinGecko HTTP '+r.status);
+    const d = await r.json();
+    return d?.[cgId]?.eur ?? null;
+  }catch(e){
+    console.warn(`CoinGecko failed for ${ticker}:`, e.message);
+    return null;
+  }
+}
+
 async function fetchPrice(ticker){
   const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
   const proxies = [
@@ -839,36 +879,54 @@ async function fetchPrice(ticker){
       const r = await fetch(proxy(yhUrl), {signal: AbortSignal.timeout(6000)});
       if(!r.ok) continue;
       const text = await r.text();
-      // some proxies wrap in HTML on error
       if(!text.startsWith('{')) continue;
       const d = JSON.parse(text);
       const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
       if(price != null) return price;
     }catch(e){ continue; }
   }
-  console.warn(`Could not fetch price for ${ticker}`);
+  console.warn(`Could not fetch price for ${ticker} via Yahoo`);
   return null;
 }
 
 async function refreshPrices(){
   const investable = holdings.filter(h=>!['bank','cash'].includes(h.type));
   if(!investable.length){ renderHoldings(); return; }
-  // Set both buttons to loading state
   const sideBtn = document.getElementById('refresh-btn');
   const hBtn    = document.getElementById('h-refresh-btn');
   const loadHTML = '<span class="spin"></span> Loading…';
   sideBtn.innerHTML = loadHTML; sideBtn.disabled = true;
   if(hBtn){ hBtn.innerHTML = loadHTML; hBtn.disabled = true; }
-  const tickers = [...new Set(investable.map(h=>h.ticker))];
-  await Promise.all(tickers.map(async t=>{ const p=await fetchPrice(t); if(p!==null) prices[t]=p; }));
+
+  // Split crypto vs non-crypto holdings
+  const cryptoHoldings    = investable.filter(h=>h.type==='crypto');
+  const nonCryptoHoldings = investable.filter(h=>h.type!=='crypto');
+  const cryptoTickers     = [...new Set(cryptoHoldings.map(h=>h.ticker))];
+  const nonCryptoTickers  = [...new Set(nonCryptoHoldings.map(h=>h.ticker))];
+
+  // Fetch in parallel: CoinGecko for crypto, Yahoo for the rest
+  await Promise.all([
+    ...cryptoTickers.map(async t=>{
+      const p = await fetchCryptoPrice(t);
+      if(p != null) prices[t] = p;
+      else console.warn(`CoinGecko: no price for ${t}`);
+    }),
+    ...nonCryptoTickers.map(async t=>{
+      const p = await fetchPrice(t);
+      if(p != null) prices[t] = p;
+    }),
+  ]);
+
   const timeStr = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   sideBtn.innerHTML = '<i class="ti ti-refresh"></i><span>Refresh prices</span>'; sideBtn.disabled = false;
   if(hBtn){ hBtn.innerHTML = '<i class="ti ti-refresh"></i> Refresh prices'; hBtn.disabled = false; }
   document.getElementById('refresh-info').textContent = 'Updated ' + timeStr;
   renderHoldings(); renderOverview(); renderAllocation();
-  const fetched = tickers.filter(t=>prices[t]!=null).length;
-  const failed  = tickers.filter(t=>prices[t]==null).length;
-  if(fetched===0) toast(`⚠️ Could not load any prices — check console`);
+
+  const allTickers = [...cryptoTickers, ...nonCryptoTickers];
+  const fetched = allTickers.filter(t=>prices[t]!=null).length;
+  const failed  = allTickers.filter(t=>prices[t]==null).length;
+  if(fetched===0) toast('⚠️ Could not load any prices');
   else if(failed>0) toast(`Prices updated — ${failed} ticker(s) unavailable`);
   else toast(`✓ All ${fetched} price${fetched>1?'s':''} updated`);
 }
