@@ -173,6 +173,18 @@ tbody tr:hover td{background:var(--surface2)}
 .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
 .legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
 
+/* ── Ticker search results ── */
+#h-search-results div {
+  padding: 9px 12px; cursor: pointer; font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+#h-search-results div:last-child { border-bottom: none; }
+#h-search-results div:hover { background: var(--surface2); }
+#h-search-results .sr-ticker { font-weight: 700; min-width: 70px; font-size: 12px; }
+#h-search-results .sr-name { color: var(--text2); font-size: 12px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#h-search-results .sr-exch { font-size: 11px; color: var(--text3); }
+#h-search-results .sr-loading { color: var(--text3); font-style: italic; justify-content: center; }
 /* ── Category accordion ── */
 .cat-block { margin-bottom: 12px; }
 .cat-header {
@@ -368,7 +380,7 @@ tbody tr:hover td{background:var(--surface2)}
   <div class="modal">
     <div class="modal-title">Add holding</div>
     <div class="form-grid">
-      <div class="form-group"><label>Asset type</label>
+      <div class="form-group form-full"><label>Asset type</label>
         <select id="h-type" onchange="onHoldingTypeChange(this.value)">
           <option value="bank">Bank account</option>
           <option value="bond">Bond / Fixed income</option>
@@ -378,10 +390,32 @@ tbody tr:hover td{background:var(--surface2)}
           <option value="stock">Stock</option>
         </select>
       </div>
-      <div class="form-group"><label id="h-name-label">Account name</label><input type="text" id="h-name" placeholder="e.g. Intesa Sanpaolo"></div>
-      <div class="form-group form-full" id="h-ticker-wrap" style="display:none"><label>Ticker symbol</label><input type="text" id="h-ticker" placeholder="e.g. AAPL, BTC-EUR, VWCE.DE" style="text-transform:uppercase"></div>
-      <div class="form-group" id="h-qty-wrap" style="display:none"><label>Quantity</label><input type="number" id="h-qty" placeholder="0" step="any" min="0"></div>
-      <div class="form-group"><label id="h-cost-label">Current balance (€)</label><input type="number" id="h-cost" placeholder="0.00" step="any" min="0"></div>
+      <!-- Bank / Cash fields -->
+      <div class="form-group form-full" id="h-name-wrap">
+        <label id="h-name-label">Account name</label>
+        <input type="text" id="h-name" placeholder="e.g. Intesa Sanpaolo">
+      </div>
+      <!-- Investment fields -->
+      <div class="form-group form-full" id="h-ticker-wrap" style="display:none">
+        <label>Search asset</label>
+        <div style="position:relative">
+          <input type="text" id="h-search" placeholder="Type name or ticker… e.g. Apple, BTC, VWCE" autocomplete="off" oninput="onTickerSearch(this.value)">
+          <div id="h-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);z-index:50;max-height:200px;overflow-y:auto;box-shadow:var(--shadow-md)"></div>
+        </div>
+        <div id="h-selected-ticker" style="display:none;margin-top:6px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span id="h-selected-label" style="font-size:13px;font-weight:500"></span>
+          <button type="button" onclick="clearTickerSelection()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;padding:0 2px">&times;</button>
+        </div>
+        <input type="hidden" id="h-ticker">
+      </div>
+      <div class="form-group" id="h-qty-wrap" style="display:none">
+        <label>Quantity</label>
+        <input type="number" id="h-qty" placeholder="0" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label id="h-cost-label">Current balance (€)</label>
+        <input type="number" id="h-cost" placeholder="0.00" step="any" min="0">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-holding')">Cancel</button>
@@ -494,7 +528,9 @@ function openModal(id){
   document.getElementById(id).classList.add('open');
   if(id==='modal-holding'){
     // reset fields
-    ['h-ticker','h-name','h-qty','h-cost'].forEach(i=>document.getElementById(i).value='');
+    ['h-ticker','h-search','h-name','h-qty','h-cost'].forEach(i=>{ const el=document.getElementById(i); if(el) el.value=''; });
+    document.getElementById('h-selected-ticker').style.display='none';
+    document.getElementById('h-search-results').style.display='none';
     document.getElementById('h-type').value='bank';
     onHoldingTypeChange('bank');
   }
@@ -527,7 +563,7 @@ async function maybeTakeSnapshot(){
 }
 
 // ── HOLDINGS ──
-function getVal(h){ return (prices[h.ticker] ?? h.avg_cost) * h.qty; }
+function getVal(h){ return (prices[h.ticker] != null ? prices[h.ticker] : h.avg_cost) * h.qty; }
 function getCost(h){ return h.avg_cost * h.qty; }
 function getGain(h){ return getVal(h)-getCost(h); }
 function getGainPct(h){ const c=getCost(h); return c>0?getGain(h)/c*100:0; }
@@ -634,26 +670,82 @@ function toggleCat(header){
   header.setAttribute('aria-expanded', String(!isOpen));
 }
 
+// ── Ticker search ──
+let tickerSearchTimeout = null;
+
 function onHoldingTypeChange(type){
   const isSimple = type==='bank' || type==='cash';
-  // ticker row: hidden for bank/cash
+  document.getElementById('h-name-wrap').style.display  = isSimple ? '' : 'none';
   document.getElementById('h-ticker-wrap').style.display = isSimple ? 'none' : '';
-  // qty row: hidden for bank/cash (we use qty=1, value=balance)
-  document.getElementById('h-qty-wrap').style.display = isSimple ? 'none' : '';
-  // dynamic labels
-  document.getElementById('h-name-label').textContent = type==='bank' ? 'Account name' : type==='cash' ? 'Label' : 'Display name';
-  document.getElementById('h-cost-label').textContent = isSimple ? 'Current balance (€)' : 'Average cost / current value (€)';
-  document.getElementById('h-name').placeholder = type==='bank' ? 'e.g. Intesa Sanpaolo' : type==='cash' ? 'e.g. Wallet cash' : 'e.g. Apple Inc.';
+  document.getElementById('h-qty-wrap').style.display    = isSimple ? 'none' : '';
+  document.getElementById('h-name-label').textContent    = type==='bank' ? 'Account name' : 'Label';
+  document.getElementById('h-cost-label').textContent    = isSimple ? 'Current balance (€)' : 'Average cost per unit (€)';
+  document.getElementById('h-name').placeholder          = type==='bank' ? 'e.g. Intesa Sanpaolo' : 'e.g. Wallet cash';
+  clearTickerSelection();
+}
+
+function clearTickerSelection(){
+  document.getElementById('h-ticker').value = '';
+  document.getElementById('h-search').value = '';
+  document.getElementById('h-selected-ticker').style.display = 'none';
+  document.getElementById('h-search-results').style.display  = 'none';
+}
+
+function selectTicker(symbol, name, exchDisp){
+  document.getElementById('h-ticker').value = symbol;
+  document.getElementById('h-search').value = '';
+  document.getElementById('h-selected-label').textContent = `${symbol} — ${name}${exchDisp ? ' ('+exchDisp+')' : ''}`;
+  document.getElementById('h-selected-ticker').style.display = 'flex';
+  document.getElementById('h-search-results').style.display  = 'none';
+}
+
+async function onTickerSearch(q){
+  const box = document.getElementById('h-search-results');
+  clearTimeout(tickerSearchTimeout);
+  if(q.trim().length < 2){ box.style.display='none'; return; }
+  box.style.display = '';
+  box.innerHTML = '<div class="sr-loading">Searching…</div>';
+  tickerSearchTimeout = setTimeout(async ()=>{
+    try{
+      const yhSearch = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=en-US&region=US&quotesCount=8&newsCount=0&enableFuzzyQuery=false&enableCb=false`;
+      const proxies = [
+        u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+        u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+        u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+      ];
+      let results = null;
+      for(const proxy of proxies){
+        try{
+          const r = await fetch(proxy(yhSearch), {signal:AbortSignal.timeout(5000)});
+          if(!r.ok) continue;
+          const text = await r.text();
+          if(!text.startsWith('{')) continue;
+          const d = JSON.parse(text);
+          results = d?.quotes?.filter(q=>q.symbol && q.quoteType !== 'CURRENCY') || [];
+          break;
+        }catch{ continue; }
+      }
+      if(!results){ box.innerHTML='<div class="sr-loading">Search failed — try again</div>'; return; }
+      if(!results.length){ box.innerHTML='<div class="sr-loading">No results found</div>'; return; }
+      box.innerHTML = results.map(r=>`
+        <div onclick="selectTicker('${r.symbol}','${(r.longname||r.shortname||r.symbol).replace(/'/g,"\'")}','${(r.exchDisp||'').replace(/'/g,"\'")}')">
+          <span class="sr-ticker">${r.symbol}</span>
+          <span class="sr-name">${r.longname||r.shortname||''}</span>
+          <span class="sr-exch">${r.exchDisp||r.exchange||''}</span>
+        </div>`).join('');
+    }catch(e){
+      box.innerHTML='<div class="sr-loading">Search error</div>';
+    }
+  }, 350);
 }
 
 async function saveHolding(){
   const type=document.getElementById('h-type').value;
   const isSimple = type==='bank' || type==='cash';
-  const name=document.getElementById('h-name').value.trim();
   const avg_cost=parseFloat(document.getElementById('h-cost').value)||0;
 
   if(isSimple){
-    // Bank/cash: no ticker needed, qty=1, ticker = sanitised name
+    const name=document.getElementById('h-name').value.trim();
     if(!name){ alert('Please enter an account name.'); return; }
     if(avg_cost<=0){ alert('Please enter the current balance.'); return; }
     const ticker = name.toUpperCase().replace(/\s+/g,'_').slice(0,30);
@@ -666,7 +758,10 @@ async function saveHolding(){
   } else {
     const ticker=document.getElementById('h-ticker').value.trim().toUpperCase();
     const qty=parseFloat(document.getElementById('h-qty').value)||0;
-    if(!ticker){ alert('Please enter a ticker symbol.'); return; }
+    const selectedLabel=document.getElementById('h-selected-label').textContent;
+    // extract name from selected label (format: "TICKER — Name (Exch)")
+    const namePart = selectedLabel.includes(' — ') ? selectedLabel.split(' — ')[1].replace(/\s*\(.*\)$/,'').trim() : ticker;
+    if(!ticker){ alert('Please search and select an asset first.'); return; }
     if(qty<=0){ alert('Please enter a quantity.'); return; }
     const existing=holdings.find(h=>h.ticker===ticker);
     if(existing){
@@ -674,7 +769,7 @@ async function saveHolding(){
       const newQty=existing.qty+qty;
       await api(`holdings?id=eq.${existing.id}`,{method:'PATCH',body:JSON.stringify({qty:newQty,avg_cost:totalCost/newQty})});
     } else {
-      await api('holdings',{method:'POST',body:JSON.stringify({ticker,name:name||ticker,type,qty,avg_cost})});
+      await api('holdings',{method:'POST',body:JSON.stringify({ticker,name:namePart||ticker,type,qty,avg_cost})});
     }
   }
   closeModal('modal-holding'); await loadAll(); toast('Holding saved ✓');
