@@ -227,6 +227,47 @@ tbody tr:hover td{background:var(--surface2)}
 /* ── SQL notice ── */
 .sql-box{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:1rem 1.25rem;font-family:monospace;font-size:12px;color:var(--text2);white-space:pre;overflow-x:auto;margin:0.75rem 0}
 
+/* ── Cashflow ── */
+.cf-type-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:none;color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer;font-weight:500;transition:all 0.15s}
+.cf-type-btn:hover{background:var(--surface2);color:var(--text)}
+.cf-type-btn.active[data-type="expense"]{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.cf-type-btn.active[data-type="income"]{background:var(--green-bg);color:var(--green);border-color:var(--green)}
+.cf-type-btn.active[data-type="transfer"]{background:rgba(99,102,241,0.12);color:var(--accent);border-color:var(--accent)}
+/* FAB */
+#cf-fab{position:fixed;bottom:2rem;right:2rem;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(99,102,241,0.4);display:flex;align-items:center;justify-content:center;transition:transform 0.15s,box-shadow 0.15s;z-index:50}
+#cf-fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(99,102,241,0.5)}
+/* Account blocks */
+.cf-account-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;box-shadow:var(--shadow);overflow:hidden}
+.cf-account-header{display:flex;align-items:center;gap:14px;padding:1rem 1.25rem;cursor:pointer;transition:background 0.12s}
+.cf-account-header:hover{background:var(--surface2)}
+.cf-account-header.open{border-bottom:1px solid var(--border)}
+.cf-account-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.cf-account-name{font-weight:600;font-size:14px}
+.cf-account-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.cf-account-val{margin-left:auto;text-align:right}
+.cf-account-val-num{font-size:16px;font-weight:700}
+.cf-account-chevron{color:var(--text3);font-size:16px;transition:transform 0.2s;margin-left:8px}
+.cf-account-header.open .cf-account-chevron{transform:rotate(180deg)}
+.cf-account-body{display:none}
+.cf-account-body.open{display:block}
+.cf-tx-row{display:flex;align-items:center;gap:12px;padding:10px 1.25rem;border-bottom:1px solid var(--border)}
+.cf-tx-row:last-child{border-bottom:none}
+.cf-tx-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.cf-tx-desc{flex:1;min-width:0}
+.cf-tx-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-tx-cat{font-size:11px;color:var(--text3);margin-top:1px}
+.cf-tx-amount{font-size:14px;font-weight:700;white-space:nowrap}
+.cf-tx-date{font-size:11px;color:var(--text3);white-space:nowrap}
+.cf-see-all{display:block;text-align:center;padding:10px;font-size:12px;color:var(--accent);cursor:pointer;font-weight:500;background:none;border:none;width:100%;font-family:inherit}
+.cf-see-all:hover{background:var(--surface2)}
+/* Category pill */
+.cat-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+/* Settings */
+.settings-cat-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.settings-cat-row:last-child{border-bottom:none}
+.settings-recur-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.settings-recur-row:last-child{border-bottom:none}
+/* ── Cashflow ── */
 /* Mobile */
 @media(max-width:700px){
   .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:0.75rem;border-right:none;border-bottom:1px solid var(--border)}
@@ -271,8 +312,9 @@ tbody tr:hover td{background:var(--surface2)}
   <div class="nav-section">Menu</div>
   <button class="nav-item active" onclick="showPage('overview',this)"><i class="ti ti-home-2"></i><span>Overview</span></button>
   <button class="nav-item" onclick="showPage('holdings',this)"><i class="ti ti-briefcase"></i><span>Holdings</span></button>
-  <button class="nav-item" onclick="showPage('transactions',this)"><i class="ti ti-arrows-exchange"></i><span>Transactions</span></button>
+  <button class="nav-item" onclick="showPage('cashflow',this)"><i class="ti ti-arrows-exchange"></i><span>Cashflow</span></button>
   <button class="nav-item" onclick="showPage('allocation',this)"><i class="ti ti-chart-donut"></i><span>Allocation</span></button>
+  <button class="nav-item" onclick="showPage('settings',this)"><i class="ti ti-settings"></i><span>Settings</span></button>
   <div class="sidebar-bottom">
     <button class="refresh-btn" onclick="refreshPrices()" id="refresh-btn"><i class="ti ti-refresh"></i><span>Refresh prices</span></button>
     <div class="refresh-info" id="refresh-info">Prices not loaded</div>
@@ -333,25 +375,118 @@ tbody tr:hover td{background:var(--surface2)}
     <div id="h-categories"></div>
   </div>
 
-  <!-- TRANSACTIONS -->
-  <div class="page" id="page-transactions">
-    <div class="page-header">
-      <div><div class="page-title">Transactions</div><div class="page-sub">Your full trade history</div></div>
-      <button class="btn btn-primary" onclick="openModal('modal-tx')"><i class="ti ti-plus"></i> Add transaction</button>
+  <!-- CASHFLOW -->
+  <div class="page" id="page-cashflow">
+    <!-- Main view: holdings with recent transactions -->
+    <div id="cf-main">
+      <div class="page-header">
+        <div><div class="page-title">Cashflow</div><div class="page-sub">All your accounts and recent activity</div></div>
+      </div>
+      <div id="cf-accounts"></div>
     </div>
-    <div class="filters">
-      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
-      <button class="filter-btn" onclick="setFilter('buy',this)">Buy</button>
-      <button class="filter-btn" onclick="setFilter('sell',this)">Sell</button>
-      <button class="filter-btn" onclick="setFilter('dividend',this)">Dividend</button>
-      <button class="filter-btn" onclick="setFilter('transfer',this)">Transfer</button>
+    <!-- Add transaction full-page form -->
+    <div id="cf-form" style="display:none">
+      <div class="page-header" style="align-items:center">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn" onclick="showCfMain()"><i class="ti ti-arrow-left"></i></button>
+          <div><div class="page-title" id="cf-form-title">Add Transaction</div></div>
+        </div>
+      </div>
+      <!-- Type tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:1.5rem">
+        <button class="cf-type-btn active" data-type="expense" onclick="setCfType('expense',this)"><i class="ti ti-minus-circle"></i> Expense</button>
+        <button class="cf-type-btn" data-type="income" onclick="setCfType('income',this)"><i class="ti ti-plus-circle"></i> Income</button>
+        <button class="cf-type-btn" data-type="transfer" onclick="setCfType('transfer',this)"><i class="ti ti-arrows-exchange"></i> Transfer</button>
+      </div>
+      <div class="card" style="max-width:600px">
+        <div class="form-grid">
+          <!-- Amount -->
+          <div class="form-group form-full">
+            <label>Amount (€)</label>
+            <input type="number" id="cf-amount" placeholder="0.00" step="any" min="0" style="font-size:24px;font-weight:700;padding:12px">
+          </div>
+          <!-- Description -->
+          <div class="form-group form-full">
+            <label>Description</label>
+            <input type="text" id="cf-desc" placeholder="What was this for?">
+          </div>
+          <!-- Category (hidden for transfer) -->
+          <div class="form-group" id="cf-cat-wrap">
+            <label>Category</label>
+            <select id="cf-cat"></select>
+          </div>
+          <!-- Date/time -->
+          <div class="form-group">
+            <label>Date &amp; time</label>
+            <input type="datetime-local" id="cf-date">
+          </div>
+          <!-- From account -->
+          <div class="form-group form-full" id="cf-from-wrap">
+            <label id="cf-from-label">Account</label>
+            <select id="cf-from"></select>
+          </div>
+          <!-- To account (transfer only) -->
+          <div class="form-group form-full" id="cf-to-wrap" style="display:none">
+            <label>To account</label>
+            <select id="cf-to"></select>
+          </div>
+          <!-- Recurring -->
+          <div class="form-group form-full">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="cf-recurring" onchange="toggleRecurring(this.checked)" style="width:16px;height:16px;cursor:pointer">
+              Make this a recurring transaction
+            </label>
+          </div>
+          <!-- Recurring options -->
+          <div id="cf-recurring-opts" style="display:none;grid-column:1/-1;background:var(--surface2);border-radius:var(--radius-sm);padding:1rem;display:none">
+            <div class="form-grid" style="margin-bottom:0">
+              <div class="form-group">
+                <label>Frequency</label>
+                <select id="cf-freq">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly" selected>Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>First occurrence</label>
+                <input type="datetime-local" id="cf-recur-start">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.5rem">
+          <button class="btn" onclick="showCfMain()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveCfTransaction()"><i class="ti ti-check"></i> Save transaction</button>
+        </div>
+      </div>
     </div>
-    <div class="card">
-      <div class="empty" id="tx-empty"><i class="ti ti-list"></i><p>No transactions yet.</p></div>
-      <table id="tx-table" style="display:none">
-        <thead><tr><th>Date</th><th>Asset</th><th>Type</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
-        <tbody id="tx-tbody"></tbody>
-      </table>
+    <!-- FAB add button -->
+    <button id="cf-fab" onclick="showCfForm()" title="Add transaction">
+      <i class="ti ti-plus"></i>
+    </button>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="page-header"><div><div class="page-title">Settings</div><div class="page-sub">Manage categories and recurring transactions</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <!-- Categories -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Transaction categories</div>
+          <button class="btn btn-sm btn-primary" onclick="openModal('modal-cat')"><i class="ti ti-plus"></i> Add</button>
+        </div>
+        <div id="settings-cats"></div>
+      </div>
+      <!-- Recurrences -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recurring transactions</div>
+        </div>
+        <div id="settings-recurrences"></div>
+      </div>
     </div>
   </div>
 
@@ -373,6 +508,22 @@ tbody tr:hover td{background:var(--surface2)}
   </div>
 
 </main>
+</div>
+
+<!-- CATEGORY MODAL -->
+<div class="overlay" id="modal-cat">
+  <div class="modal">
+    <div class="modal-title">Add category</div>
+    <div class="form-grid">
+      <div class="form-group form-full"><label>Name</label><input type="text" id="cat-name" placeholder="e.g. Groceries"></div>
+      <div class="form-group"><label>Icon (Tabler icon name)</label><input type="text" id="cat-icon" placeholder="ti-shopping-cart" value="ti-tag"></div>
+      <div class="form-group"><label>Color</label><input type="color" id="cat-color" value="#6366f1" style="height:42px;padding:4px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-cat')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCat()">Save</button>
+    </div>
+  </div>
 </div>
 
 <!-- ADD HOLDING MODAL -->
@@ -497,6 +648,10 @@ function showPage(name,btn){
   if(name==='overview') renderOverview();
   if(name==='allocation') renderAllocation();
   if(name==='holdings'){ setTimeout(()=>refreshPrices(), 50); }
+  if(name==='cashflow'){ renderCashflow(); const fab=document.getElementById('cf-fab'); if(fab) fab.style.display=''; }
+  if(name==='settings') renderSettings();
+  // Hide FAB when not on cashflow
+  if(name!=='cashflow'){ const fab=document.getElementById('cf-fab'); if(fab) fab.style.display='none'; }
 }
 
 function navigateToCategory(type){
@@ -1186,7 +1341,340 @@ function renderAllocation(){
     `<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
 }
 
+// ─────────────────────────────────────────
+// CASHFLOW
+// ─────────────────────────────────────────
+let cfCategories = [], cfTransactions = [], cfRecurrences = [];
+let cfType = 'expense';
+
+const DEFAULT_CATS = [
+  {name:'Food & Dining',    icon:'ti-tools-kitchen-2', color:'#f59e0b'},
+  {name:'Transport',        icon:'ti-car',              color:'#3b82f6'},
+  {name:'Bills & Utilities',icon:'ti-file-invoice',     color:'#6366f1'},
+  {name:'Health',           icon:'ti-heart-rate-monitor',color:'#ec4899'},
+  {name:'Entertainment',    icon:'ti-device-tv',         color:'#8b5cf6'},
+  {name:'Shopping',         icon:'ti-shopping-bag',      color:'#f97316'},
+  {name:'Salary',           icon:'ti-briefcase',         color:'#10b981'},
+  {name:'Investment',       icon:'ti-trending-up',       color:'#0ea5e9'},
+];
+
+const TYPE_COLOR_CF = {expense:'var(--red)',income:'var(--green)',transfer:'var(--accent)'};
+const TYPE_ICON_CF  = {expense:'ti-arrow-up-right',income:'ti-arrow-down-left',transfer:'ti-arrows-exchange'};
+const TYPE_BG_CF    = {expense:'var(--red-bg)',income:'var(--green-bg)',transfer:'rgba(99,102,241,0.12)'};
+
+async function loadCashflow(){
+  [cfCategories, cfTransactions, cfRecurrences] = await Promise.all([
+    api('cashflow_categories?order=name.asc'),
+    api('cashflow_transactions?order=date.desc'),
+    api('recurrences?order=next_due.asc'),
+  ]);
+  if(!cfCategories.length){
+    for(const c of DEFAULT_CATS){
+      const r = await api('cashflow_categories',{method:'POST',body:JSON.stringify(c)});
+      if(Array.isArray(r)&&r[0]) cfCategories.push(r[0]);
+    }
+  }
+  await processRecurrences();
+  renderCashflow();
+  renderSettings();
+}
+
+async function processRecurrences(){
+  const now = new Date();
+  let anyCreated = false;
+  for(const r of cfRecurrences){
+    if(!r.active) continue;
+    let due = new Date(r.next_due);
+    while(due <= now){
+      await api('cashflow_transactions',{method:'POST',body:JSON.stringify({
+        type:r.type, amount:r.amount, description:r.description,
+        category_id:r.category_id, holding_id:r.holding_id,
+        holding_to_id:r.holding_to_id, date:due.toISOString(), recurring_id:r.id
+      })});
+      await applyBalanceChange(r.type, r.amount, r.holding_id, r.holding_to_id);
+      due = advanceDue(due, r.frequency);
+      anyCreated = true;
+    }
+    await api(`recurrences?id=eq.${r.id}`,{method:'PATCH',body:JSON.stringify({next_due:due.toISOString(),last_run:now.toISOString()})});
+  }
+  if(anyCreated){
+    cfTransactions = await api('cashflow_transactions?order=date.desc');
+    holdings = await api('holdings?order=created_at.asc');
+  }
+}
+
+function advanceDue(date, freq){
+  const d = new Date(date);
+  if(freq==='daily')   d.setDate(d.getDate()+1);
+  if(freq==='weekly')  d.setDate(d.getDate()+7);
+  if(freq==='monthly') d.setMonth(d.getMonth()+1);
+  if(freq==='yearly')  d.setFullYear(d.getFullYear()+1);
+  return d;
+}
+
+async function applyBalanceChange(type, amount, fromId, toId){
+  holdings = await api('holdings?order=created_at.asc');
+  if(type==='expense' && fromId){
+    const h = holdings.find(x=>x.id===fromId);
+    if(h) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(h.avg_cost||0)-amount)})});
+  } else if(type==='income' && fromId){
+    const h = holdings.find(x=>x.id===fromId);
+    if(h) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(h.avg_cost||0)+amount})});
+  } else if(type==='transfer' && fromId && toId){
+    const hf = holdings.find(x=>x.id===fromId);
+    const ht = holdings.find(x=>x.id===toId);
+    if(hf) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(hf.avg_cost||0)-amount)})});
+    if(ht) await api(`holdings?id=eq.${toId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(ht.avg_cost||0)+amount})});
+  }
+}
+
+function renderCashflow(){
+  const container = document.getElementById('cf-accounts');
+  if(!container) return;
+  if(!holdings.length){ container.innerHTML='<div class="card"><div class="empty"><i class="ti ti-wallet"></i><p>No holdings yet.</p></div></div>'; return; }
+  const typeColorMap = {bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
+  container.innerHTML = holdings.map(h=>{
+    const color = typeColorMap[h.type]||'#888';
+    const icon  = TYPE_ICONS[h.type]||'ti-wallet';
+    const dispName = h.type==='crypto' ? cleanCryptoName(h.name||h.ticker) : (h.name||h.ticker);
+    const val   = getVal(h);
+    const hTxs  = cfTransactions.filter(t=>t.holding_id===h.id||t.holding_to_id===h.id);
+    const recent = hTxs.slice(0,5);
+    const txRows = recent.map(t=>cfTxRow(t,h)).join('');
+    const seeAll = hTxs.length>5 ? `<button class="cf-see-all" onclick="showAllTx('${h.id}')">See all ${hTxs.length} transactions</button>` : '';
+    return `<div class="cf-account-block">
+      <div class="cf-account-header" onclick="toggleCfAccount(this)">
+        <div class="cf-account-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
+        <div>
+          <div class="cf-account-name">${dispName}</div>
+          <div class="cf-account-sub">${TYPE_LABELS[h.type]||h.type}${recent.length ? ' · '+recent.length+' recent tx' : ' · no transactions yet'}</div>
+        </div>
+        <div class="cf-account-val"><div class="cf-account-val-num">${fmt(val)}</div></div>
+        <i class="ti ti-chevron-down cf-account-chevron"></i>
+      </div>
+      <div class="cf-account-body">
+        ${txRows||'<div style="padding:1rem 1.25rem;color:var(--text3);font-size:13px">No transactions yet</div>'}
+        ${seeAll}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cfTxRow(t, h){
+  const cat = cfCategories.find(c=>c.id===t.category_id);
+  const amtColor = t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':'var(--accent)';
+  const amtSign  = t.type==='income'?'+':t.type==='expense'?'-':'⇄';
+  const date = new Date(t.date).toLocaleDateString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  return `<div class="cf-tx-row">
+    <div class="cf-tx-icon" style="background:${TYPE_BG_CF[t.type]};color:${TYPE_COLOR_CF[t.type]}"><i class="ti ${TYPE_ICON_CF[t.type]}"></i></div>
+    <div class="cf-tx-desc">
+      <div class="cf-tx-name">${t.description||'—'}</div>
+      <div class="cf-tx-cat">${cat?`<span style="color:${cat.color}">${cat.name}</span>`:''}${t.type==='transfer'?' · Transfer':''}</div>
+    </div>
+    <div style="text-align:right">
+      <div class="cf-tx-amount" style="color:${amtColor}">${amtSign}${fmt(t.amount)}</div>
+      <div class="cf-tx-date">${date}</div>
+    </div>
+    <button class="btn btn-sm btn-danger" style="margin-left:8px" onclick="deleteCfTx('${t.id}','${t.holding_id||''}','${t.holding_to_id||''}','${t.type}',${t.amount})"><i class="ti ti-trash"></i></button>
+  </div>`;
+}
+
+function toggleCfAccount(header){
+  const body = header.nextElementSibling;
+  const open = body.classList.contains('open');
+  body.classList.toggle('open',!open);
+  header.classList.toggle('open',!open);
+}
+
+function showAllTx(holdingId){
+  const h = holdings.find(x=>x.id===holdingId);
+  const hTxs = cfTransactions.filter(t=>t.holding_id===holdingId||t.holding_to_id===holdingId);
+  const dispName = h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'Account';
+  const container = document.getElementById('cf-accounts');
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+      <button class="btn" onclick="renderCashflow()"><i class="ti ti-arrow-left"></i> Back</button>
+      <div style="font-size:18px;font-weight:700">${dispName} — All transactions</div>
+    </div>
+    <div class="card">
+      ${hTxs.length?hTxs.map(t=>cfTxRow(t,h)).join(''):'<div class="empty"><i class="ti ti-list"></i><p>No transactions</p></div>'}
+    </div>`;
+}
+
+function showCfForm(){
+  document.getElementById('cf-main').style.display='none';
+  document.getElementById('cf-form').style.display='';
+  document.getElementById('cf-fab').style.display='none';
+  populateCfForm();
+}
+function showCfMain(){
+  document.getElementById('cf-main').style.display='';
+  document.getElementById('cf-form').style.display='none';
+  document.getElementById('cf-fab').style.display='';
+}
+
+function populateCfForm(){
+  const now = new Date(); now.setSeconds(0,0);
+  document.getElementById('cf-date').value = now.toISOString().slice(0,16);
+  document.getElementById('cf-recur-start').value = now.toISOString().slice(0,16);
+  document.getElementById('cf-recurring').checked = false;
+  document.getElementById('cf-recurring-opts').style.display = 'none';
+  document.getElementById('cf-amount').value = '';
+  document.getElementById('cf-desc').value = '';
+  const catSel = document.getElementById('cf-cat');
+  catSel.innerHTML = cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const opts = holdings.map(h=>{
+    const n = h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
+  }).join('');
+  document.getElementById('cf-from').innerHTML = opts;
+  document.getElementById('cf-to').innerHTML = opts;
+  setCfType(cfType, document.querySelector(`.cf-type-btn[data-type="${cfType}"]`));
+}
+
+function setCfType(type, btn){
+  cfType = type;
+  document.querySelectorAll('.cf-type-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('cf-to-wrap').style.display  = type==='transfer'?'':'none';
+  document.getElementById('cf-cat-wrap').style.display = type==='transfer'?'none':'';
+  document.getElementById('cf-from-label').textContent = type==='income'?'To account':'From account';
+}
+
+function toggleRecurring(on){
+  document.getElementById('cf-recurring-opts').style.display = on?'':'none';
+}
+
+async function saveCfTransaction(){
+  const amount = parseFloat(document.getElementById('cf-amount').value)||0;
+  const desc   = document.getElementById('cf-desc').value.trim();
+  const catId  = document.getElementById('cf-cat').value||null;
+  const date   = document.getElementById('cf-date').value;
+  const fromId = document.getElementById('cf-from').value||null;
+  const toId   = document.getElementById('cf-to').value||null;
+  const isRecur = document.getElementById('cf-recurring').checked;
+  if(amount<=0){alert('Please enter an amount.');return;}
+  if(!fromId){alert('Please select an account.');return;}
+  if(cfType==='transfer'&&fromId===toId){alert('Source and destination must be different.');return;}
+  const txData = {
+    type:cfType, amount, description:desc||null,
+    category_id:cfType==='transfer'?null:catId,
+    holding_id:fromId,
+    holding_to_id:cfType==='transfer'?toId:null,
+    date:new Date(date).toISOString()
+  };
+  if(isRecur){
+    const freq  = document.getElementById('cf-freq').value;
+    const start = document.getElementById('cf-recur-start').value;
+    const recur = await api('recurrences',{method:'POST',body:JSON.stringify({
+      type:cfType, amount, description:desc||null,
+      category_id:cfType==='transfer'?null:catId,
+      holding_id:fromId, holding_to_id:cfType==='transfer'?toId:null,
+      frequency:freq, next_due:new Date(start).toISOString(), active:true
+    })});
+    if(Array.isArray(recur)&&recur[0]) txData.recurring_id = recur[0].id;
+  }
+  await api('cashflow_transactions',{method:'POST',body:JSON.stringify(txData)});
+  await applyBalanceChange(cfType, amount, fromId, cfType==='transfer'?toId:null);
+  [cfTransactions, cfRecurrences, holdings] = await Promise.all([
+    api('cashflow_transactions?order=date.desc'),
+    api('recurrences?order=next_due.asc'),
+    api('holdings?order=created_at.asc'),
+  ]);
+  renderCashflow(); renderSettings(); renderOverview();
+  showCfMain(); toast('Transaction saved ✓');
+}
+
+async function deleteCfTx(id, holdingId, holdingToId, type, amount){
+  if(!confirm('Delete this transaction? The holding balance will be reversed.')) return;
+  const reverseType = type==='expense'?'income':type==='income'?'expense':type;
+  await applyBalanceChange(reverseType, Number(amount), holdingId||null, holdingToId||null);
+  await api(`cashflow_transactions?id=eq.${id}`,{method:'DELETE'});
+  [cfTransactions, holdings] = await Promise.all([
+    api('cashflow_transactions?order=date.desc'),
+    api('holdings?order=created_at.asc'),
+  ]);
+  renderCashflow(); renderOverview(); toast('Transaction deleted');
+}
+
+// ── Settings ──
+function renderSettings(){
+  const catEl = document.getElementById('settings-cats');
+  if(catEl) catEl.innerHTML = cfCategories.length
+    ? cfCategories.map(c=>`
+      <div class="settings-cat-row">
+        <i class="ti ${c.icon}" style="color:${c.color};font-size:18px;width:24px;text-align:center"></i>
+        <span style="flex:1;font-size:13px">${c.name}</span>
+        <button class="btn btn-sm btn-danger" onclick="deleteCat('${c.id}')"><i class="ti ti-trash"></i></button>
+      </div>`).join('')
+    : '<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No categories yet</div>';
+
+  const recEl = document.getElementById('settings-recurrences');
+  if(recEl) recEl.innerHTML = cfRecurrences.length
+    ? cfRecurrences.map(r=>{
+        const cat = cfCategories.find(c=>c.id===r.category_id);
+        const h   = holdings.find(x=>x.id===r.holding_id);
+        const hName = h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'—';
+        const due = new Date(r.next_due).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});
+        return `<div class="settings-recur-row">
+          <i class="ti ti-repeat" style="color:var(--accent);font-size:18px;flex-shrink:0;margin-top:2px"></i>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500">${r.description||'—'}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">
+              ${fmt(r.amount)} · ${r.frequency} · ${hName} · Next: ${due}
+              ${cat?`· <span style="color:${cat.color}">${cat.name}</span>`:''}
+              ${!r.active?'<span style="color:var(--text3)"> · Paused</span>':''}
+            </div>
+          </div>
+          <button class="btn btn-sm" onclick="toggleRecurActive('${r.id}',${!r.active})" title="${r.active?'Pause':'Resume'}">
+            <i class="ti ti-${r.active?'player-pause':'player-play'}"></i>
+          </button>
+          <button class="btn btn-sm btn-danger" onclick="deleteRecur('${r.id}')"><i class="ti ti-trash"></i></button>
+        </div>`;
+      }).join('')
+    : '<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No recurring transactions set up</div>';
+}
+
+async function saveCat(){
+  const name  = document.getElementById('cat-name').value.trim();
+  const icon  = document.getElementById('cat-icon').value.trim()||'ti-tag';
+  const color = document.getElementById('cat-color').value||'#6366f1';
+  if(!name){alert('Please enter a name.');return;}
+  await api('cashflow_categories',{method:'POST',body:JSON.stringify({name,icon,color})});
+  cfCategories = await api('cashflow_categories?order=name.asc');
+  closeModal('modal-cat'); renderSettings();
+  document.getElementById('cat-name').value='';
+  toast('Category saved ✓');
+}
+
+async function deleteCat(id){
+  if(!confirm('Delete this category?')) return;
+  await api(`cashflow_categories?id=eq.${id}`,{method:'DELETE'});
+  cfCategories = await api('cashflow_categories?order=name.asc');
+  renderSettings(); toast('Category removed');
+}
+
+async function toggleRecurActive(id, active){
+  await api(`recurrences?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({active})});
+  cfRecurrences = await api('recurrences?order=next_due.asc');
+  renderSettings(); toast(active?'Recurrence resumed':'Recurrence paused');
+}
+
+async function deleteRecur(id){
+  if(!confirm('Delete this recurrence? Future transactions will no longer be created.')) return;
+  await api(`recurrences?id=eq.${id}`,{method:'DELETE'});
+  cfRecurrences = await api('recurrences?order=next_due.asc');
+  renderSettings(); toast('Recurrence removed');
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+const lastPage = localStorage.getItem('fh_page') || 'overview';
+const matchingBtn = [...document.querySelectorAll('.nav-item')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+lastPage+"'"));
+showPage(lastPage, matchingBtn);
 loadAll();
+loadCashflow();
 </script>
 </body>
 </html>
