@@ -377,7 +377,6 @@ tbody tr:hover td{background:var(--surface2)}
 
   <!-- CASHFLOW -->
   <div class="page" id="page-cashflow">
-    <!-- Main view: holdings with recent transactions -->
     <div id="cf-main">
       <div class="page-header">
         <div><div class="page-title">Cashflow</div><div class="page-sub">All your accounts and recent activity</div></div>
@@ -389,83 +388,182 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="page-header" style="align-items:center">
         <div style="display:flex;align-items:center;gap:10px">
           <button class="btn" onclick="showCfMain()"><i class="ti ti-arrow-left"></i></button>
-          <div><div class="page-title" id="cf-form-title">Add Transaction</div></div>
+          <div class="page-title">Add Transaction</div>
         </div>
       </div>
-      <!-- Type tabs -->
-      <div style="display:flex;gap:8px;margin-bottom:1.5rem">
-        <button class="cf-type-btn active" data-type="expense" onclick="setCfType('expense',this)"><i class="ti ti-minus-circle"></i> Expense</button>
-        <button class="cf-type-btn" data-type="income" onclick="setCfType('income',this)"><i class="ti ti-plus-circle"></i> Income</button>
-        <button class="cf-type-btn" data-type="transfer" onclick="setCfType('transfer',this)"><i class="ti ti-arrows-exchange"></i> Transfer</button>
+      <!-- Context selector: bank/cash vs investment -->
+      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+        <button class="cf-type-btn active" data-ctx="account" onclick="setCfCtx('account',this)"><i class="ti ti-building-bank"></i> Account</button>
+        <button class="cf-type-btn" data-ctx="investment" onclick="setCfCtx('investment',this)"><i class="ti ti-trending-up"></i> Investment</button>
       </div>
-      <div class="card" style="max-width:600px">
-        <div class="form-grid">
-          <!-- Amount -->
-          <div class="form-group form-full">
-            <label>Amount (€)</label>
-            <input type="number" id="cf-amount" placeholder="0.00" step="any" min="0" style="font-size:24px;font-weight:700;padding:12px">
-          </div>
-          <!-- Description -->
-          <div class="form-group form-full">
-            <label>Description</label>
-            <input type="text" id="cf-desc" placeholder="What was this for?">
-          </div>
-          <!-- Category (hidden for transfer) -->
-          <div class="form-group" id="cf-cat-wrap">
-            <label>Category</label>
-            <select id="cf-cat"></select>
-          </div>
-          <!-- Date/time -->
-          <div class="form-group">
-            <label>Date &amp; time</label>
-            <input type="datetime-local" id="cf-date">
-          </div>
-          <!-- From account -->
-          <div class="form-group form-full" id="cf-from-wrap">
-            <label id="cf-from-label">Account</label>
-            <select id="cf-from"></select>
-          </div>
-          <!-- To account (transfer only) -->
-          <div class="form-group form-full" id="cf-to-wrap" style="display:none">
-            <label>To account</label>
-            <select id="cf-to"></select>
-          </div>
-          <!-- Recurring -->
-          <div class="form-group form-full">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-              <input type="checkbox" id="cf-recurring" onchange="toggleRecurring(this.checked)" style="width:16px;height:16px;cursor:pointer">
-              Make this a recurring transaction
-            </label>
-          </div>
-          <!-- Recurring options -->
-          <div id="cf-recurring-opts" style="display:none;grid-column:1/-1;background:var(--surface2);border-radius:var(--radius-sm);padding:1rem;display:none">
-            <div class="form-grid" style="margin-bottom:0">
-              <div class="form-group">
-                <label>Frequency</label>
-                <select id="cf-freq">
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly" selected>Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>First occurrence</label>
-                <input type="datetime-local" id="cf-recur-start">
+
+      <!-- ACCOUNT FORM (bank/cash) -->
+      <div id="cf-account-form">
+        <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
+          <button class="cf-type-btn active" data-type="expense" onclick="setCfType('expense',this)"><i class="ti ti-minus-circle"></i> Expense</button>
+          <button class="cf-type-btn" data-type="income" onclick="setCfType('income',this)"><i class="ti ti-plus-circle"></i> Income</button>
+          <button class="cf-type-btn" data-type="transfer" onclick="setCfType('transfer',this)"><i class="ti ti-arrows-exchange"></i> Transfer</button>
+        </div>
+        <div class="card" style="max-width:620px">
+          <div class="form-grid">
+            <div class="form-group form-full">
+              <label>Amount (€)</label>
+              <input type="number" id="cf-amount" placeholder="0.00" step="any" min="0" style="font-size:22px;font-weight:700;padding:12px">
+            </div>
+            <div class="form-group form-full">
+              <label>Description</label>
+              <input type="text" id="cf-desc" placeholder="What was this for?">
+            </div>
+            <div class="form-group" id="cf-cat-wrap">
+              <label>Category</label>
+              <select id="cf-cat"></select>
+            </div>
+            <div class="form-group">
+              <label>Date &amp; time</label>
+              <input type="text" id="cf-date" placeholder="dd/mm/yyyy hh:mm" oninput="parseDateInput(this)">
+              <span style="font-size:11px;color:var(--text3)" id="cf-date-preview"></span>
+            </div>
+            <div class="form-group form-full" id="cf-from-wrap">
+              <label id="cf-from-label">From account</label>
+              <select id="cf-from"></select>
+            </div>
+            <div class="form-group form-full" id="cf-to-wrap" style="display:none">
+              <label>To account</label>
+              <select id="cf-to"></select>
+            </div>
+            <div class="form-group form-full">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" id="cf-recurring" onchange="toggleRecurring(this.checked)" style="width:16px;height:16px;cursor:pointer">
+                Make this a recurring transaction
+              </label>
+            </div>
+            <div id="cf-recurring-opts" style="display:none;grid-column:1/-1;background:var(--surface2);border-radius:var(--radius-sm);padding:1rem">
+              <div class="form-grid" style="margin-bottom:0">
+                <div class="form-group">
+                  <label>Frequency</label>
+                  <select id="cf-freq">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly" selected>Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>First occurrence</label>
+                  <input type="text" id="cf-recur-start" placeholder="dd/mm/yyyy hh:mm" oninput="parseDateInput(this,'cf-recur-start-parsed')">
+                  <input type="hidden" id="cf-recur-start-parsed">
+                </div>
               </div>
             </div>
           </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.5rem">
+            <button class="btn" onclick="showCfMain()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveCfTransaction()"><i class="ti ti-check"></i> Save</button>
+          </div>
         </div>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.5rem">
-          <button class="btn" onclick="showCfMain()">Cancel</button>
-          <button class="btn btn-primary" onclick="saveCfTransaction()"><i class="ti ti-check"></i> Save transaction</button>
+      </div>
+
+      <!-- INVESTMENT FORM -->
+      <div id="cf-invest-form" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
+          <button class="cf-type-btn active" data-itype="purchase" onclick="setCfIType('purchase',this)"><i class="ti ti-shopping-cart"></i> Purchase</button>
+          <button class="cf-type-btn" data-itype="sale" onclick="setCfIType('sale',this)"><i class="ti ti-tag"></i> Sale</button>
+          <button class="cf-type-btn" data-itype="expense" onclick="setCfIType('expense',this)"><i class="ti ti-minus-circle"></i> Expense</button>
+          <button class="cf-type-btn" data-itype="income" onclick="setCfIType('income',this)"><i class="ti ti-plus-circle"></i> Income</button>
+        </div>
+        <div class="card" style="max-width:620px">
+          <div class="form-grid">
+            <!-- Asset selector -->
+            <div class="form-group form-full">
+              <label>Asset</label>
+              <select id="inv-asset" onchange="onInvAssetChange()"></select>
+            </div>
+            <!-- Purchase fields -->
+            <div id="inv-purchase-fields">
+              <div class="form-grid" style="margin-bottom:0">
+                <div class="form-group">
+                  <label>Quantity purchased</label>
+                  <input type="number" id="inv-qty" placeholder="0" step="any" min="0" oninput="calcInvTotal()">
+                </div>
+                <div class="form-group">
+                  <label>Price per unit (€)</label>
+                  <input type="number" id="inv-price" placeholder="0.00" step="any" min="0" oninput="calcInvTotal()">
+                </div>
+                <div class="form-group form-full">
+                  <label>Total cost (€)</label>
+                  <input type="number" id="inv-total" placeholder="0.00" step="any" min="0" oninput="calcInvFromTotal()">
+                </div>
+                <div class="form-group form-full">
+                  <label>Purchased with</label>
+                  <select id="inv-paid-from"></select>
+                </div>
+              </div>
+            </div>
+            <!-- Sale fields -->
+            <div id="inv-sale-fields" style="display:none">
+              <div class="form-grid" style="margin-bottom:0">
+                <div class="form-group">
+                  <label>Quantity sold</label>
+                  <input type="number" id="inv-sale-qty" placeholder="0" step="any" min="0" oninput="calcSaleTotal()">
+                </div>
+                <div class="form-group">
+                  <label>Price per unit (€)</label>
+                  <input type="number" id="inv-sale-price" placeholder="0.00" step="any" min="0" oninput="calcSaleTotal()">
+                </div>
+                <div class="form-group form-full">
+                  <label>Total revenue (€)</label>
+                  <input type="number" id="inv-sale-total" placeholder="0.00" step="any" min="0" oninput="calcSaleFromTotal()">
+                </div>
+                <div class="form-group form-full">
+                  <label>Proceeds credited to</label>
+                  <select id="inv-sale-to"></select>
+                </div>
+                <!-- P&L preview -->
+                <div class="form-group form-full" id="inv-pnl-preview" style="display:none">
+                  <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:0.875rem;font-size:13px">
+                    <div style="font-weight:600;margin-bottom:4px;color:var(--text2)">Estimated P&amp;L</div>
+                    <div id="inv-pnl-val" style="font-size:18px;font-weight:700"></div>
+                    <div id="inv-pnl-detail" style="font-size:12px;color:var(--text2);margin-top:2px"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Expense/Income fields for investments -->
+            <div id="inv-expinc-fields" style="display:none">
+              <div class="form-grid" style="margin-bottom:0">
+                <div class="form-group form-full">
+                  <label>Amount (€)</label>
+                  <input type="number" id="inv-amount" placeholder="0.00" step="any" min="0" style="font-size:18px;font-weight:700;padding:10px">
+                </div>
+                <div class="form-group form-full">
+                  <label id="inv-expinc-acct-label">From account</label>
+                  <select id="inv-expinc-acct"></select>
+                </div>
+              </div>
+            </div>
+            <!-- Shared fields -->
+            <div class="form-group form-full">
+              <label>Description</label>
+              <input type="text" id="inv-desc" placeholder="e.g. Monthly DCA, Dividend reinvestment…">
+            </div>
+            <div class="form-group">
+              <label>Category</label>
+              <select id="inv-cat"></select>
+            </div>
+            <div class="form-group">
+              <label>Date &amp; time</label>
+              <input type="text" id="inv-date" placeholder="dd/mm/yyyy hh:mm" oninput="parseDateInput(this)">
+              <span style="font-size:11px;color:var(--text3)" id="inv-date-preview"></span>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.5rem">
+            <button class="btn" onclick="showCfMain()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveInvTransaction()"><i class="ti ti-check"></i> Save</button>
+          </div>
         </div>
       </div>
     </div>
-    <!-- FAB add button -->
-    <button id="cf-fab" onclick="showCfForm()" title="Add transaction">
-      <i class="ti ti-plus"></i>
-    </button>
+    <button id="cf-fab" onclick="showCfForm()" title="Add transaction"><i class="ti ti-plus"></i></button>
   </div>
 
   <!-- SETTINGS -->
@@ -647,7 +745,7 @@ function showPage(name,btn){
   }
   if(name==='overview') renderOverview();
   if(name==='allocation') renderAllocation();
-  if(name==='holdings'){ setTimeout(()=>refreshPrices(), 50); }
+  // prices only refresh manually via the Refresh button
   if(name==='cashflow'){ renderCashflow(); const fab=document.getElementById('cf-fab'); if(fab) fab.style.display=''; }
   if(name==='settings') renderSettings();
   // Hide FAB when not on cashflow
@@ -707,7 +805,6 @@ async function loadAll(){
   ]);
   await maybeTakeSnapshot();
   renderHoldings(); renderTx(); renderOverview();
-  if(holdings.length) refreshPrices();
   document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
 }
 
@@ -1345,7 +1442,7 @@ function renderAllocation(){
 // CASHFLOW
 // ─────────────────────────────────────────
 let cfCategories = [], cfTransactions = [], cfRecurrences = [];
-let cfType = 'expense';
+let cfType = 'expense', cfCtx = 'account', cfIType = 'purchase';
 
 const DEFAULT_CATS = [
   {name:'Food & Dining',    icon:'ti-tools-kitchen-2', color:'#f59e0b'},
@@ -1358,9 +1455,51 @@ const DEFAULT_CATS = [
   {name:'Investment',       icon:'ti-trending-up',       color:'#0ea5e9'},
 ];
 
-const TYPE_COLOR_CF = {expense:'var(--red)',income:'var(--green)',transfer:'var(--accent)'};
-const TYPE_ICON_CF  = {expense:'ti-arrow-up-right',income:'ti-arrow-down-left',transfer:'ti-arrows-exchange'};
-const TYPE_BG_CF    = {expense:'var(--red-bg)',income:'var(--green-bg)',transfer:'rgba(99,102,241,0.12)'};
+const TYPE_COLOR_CF = {expense:'var(--red)',income:'var(--green)',transfer:'var(--accent)',purchase:'var(--blue)',sale:'#f59e0b'};
+const TYPE_ICON_CF  = {expense:'ti-arrow-up-right',income:'ti-arrow-down-left',transfer:'ti-arrows-exchange',purchase:'ti-shopping-cart',sale:'ti-tag'};
+const TYPE_BG_CF    = {expense:'var(--red-bg)',income:'var(--green-bg)',transfer:'rgba(99,102,241,0.12)',purchase:'rgba(96,165,250,0.12)',sale:'rgba(245,158,11,0.12)'};
+const INVEST_TYPES  = ['stock','etf','crypto','bond'];
+const SIMPLE_TYPES  = ['bank','cash'];
+
+// ── Date helpers (Rome timezone) ──
+function nowRome(){
+  return new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Rome'}));
+}
+function toRomeString(date){
+  return new Intl.DateTimeFormat('it-IT',{
+    timeZone:'Europe/Rome', day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit', hour12:false
+  }).format(date).replace(',','');
+}
+function parseDateInput(input, hiddenId){
+  const val = input.value;
+  // Accept: dd/mm/yyyy hh:mm or dd/mm/yyyy
+  const m = val.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+  const previewId = input.id + '-preview';
+  const preview = document.getElementById(previewId);
+  if(m){
+    const d=m[1].padStart(2,'0'),mo=m[2].padStart(2,'0'),y=m[3],h=(m[4]||'00').padStart(2,'0'),min=(m[5]||'00').padStart(2,'0');
+    const iso = `${y}-${mo}-${d}T${h}:${min}:00`;
+    const parsed = new Date(iso);
+    if(!isNaN(parsed)){
+      if(hiddenId) document.getElementById(hiddenId).value = iso;
+      else input.dataset.iso = iso;
+      if(preview) preview.textContent = '✓ ' + parsed.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      return iso;
+    }
+  }
+  if(preview && val.length>0) preview.textContent = 'Format: dd/mm/yyyy hh:mm';
+  else if(preview) preview.textContent = '';
+  if(hiddenId) document.getElementById(hiddenId).value = '';
+  return null;
+}
+function getDateIso(inputId, hiddenId){
+  if(hiddenId){
+    const v = document.getElementById(hiddenId).value;
+    return v || null;
+  }
+  return document.getElementById(inputId).dataset.iso || null;
+}
 
 async function loadCashflow(){
   [cfCategories, cfTransactions, cfRecurrences] = await Promise.all([
@@ -1403,73 +1542,95 @@ async function processRecurrences(){
   }
 }
 
-function advanceDue(date, freq){
-  const d = new Date(date);
-  if(freq==='daily')   d.setDate(d.getDate()+1);
-  if(freq==='weekly')  d.setDate(d.getDate()+7);
+function advanceDue(date,freq){
+  const d=new Date(date);
+  if(freq==='daily') d.setDate(d.getDate()+1);
+  if(freq==='weekly') d.setDate(d.getDate()+7);
   if(freq==='monthly') d.setMonth(d.getMonth()+1);
-  if(freq==='yearly')  d.setFullYear(d.getFullYear()+1);
+  if(freq==='yearly') d.setFullYear(d.getFullYear()+1);
   return d;
 }
 
 async function applyBalanceChange(type, amount, fromId, toId){
   holdings = await api('holdings?order=created_at.asc');
-  if(type==='expense' && fromId){
-    const h = holdings.find(x=>x.id===fromId);
+  if(type==='expense'&&fromId){
+    const h=holdings.find(x=>x.id===fromId);
     if(h) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(h.avg_cost||0)-amount)})});
-  } else if(type==='income' && fromId){
-    const h = holdings.find(x=>x.id===fromId);
+  } else if(type==='income'&&fromId){
+    const h=holdings.find(x=>x.id===fromId);
     if(h) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(h.avg_cost||0)+amount})});
-  } else if(type==='transfer' && fromId && toId){
-    const hf = holdings.find(x=>x.id===fromId);
-    const ht = holdings.find(x=>x.id===toId);
+  } else if(type==='transfer'&&fromId&&toId){
+    const hf=holdings.find(x=>x.id===fromId), ht=holdings.find(x=>x.id===toId);
     if(hf) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(hf.avg_cost||0)-amount)})});
     if(ht) await api(`holdings?id=eq.${toId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(ht.avg_cost||0)+amount})});
   }
 }
 
+// ── Render cashflow: grouped by category, sub-grouped by holding ──
 function renderCashflow(){
   const container = document.getElementById('cf-accounts');
   if(!container) return;
   if(!holdings.length){ container.innerHTML='<div class="card"><div class="empty"><i class="ti ti-wallet"></i><p>No holdings yet.</p></div></div>'; return; }
-  const typeColorMap = {bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
-  container.innerHTML = holdings.map(h=>{
-    const color = typeColorMap[h.type]||'#888';
-    const icon  = TYPE_ICONS[h.type]||'ti-wallet';
-    const dispName = h.type==='crypto' ? cleanCryptoName(h.name||h.ticker) : (h.name||h.ticker);
-    const val   = getVal(h);
-    const hTxs  = cfTransactions.filter(t=>t.holding_id===h.id||t.holding_to_id===h.id);
-    const recent = hTxs.slice(0,5);
-    const txRows = recent.map(t=>cfTxRow(t,h)).join('');
-    const seeAll = hTxs.length>5 ? `<button class="cf-see-all" onclick="showAllTx('${h.id}')">See all ${hTxs.length} transactions</button>` : '';
+  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
+
+  // Group holdings by type
+  const byType={};
+  holdings.forEach(h=>{ if(!byType[h.type]) byType[h.type]=[]; byType[h.type].push(h); });
+  const sortedTypes=Object.keys(byType).sort((a,b)=>(TYPE_LABELS[a]||a).localeCompare(TYPE_LABELS[b]||b));
+
+  container.innerHTML = sortedTypes.map(type=>{
+    const items=byType[type];
+    const color=typeColorMap[type]||'#888';
+    const icon=TYPE_ICONS[type]||'ti-wallet';
+    const catTotal=items.reduce((s,h)=>s+getVal(h),0);
+    const allTxs=cfTransactions.filter(t=>items.some(h=>h.id===t.holding_id||h.id===t.holding_to_id));
+
+    // Sub-groups per holding
+    const subGroups=items.map(h=>{
+      const dispName=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+      const hTxs=cfTransactions.filter(t=>t.holding_id===h.id||t.holding_to_id===h.id);
+      const recent=hTxs.slice(0,5);
+      const txRows=recent.map(t=>cfTxRow(t,h)).join('');
+      const seeAll=hTxs.length>5?`<button class="cf-see-all" onclick="showAllTx('${h.id}')">See all ${hTxs.length} transactions</button>`:'';
+      return `<div style="border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 1.25rem;background:var(--surface2)">
+          <span style="font-size:13px;font-weight:600;flex:1">${dispName}</span>
+          <span style="font-size:13px;font-weight:700">${fmt(getVal(h))}</span>
+        </div>
+        ${txRows||'<div style="padding:10px 1.25rem;color:var(--text3);font-size:12px">No transactions yet</div>'}
+        ${seeAll}
+      </div>`;
+    }).join('');
+
     return `<div class="cf-account-block">
       <div class="cf-account-header" onclick="toggleCfAccount(this)">
         <div class="cf-account-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
         <div>
-          <div class="cf-account-name">${dispName}</div>
-          <div class="cf-account-sub">${TYPE_LABELS[h.type]||h.type}${recent.length ? ' · '+recent.length+' recent tx' : ' · no transactions yet'}</div>
+          <div class="cf-account-name">${TYPE_LABELS[type]||type}</div>
+          <div class="cf-account-sub">${items.length} holding${items.length>1?'s':''} · ${allTxs.length} transaction${allTxs.length!==1?'s':''}</div>
         </div>
-        <div class="cf-account-val"><div class="cf-account-val-num">${fmt(val)}</div></div>
+        <div class="cf-account-val"><div class="cf-account-val-num">${fmt(catTotal)}</div></div>
         <i class="ti ti-chevron-down cf-account-chevron"></i>
       </div>
-      <div class="cf-account-body">
-        ${txRows||'<div style="padding:1rem 1.25rem;color:var(--text3);font-size:13px">No transactions yet</div>'}
-        ${seeAll}
-      </div>
+      <div class="cf-account-body">${subGroups}</div>
     </div>`;
   }).join('');
 }
 
-function cfTxRow(t, h){
-  const cat = cfCategories.find(c=>c.id===t.category_id);
-  const amtColor = t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':'var(--accent)';
-  const amtSign  = t.type==='income'?'+':t.type==='expense'?'-':'⇄';
-  const date = new Date(t.date).toLocaleDateString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+function cfTxRow(t,h){
+  const cat=cfCategories.find(c=>c.id===t.category_id);
+  const txType=t.type||'expense';
+  const amtColor=txType==='income'?'var(--green)':txType==='expense'?'var(--red)':txType==='purchase'?'var(--blue)':txType==='sale'?'#f59e0b':'var(--accent)';
+  const amtSign=txType==='income'||txType==='sale'?'+':txType==='expense'||txType==='purchase'?'-':'⇄';
+  const date=new Date(t.date).toLocaleDateString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'});
+  const catLabel=cat?`<span style="color:${cat.color}">${cat.name}</span>`:'';
+  const typeLabel=txType==='purchase'?'Purchase':txType==='sale'?'Sale':'';
+  const subLabel=[catLabel,typeLabel].filter(x=>x&&x.trim()).join(' · ');
   return `<div class="cf-tx-row">
-    <div class="cf-tx-icon" style="background:${TYPE_BG_CF[t.type]};color:${TYPE_COLOR_CF[t.type]}"><i class="ti ${TYPE_ICON_CF[t.type]}"></i></div>
+    <div class="cf-tx-icon" style="background:${TYPE_BG_CF[txType]||'var(--surface2)'};color:${amtColor}"><i class="ti ${TYPE_ICON_CF[txType]||'ti-circle'}"></i></div>
     <div class="cf-tx-desc">
       <div class="cf-tx-name">${t.description||'—'}</div>
-      <div class="cf-tx-cat">${cat?`<span style="color:${cat.color}">${cat.name}</span>`:''}${t.type==='transfer'?' · Transfer':''}</div>
+      <div class="cf-tx-cat">${subLabel||''}</div>
     </div>
     <div style="text-align:right">
       <div class="cf-tx-amount" style="color:${amtColor}">${amtSign}${fmt(t.amount)}</div>
@@ -1480,18 +1641,17 @@ function cfTxRow(t, h){
 }
 
 function toggleCfAccount(header){
-  const body = header.nextElementSibling;
-  const open = body.classList.contains('open');
+  const body=header.nextElementSibling;
+  const open=body.classList.contains('open');
   body.classList.toggle('open',!open);
   header.classList.toggle('open',!open);
 }
 
 function showAllTx(holdingId){
-  const h = holdings.find(x=>x.id===holdingId);
-  const hTxs = cfTransactions.filter(t=>t.holding_id===holdingId||t.holding_to_id===holdingId);
-  const dispName = h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'Account';
-  const container = document.getElementById('cf-accounts');
-  container.innerHTML = `
+  const h=holdings.find(x=>x.id===holdingId);
+  const hTxs=cfTransactions.filter(t=>t.holding_id===holdingId||t.holding_to_id===holdingId);
+  const dispName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'Account';
+  document.getElementById('cf-accounts').innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
       <button class="btn" onclick="renderCashflow()"><i class="ti ti-arrow-left"></i> Back</button>
       <div style="font-size:18px;font-weight:700">${dispName} — All transactions</div>
@@ -1501,6 +1661,7 @@ function showAllTx(holdingId){
     </div>`;
 }
 
+// ── Form show/hide ──
 function showCfForm(){
   document.getElementById('cf-main').style.display='none';
   document.getElementById('cf-form').style.display='';
@@ -1513,109 +1674,276 @@ function showCfMain(){
   document.getElementById('cf-fab').style.display='';
 }
 
+function setCfCtx(ctx, btn){
+  cfCtx=ctx;
+  document.querySelectorAll('[data-ctx]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('cf-account-form').style.display = ctx==='account'?'':'none';
+  document.getElementById('cf-invest-form').style.display  = ctx==='investment'?'':'none';
+}
+
 function populateCfForm(){
-  const now = new Date(); now.setSeconds(0,0);
-  document.getElementById('cf-date').value = now.toISOString().slice(0,16);
-  document.getElementById('cf-recur-start').value = now.toISOString().slice(0,16);
-  document.getElementById('cf-recurring').checked = false;
-  document.getElementById('cf-recurring-opts').style.display = 'none';
-  document.getElementById('cf-amount').value = '';
-  document.getElementById('cf-desc').value = '';
-  const catSel = document.getElementById('cf-cat');
-  catSel.innerHTML = cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  const opts = holdings.map(h=>{
-    const n = h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
-    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
+  const now=nowRome();
+  const str=toRomeString(now);
+  ['cf-date','inv-date'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.value=str; el.dataset.iso=now.toISOString(); }
+  });
+  const isoNow=now.toISOString().slice(0,16);
+  document.getElementById('cf-recur-start').value=toRomeString(now);
+  document.getElementById('cf-recur-start-parsed').value=isoNow;
+  ['cf-date-preview','inv-date-preview'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent=''; });
+  document.getElementById('cf-recurring').checked=false;
+  document.getElementById('cf-recurring-opts').style.display='none';
+  document.getElementById('cf-amount').value='';
+  document.getElementById('cf-desc').value='';
+  document.getElementById('inv-desc').value='';
+
+  // Populate category selects
+  const catOpts=cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('cf-cat').innerHTML=catOpts;
+  document.getElementById('inv-cat').innerHTML=catOpts;
+
+  // Bank/cash holdings for account form
+  const simplHoldings=holdings.filter(h=>SIMPLE_TYPES.includes(h.type));
+  const allHoldings=holdings;
+  const simpleOpts=simplHoldings.map(h=>`<option value="${h.id}">${h.name||h.ticker} (${TYPE_LABELS[h.type]})</option>`).join('');
+  const allOpts=allHoldings.map(h=>{
+    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]})</option>`;
   }).join('');
-  document.getElementById('cf-from').innerHTML = opts;
-  document.getElementById('cf-to').innerHTML = opts;
-  setCfType(cfType, document.querySelector(`.cf-type-btn[data-type="${cfType}"]`));
+  document.getElementById('cf-from').innerHTML=simpleOpts||allOpts;
+  document.getElementById('cf-to').innerHTML=simpleOpts||allOpts;
+
+  // Investment holdings for investment form
+  const investHoldings=holdings.filter(h=>INVEST_TYPES.includes(h.type));
+  document.getElementById('inv-asset').innerHTML=investHoldings.map(h=>{
+    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+    return `<option value="${h.id}">${n} (${h.ticker})</option>`;
+  }).join('');
+
+  // "Paid from" / "Sale to" = all holdings
+  document.getElementById('inv-paid-from').innerHTML=allOpts;
+  document.getElementById('inv-sale-to').innerHTML=allOpts;
+  document.getElementById('inv-expinc-acct').innerHTML=allOpts;
+
+  setCfCtx('account', document.querySelector('[data-ctx="account"]'));
+  setCfType('expense', document.querySelector('[data-type="expense"]'));
+  setCfIType('purchase', document.querySelector('[data-itype="purchase"]'));
 }
 
 function setCfType(type, btn){
-  cfType = type;
-  document.querySelectorAll('.cf-type-btn').forEach(b=>b.classList.remove('active'));
+  cfType=type;
+  document.querySelectorAll('[data-type]').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  document.getElementById('cf-to-wrap').style.display  = type==='transfer'?'':'none';
-  document.getElementById('cf-cat-wrap').style.display = type==='transfer'?'none':'';
-  document.getElementById('cf-from-label').textContent = type==='income'?'To account':'From account';
+  document.getElementById('cf-to-wrap').style.display  =type==='transfer'?'':'none';
+  document.getElementById('cf-cat-wrap').style.display =type==='transfer'?'none':'';
+  document.getElementById('cf-from-label').textContent =type==='income'?'To account':'From account';
+}
+
+function setCfIType(itype, btn){
+  cfIType=itype;
+  document.querySelectorAll('[data-itype]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('inv-purchase-fields').style.display=itype==='purchase'?'':'none';
+  document.getElementById('inv-sale-fields').style.display    =itype==='sale'?'':'none';
+  document.getElementById('inv-expinc-fields').style.display  =(itype==='expense'||itype==='income')?'':'none';
+  document.getElementById('inv-expinc-acct-label').textContent=itype==='income'?'To account':'From account';
+}
+
+function onInvAssetChange(){
+  calcSaleTotal(); // refresh P&L if sale
+}
+
+function calcInvTotal(){
+  const qty=parseFloat(document.getElementById('inv-qty').value)||0;
+  const price=parseFloat(document.getElementById('inv-price').value)||0;
+  if(qty&&price) document.getElementById('inv-total').value=(qty*price).toFixed(2);
+}
+function calcInvFromTotal(){
+  const total=parseFloat(document.getElementById('inv-total').value)||0;
+  const qty=parseFloat(document.getElementById('inv-qty').value)||0;
+  if(total&&qty) document.getElementById('inv-price').value=(total/qty).toFixed(4);
+  else if(total&&!qty){ /* can't back-calc qty without price */ }
+}
+function calcSaleTotal(){
+  const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
+  const price=parseFloat(document.getElementById('inv-sale-price').value)||0;
+  if(qty&&price){
+    const total=qty*price;
+    document.getElementById('inv-sale-total').value=total.toFixed(2);
+    updatePnl(qty,price);
+  }
+}
+function calcSaleFromTotal(){
+  const total=parseFloat(document.getElementById('inv-sale-total').value)||0;
+  const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
+  if(total&&qty){
+    const price=total/qty;
+    document.getElementById('inv-sale-price').value=price.toFixed(4);
+    updatePnl(qty,price);
+  }
+}
+function updatePnl(qty,salePrice){
+  const assetId=document.getElementById('inv-asset').value;
+  const h=holdings.find(x=>x.id===assetId);
+  if(!h||!qty||!salePrice){ document.getElementById('inv-pnl-preview').style.display='none'; return; }
+  const costBasis=h.avg_cost*qty;
+  const revenue=qty*salePrice;
+  const pnl=revenue-costBasis;
+  const pct=costBasis>0?pnl/costBasis*100:0;
+  const pnlEl=document.getElementById('inv-pnl-val');
+  const detEl=document.getElementById('inv-pnl-detail');
+  pnlEl.textContent=(pnl>=0?'+':'')+fmt(pnl)+' ('+fmtPct(pct)+')';
+  pnlEl.style.color=pnl>=0?'var(--green)':'var(--red)';
+  detEl.textContent=`Cost basis ${fmt(costBasis)} · Revenue ${fmt(revenue)} · Avg cost ${fmt(h.avg_cost)}/unit`;
+  document.getElementById('inv-pnl-preview').style.display='';
 }
 
 function toggleRecurring(on){
-  document.getElementById('cf-recurring-opts').style.display = on?'':'none';
+  document.getElementById('cf-recurring-opts').style.display=on?'':'none';
 }
 
+// ── Save account transaction ──
 async function saveCfTransaction(){
-  const amount = parseFloat(document.getElementById('cf-amount').value)||0;
-  const desc   = document.getElementById('cf-desc').value.trim();
-  const catId  = document.getElementById('cf-cat').value||null;
-  const date   = document.getElementById('cf-date').value;
-  const fromId = document.getElementById('cf-from').value||null;
-  const toId   = document.getElementById('cf-to').value||null;
-  const isRecur = document.getElementById('cf-recurring').checked;
+  const amount=parseFloat(document.getElementById('cf-amount').value)||0;
+  const desc=document.getElementById('cf-desc').value.trim();
+  const catId=document.getElementById('cf-cat').value||null;
+  const dateIso=document.getElementById('cf-date').dataset.iso||new Date().toISOString();
+  const fromId=document.getElementById('cf-from').value||null;
+  const toId=document.getElementById('cf-to').value||null;
+  const isRecur=document.getElementById('cf-recurring').checked;
   if(amount<=0){alert('Please enter an amount.');return;}
   if(!fromId){alert('Please select an account.');return;}
   if(cfType==='transfer'&&fromId===toId){alert('Source and destination must be different.');return;}
-  const txData = {
+  const txData={
     type:cfType, amount, description:desc||null,
     category_id:cfType==='transfer'?null:catId,
     holding_id:fromId,
     holding_to_id:cfType==='transfer'?toId:null,
-    date:new Date(date).toISOString()
+    date:dateIso
   };
   if(isRecur){
-    const freq  = document.getElementById('cf-freq').value;
-    const start = document.getElementById('cf-recur-start').value;
-    const recur = await api('recurrences',{method:'POST',body:JSON.stringify({
+    const freq=document.getElementById('cf-freq').value;
+    const startIso=document.getElementById('cf-recur-start-parsed').value||dateIso;
+    const recur=await api('recurrences',{method:'POST',body:JSON.stringify({
       type:cfType, amount, description:desc||null,
       category_id:cfType==='transfer'?null:catId,
       holding_id:fromId, holding_to_id:cfType==='transfer'?toId:null,
-      frequency:freq, next_due:new Date(start).toISOString(), active:true
+      frequency:freq, next_due:startIso, active:true
     })});
-    if(Array.isArray(recur)&&recur[0]) txData.recurring_id = recur[0].id;
+    if(Array.isArray(recur)&&recur[0]) txData.recurring_id=recur[0].id;
   }
   await api('cashflow_transactions',{method:'POST',body:JSON.stringify(txData)});
   await applyBalanceChange(cfType, amount, fromId, cfType==='transfer'?toId:null);
+  await reloadCfData();
+  renderCashflow(); renderSettings(); renderOverview();
+  showCfMain(); toast('Transaction saved ✓');
+}
+
+// ── Save investment transaction ──
+async function saveInvTransaction(){
+  const assetId=document.getElementById('inv-asset').value;
+  const desc=document.getElementById('inv-desc').value.trim();
+  const catId=document.getElementById('inv-cat').value||null;
+  const dateIso=document.getElementById('inv-date').dataset.iso||new Date().toISOString();
+  const h=holdings.find(x=>x.id===assetId);
+  if(!h){alert('Please select an asset.');return;}
+
+  if(cfIType==='purchase'){
+    const qty=parseFloat(document.getElementById('inv-qty').value)||0;
+    const price=parseFloat(document.getElementById('inv-price').value)||0;
+    const total=parseFloat(document.getElementById('inv-total').value)||(qty*price);
+    const paidFromId=document.getElementById('inv-paid-from').value||null;
+    if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
+    // Update holding: new avg cost and qty
+    const newQty=h.qty+qty;
+    const newAvg=(h.qty*h.avg_cost+qty*price)/newQty;
+    await api(`holdings?id=eq.${assetId}`,{method:'PATCH',body:JSON.stringify({qty:newQty,avg_cost:newAvg})});
+    // Deduct from paid-from holding if selected
+    if(paidFromId){
+      const pf=holdings.find(x=>x.id===paidFromId);
+      if(pf) await api(`holdings?id=eq.${paidFromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(pf.avg_cost||0)-total)})});
+    }
+    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({
+      type:'purchase', amount:total, description:desc||`Purchased ${qty} ${h.ticker}`,
+      category_id:catId, holding_id:assetId, holding_to_id:paidFromId, date:dateIso
+    })});
+
+  } else if(cfIType==='sale'){
+    const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
+    const price=parseFloat(document.getElementById('inv-sale-price').value)||0;
+    const total=parseFloat(document.getElementById('inv-sale-total').value)||(qty*price);
+    const saleToId=document.getElementById('inv-sale-to').value||null;
+    if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
+    if(qty>h.qty){alert(`You only have ${h.qty} units of ${h.ticker}.`);return;}
+    // Reduce holding qty
+    const newQty=h.qty-qty;
+    await api(`holdings?id=eq.${assetId}`,{method:'PATCH',body:JSON.stringify({qty:newQty})});
+    // Credit proceeds to target holding
+    if(saleToId){
+      const st=holdings.find(x=>x.id===saleToId);
+      if(st) await api(`holdings?id=eq.${saleToId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(st.avg_cost||0)+total})});
+    }
+    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({
+      type:'sale', amount:total, description:desc||`Sold ${qty} ${h.ticker}`,
+      category_id:catId, holding_id:assetId, holding_to_id:saleToId, date:dateIso
+    })});
+
+  } else {
+    // Expense or Income on investment
+    const amount=parseFloat(document.getElementById('inv-amount').value)||0;
+    const acctId=document.getElementById('inv-expinc-acct').value||null;
+    if(amount<=0){alert('Please enter an amount.');return;}
+    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({
+      type:cfIType, amount, description:desc||null,
+      category_id:catId, holding_id:assetId, date:dateIso
+    })});
+    await applyBalanceChange(cfIType, amount, cfIType==='expense'?acctId:acctId, null);
+  }
+
+  await reloadCfData();
+  renderCashflow(); renderOverview(); renderSettings();
+  showCfMain(); toast('Transaction saved ✓');
+}
+
+async function reloadCfData(){
   [cfTransactions, cfRecurrences, holdings] = await Promise.all([
     api('cashflow_transactions?order=date.desc'),
     api('recurrences?order=next_due.asc'),
     api('holdings?order=created_at.asc'),
   ]);
-  renderCashflow(); renderSettings(); renderOverview();
-  showCfMain(); toast('Transaction saved ✓');
 }
 
 async function deleteCfTx(id, holdingId, holdingToId, type, amount){
   if(!confirm('Delete this transaction? The holding balance will be reversed.')) return;
-  const reverseType = type==='expense'?'income':type==='income'?'expense':type;
-  await applyBalanceChange(reverseType, Number(amount), holdingId||null, holdingToId||null);
+  const reverseType=type==='expense'?'income':type==='income'?'expense':type;
+  if(!['purchase','sale'].includes(type))
+    await applyBalanceChange(reverseType, Number(amount), holdingId||null, holdingToId||null);
   await api(`cashflow_transactions?id=eq.${id}`,{method:'DELETE'});
-  [cfTransactions, holdings] = await Promise.all([
-    api('cashflow_transactions?order=date.desc'),
-    api('holdings?order=created_at.asc'),
-  ]);
+  await reloadCfData();
   renderCashflow(); renderOverview(); toast('Transaction deleted');
 }
 
 // ── Settings ──
 function renderSettings(){
-  const catEl = document.getElementById('settings-cats');
-  if(catEl) catEl.innerHTML = cfCategories.length
-    ? cfCategories.map(c=>`
+  const catEl=document.getElementById('settings-cats');
+  if(catEl) catEl.innerHTML=cfCategories.length
+    ?cfCategories.map(c=>`
       <div class="settings-cat-row">
         <i class="ti ${c.icon}" style="color:${c.color};font-size:18px;width:24px;text-align:center"></i>
         <span style="flex:1;font-size:13px">${c.name}</span>
         <button class="btn btn-sm btn-danger" onclick="deleteCat('${c.id}')"><i class="ti ti-trash"></i></button>
       </div>`).join('')
-    : '<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No categories yet</div>';
+    :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No categories yet</div>';
 
-  const recEl = document.getElementById('settings-recurrences');
-  if(recEl) recEl.innerHTML = cfRecurrences.length
-    ? cfRecurrences.map(r=>{
-        const cat = cfCategories.find(c=>c.id===r.category_id);
-        const h   = holdings.find(x=>x.id===r.holding_id);
-        const hName = h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'—';
-        const due = new Date(r.next_due).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});
+  const recEl=document.getElementById('settings-recurrences');
+  if(recEl) recEl.innerHTML=cfRecurrences.length
+    ?cfRecurrences.map(r=>{
+        const cat=cfCategories.find(c=>c.id===r.category_id);
+        const h=holdings.find(x=>x.id===r.holding_id);
+        const hName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'—';
+        const due=new Date(r.next_due).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'});
         return `<div class="settings-recur-row">
           <i class="ti ti-repeat" style="color:var(--accent);font-size:18px;flex-shrink:0;margin-top:2px"></i>
           <div style="flex:1;min-width:0">
@@ -1626,44 +1954,41 @@ function renderSettings(){
               ${!r.active?'<span style="color:var(--text3)"> · Paused</span>':''}
             </div>
           </div>
-          <button class="btn btn-sm" onclick="toggleRecurActive('${r.id}',${!r.active})" title="${r.active?'Pause':'Resume'}">
+          <button class="btn btn-sm" onclick="toggleRecurActive('${r.id}',${!r.active})">
             <i class="ti ti-${r.active?'player-pause':'player-play'}"></i>
           </button>
           <button class="btn btn-sm btn-danger" onclick="deleteRecur('${r.id}')"><i class="ti ti-trash"></i></button>
         </div>`;
       }).join('')
-    : '<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No recurring transactions set up</div>';
+    :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No recurring transactions set up</div>';
 }
 
 async function saveCat(){
-  const name  = document.getElementById('cat-name').value.trim();
-  const icon  = document.getElementById('cat-icon').value.trim()||'ti-tag';
-  const color = document.getElementById('cat-color').value||'#6366f1';
+  const name=document.getElementById('cat-name').value.trim();
+  const icon=document.getElementById('cat-icon').value.trim()||'ti-tag';
+  const color=document.getElementById('cat-color').value||'#6366f1';
   if(!name){alert('Please enter a name.');return;}
   await api('cashflow_categories',{method:'POST',body:JSON.stringify({name,icon,color})});
-  cfCategories = await api('cashflow_categories?order=name.asc');
+  cfCategories=await api('cashflow_categories?order=name.asc');
   closeModal('modal-cat'); renderSettings();
   document.getElementById('cat-name').value='';
   toast('Category saved ✓');
 }
-
 async function deleteCat(id){
   if(!confirm('Delete this category?')) return;
   await api(`cashflow_categories?id=eq.${id}`,{method:'DELETE'});
-  cfCategories = await api('cashflow_categories?order=name.asc');
+  cfCategories=await api('cashflow_categories?order=name.asc');
   renderSettings(); toast('Category removed');
 }
-
-async function toggleRecurActive(id, active){
+async function toggleRecurActive(id,active){
   await api(`recurrences?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({active})});
-  cfRecurrences = await api('recurrences?order=next_due.asc');
+  cfRecurrences=await api('recurrences?order=next_due.asc');
   renderSettings(); toast(active?'Recurrence resumed':'Recurrence paused');
 }
-
 async function deleteRecur(id){
-  if(!confirm('Delete this recurrence? Future transactions will no longer be created.')) return;
+  if(!confirm('Delete this recurrence?')) return;
   await api(`recurrences?id=eq.${id}`,{method:'DELETE'});
-  cfRecurrences = await api('recurrences?order=next_due.asc');
+  cfRecurrences=await api('recurrences?order=next_due.asc');
   renderSettings(); toast('Recurrence removed');
 }
 
