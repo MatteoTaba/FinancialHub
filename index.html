@@ -1596,7 +1596,7 @@ function renderCashflow(){
       const hTxs=cfTransactions.filter(t=>t.holding_id===h.id||t.holding_to_id===h.id);
       const recent=hTxs.slice(0,5);
       const txRows=recent.map(t=>cfTxRow(t,h)).join('');
-      const seeAll=hTxs.length>5?`<button class="cf-see-all" onclick="showAllTx('${h.id}')">See all ${hTxs.length} transactions</button>`:'';
+      const seeAll=`<button class="cf-see-all" onclick="showAllTx('${h.id}')" style="border-top:1px solid var(--border)">See all transactions <i class="ti ti-chevron-right" style="font-size:11px;vertical-align:middle"></i></button>`;
       return `<div style="border-top:1px solid var(--border)">
         <div style="display:flex;align-items:center;gap:10px;padding:10px 1.25rem;background:var(--surface2)">
           <span style="font-size:13px;font-weight:600;flex:1">${dispName}</span>
@@ -1718,18 +1718,28 @@ function setAllTxFilter(f, btn){
 function renderAllTx(){
   const h=holdings.find(x=>x.id===allTxHoldingId);
   const dispName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'Account';
-  document.getElementById('cf-accounts').innerHTML=`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
-      <button class="btn" onclick="renderCashflow()"><i class="ti ti-arrow-left"></i> Back</button>
-      <div style="font-size:18px;font-weight:700;flex:1">${dispName} — All transactions</div>
-    </div>
-    <div class="filters" style="margin-bottom:1rem">
-      <button class="alltx-filter filter-btn active" onclick="setAllTxFilter('all',this)">All</button>
-      <button class="alltx-filter filter-btn" onclick="setAllTxFilter('income',this)"><i class="ti ti-arrow-down-left" style="font-size:11px"></i> Income</button>
-      <button class="alltx-filter filter-btn" onclick="setAllTxFilter('outcome',this)"><i class="ti ti-arrow-up-right" style="font-size:11px"></i> Outcome</button>
-      <button class="alltx-filter filter-btn" onclick="setAllTxFilter('transfer',this)"><i class="ti ti-arrows-exchange" style="font-size:11px"></i> Transfer</button>
-    </div>
-    <div id="alltx-body"></div>`;
+  const container=document.getElementById('cf-accounts');
+  // Build header
+  const header=document.createElement('div');
+  header.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap';
+  header.innerHTML=`<button class="btn" onclick="renderCashflow()"><i class="ti ti-arrow-left"></i> Back</button><div style="font-size:18px;font-weight:700;flex:1">${dispName} — All transactions</div>`;
+  // Build filters
+  const filters=document.createElement('div');
+  filters.className='filters';
+  filters.style.marginBottom='1rem';
+  filters.innerHTML=`
+    <button class="alltx-filter filter-btn active" onclick="setAllTxFilter('all',this)">All</button>
+    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('income',this)"><i class="ti ti-arrow-down-left" style="font-size:11px"></i> Income</button>
+    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('outcome',this)"><i class="ti ti-arrow-up-right" style="font-size:11px"></i> Outcome</button>
+    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('transfer',this)"><i class="ti ti-arrows-exchange" style="font-size:11px"></i> Transfer</button>`;
+  // Build body container
+  const body=document.createElement('div');
+  body.id='alltx-body';
+  // Mount all at once
+  container.innerHTML='';
+  container.appendChild(header);
+  container.appendChild(filters);
+  container.appendChild(body);
   renderAllTxBody();
 }
 
