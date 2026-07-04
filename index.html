@@ -1683,33 +1683,80 @@ function toggleCfAccount(header){
   header.classList.toggle('open',!open);
 }
 
-function showAllTx(holdingId){
-  const h=holdings.find(x=>x.id===holdingId);
-  const hTxs=cfTransactions.filter(t=>t.holding_id===holdingId||t.holding_to_id===holdingId);
-  const dispName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'Account';
+// Types considered "income-like" from the holding's perspective
+function isIncomeSide(t, hId){
+  if(t.type==='income') return true;
+  if(t.type==='sale' && t.holding_to_id===hId) return true;   // proceeds credited here
+  if(t.type==='purchase' && t.holding_id===hId) return true;  // asset acquired here
+  if(t.type==='transfer' && t.holding_to_id===hId) return true;
+  return false;
+}
+function isOutcomeSide(t, hId){
+  if(t.type==='expense') return true;
+  if(t.type==='purchase' && t.holding_to_id===hId) return true; // paid from here
+  if(t.type==='sale' && t.holding_id===hId) return true;         // asset reduced here
+  if(t.type==='transfer' && t.holding_id===hId) return true;
+  return false;
+}
+function isTransferSide(t){ return t.type==='transfer'; }
 
-  // Group by month/year in Rome timezone
+let allTxHoldingId=null, allTxFilter='all';
+
+function showAllTx(holdingId){
+  allTxHoldingId=holdingId;
+  allTxFilter='all';
+  renderAllTx();
+}
+
+function setAllTxFilter(f, btn){
+  allTxFilter=f;
+  document.querySelectorAll('.alltx-filter').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderAllTxBody();
+}
+
+function renderAllTx(){
+  const h=holdings.find(x=>x.id===allTxHoldingId);
+  const dispName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'Account';
+  document.getElementById('cf-accounts').innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
+      <button class="btn" onclick="renderCashflow()"><i class="ti ti-arrow-left"></i> Back</button>
+      <div style="font-size:18px;font-weight:700;flex:1">${dispName} — All transactions</div>
+    </div>
+    <div class="filters" style="margin-bottom:1rem">
+      <button class="alltx-filter filter-btn active" onclick="setAllTxFilter('all',this)">All</button>
+      <button class="alltx-filter filter-btn" onclick="setAllTxFilter('income',this)"><i class="ti ti-arrow-down-left" style="font-size:11px"></i> Income</button>
+      <button class="alltx-filter filter-btn" onclick="setAllTxFilter('outcome',this)"><i class="ti ti-arrow-up-right" style="font-size:11px"></i> Outcome</button>
+      <button class="alltx-filter filter-btn" onclick="setAllTxFilter('transfer',this)"><i class="ti ti-arrows-exchange" style="font-size:11px"></i> Transfer</button>
+    </div>
+    <div id="alltx-body"></div>`;
+  renderAllTxBody();
+}
+
+function renderAllTxBody(){
+  const h=holdings.find(x=>x.id===allTxHoldingId);
+  const hId=allTxHoldingId;
+  let hTxs=cfTransactions.filter(t=>t.holding_id===hId||t.holding_to_id===hId);
+  if(allTxFilter==='income')   hTxs=hTxs.filter(t=>isIncomeSide(t,hId)&&!isTransferSide(t));
+  if(allTxFilter==='outcome')  hTxs=hTxs.filter(t=>isOutcomeSide(t,hId)&&!isTransferSide(t));
+  if(allTxFilter==='transfer') hTxs=hTxs.filter(t=>isTransferSide(t));
+
   const groups={};
   hTxs.forEach(t=>{
-    const d=new Date(t.date);
-    const key=d.toLocaleDateString('en-GB',{year:'numeric',month:'long',timeZone:'Europe/Rome'});
+    const key=new Date(t.date).toLocaleDateString('en-GB',{year:'numeric',month:'long',timeZone:'Europe/Rome'});
     if(!groups[key]) groups[key]=[];
     groups[key].push(t);
   });
 
-  const groupedHtml=Object.keys(groups).length
-    ? Object.entries(groups).map(([month,txs])=>`
+  const body=document.getElementById('alltx-body');
+  if(!body) return;
+  body.innerHTML=Object.keys(groups).length
+    ? `<div class="card" style="padding:0;overflow:hidden">`+
+      Object.entries(groups).map(([month,txs])=>`
         <div style="padding:10px 1.25rem 4px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;background:var(--surface2);border-bottom:1px solid var(--border)">${month}</div>
         ${txs.map(t=>cfTxRow(t,h)).join('')}
-      `).join('')
-    : '<div class="empty"><i class="ti ti-list"></i><p>No transactions</p></div>';
-
-  document.getElementById('cf-accounts').innerHTML=`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
-      <button class="btn" onclick="renderCashflow()"><i class="ti ti-arrow-left"></i> Back</button>
-      <div style="font-size:18px;font-weight:700">${dispName} — All transactions</div>
-    </div>
-    <div class="card" style="padding:0;overflow:hidden">${groupedHtml}</div>`;
+      `).join('')+`</div>`
+    : '<div class="card"><div class="empty"><i class="ti ti-list"></i><p>No transactions for this filter</p></div></div>';
 }
 
 // ── Form show/hide ──
