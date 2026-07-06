@@ -63,10 +63,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-item:hover{background:var(--surface2);color:var(--text)}
 .nav-item.active{background:var(--surface2);color:var(--accent);font-weight:500}
 .nav-item i{font-size:17px;flex-shrink:0}
-.sidebar-bottom{margin-top:auto;border-top:1px solid var(--border);padding-top:0.75rem}
-.refresh-btn{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-xs);cursor:pointer;color:var(--text2);font-size:13px;border:none;background:none;width:100%;font-family:inherit;transition:background 0.12s}
-.refresh-btn:hover{background:var(--surface2);color:var(--text)}
-.refresh-info{font-size:11px;color:var(--text3);padding:3px 10px 0}
 
 /* ── Main ── */
 .main{margin-left:230px;padding:2rem 2.25rem;flex:1;max-width:1160px}
@@ -320,10 +316,7 @@ tbody tr:hover td{background:var(--surface2)}
   <button class="nav-item" onclick="showPage('cashflow',this)"><i class="ti ti-arrows-exchange"></i><span>Cashflow</span></button>
   <button class="nav-item" onclick="showPage('allocation',this)"><i class="ti ti-chart-donut"></i><span>Allocation</span></button>
   <button class="nav-item" onclick="showPage('settings',this)"><i class="ti ti-settings"></i><span>Settings</span></button>
-  <div class="sidebar-bottom">
-    <button class="refresh-btn" onclick="refreshPrices()" id="refresh-btn"><i class="ti ti-refresh"></i><span>Refresh prices</span></button>
-    <div class="refresh-info" id="refresh-info">Prices not loaded</div>
-  </div>
+  <div id="refresh-info" style="display:none"></div>
 </nav>
 
 <!-- ── MAIN ── -->
@@ -1250,10 +1243,8 @@ async function fetchYahooPrice(ticker){
 async function refreshPrices(){
   const investable = holdings.filter(h=>!['bank','cash'].includes(h.type));
   if(!investable.length){ renderHoldings(); return; }
-  const sideBtn = document.getElementById('refresh-btn');
-  const hBtn    = document.getElementById('h-refresh-btn');
+  const hBtn = document.getElementById('h-refresh-btn');
   const loadHTML = '<span class="spin"></span> Loading…';
-  sideBtn.innerHTML = loadHTML; sideBtn.disabled = true;
   if(hBtn){ hBtn.innerHTML = loadHTML; hBtn.disabled = true; }
 
   const cryptoTickers    = [...new Set(investable.filter(h=>h.type==='crypto').map(h=>h.ticker))];
@@ -1271,7 +1262,6 @@ async function refreshPrices(){
   Object.assign(prices, cryptoPrices);
 
   const timeStr = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  sideBtn.innerHTML = '<i class="ti ti-refresh"></i><span>Refresh prices</span>'; sideBtn.disabled = false;
   if(hBtn){ hBtn.innerHTML = '<i class="ti ti-refresh"></i> Refresh prices'; hBtn.disabled = false; }
   document.getElementById('refresh-info').textContent = 'Updated ' + timeStr;
   renderHoldings(); renderOverview(); renderAllocation();
@@ -1661,7 +1651,8 @@ function cfTxRow(t,h){
   const date=new Date(t.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'});
   const catLabel=cat?`<span style="color:${cat.color}">${cat.name}</span>`:'';
   const typeLabel=txType==='purchase'?'Purchase':txType==='sale'?'Sale':'';
-  const subLabel=[catLabel,typeLabel].filter(x=>x&&x.trim()).join(' · ');
+  const recurLabel=t.recurring_id?`<span style="color:var(--accent);display:inline-flex;align-items:center;gap:3px"><i class="ti ti-repeat" style="font-size:10px"></i>Recurring</span>`:'';
+  const subLabel=[catLabel,typeLabel,recurLabel].filter(x=>x&&x.trim()).join(' · ');
   return `<div class="cf-tx-row">
     <div class="cf-tx-icon" style="background:${bgColor};color:${amtColor}"><i class="ti ${icon}"></i></div>
     <div class="cf-tx-desc">
@@ -1782,6 +1773,16 @@ function showCfMain(){
   document.getElementById('cf-fab').style.display='';
 }
 
+function updateInvCounterparts(){
+  const selectedId = document.getElementById('inv-asset').value;
+  const opts = holdings.filter(h=>h.id!==selectedId).map(h=>{
+    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
+  }).join('');
+  document.getElementById('inv-paid-from').innerHTML=opts;
+  document.getElementById('inv-sale-to').innerHTML=opts;
+}
+
 function setCfCtx(ctx, btn){
   cfCtx=ctx;
   document.querySelectorAll('[data-ctx]').forEach(b=>b.classList.remove('active'));
@@ -1829,10 +1830,11 @@ function populateCfForm(){
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${h.ticker})</option>`;
   }).join('');
+  // Update paid-from/sale-to when asset changes
+  document.getElementById('inv-asset').onchange = updateInvCounterparts;
 
-  // "Paid from" / "Sale to" = all holdings
-  document.getElementById('inv-paid-from').innerHTML=allOpts;
-  document.getElementById('inv-sale-to').innerHTML=allOpts;
+  // "Paid from" / "Sale to" = all holdings except the selected asset
+  updateInvCounterparts();
   document.getElementById('inv-expinc-acct').innerHTML=allOpts;
 
   setCfCtx('account', document.querySelector('[data-ctx="account"]'));
@@ -1925,7 +1927,7 @@ async function saveCfTransaction(){
   const isRecur=document.getElementById('cf-recurring').checked;
   if(amount<=0){alert('Please enter an amount.');return;}
   if(!fromId){alert('Please select an account.');return;}
-  if(cfType==='transfer'&&fromId===toId){alert('Source and destination must be different.');return;}
+  if(cfType==='transfer'&&fromId===toId){alert('Source and destination account must be different.');return;}
   const txData={
     type:cfType, amount, description:desc||null,
     category_id:cfType==='transfer'?null:catId,
@@ -1966,6 +1968,7 @@ async function saveInvTransaction(){
     const total=parseFloat(document.getElementById('inv-total').value)||(qty*price);
     const paidFromId=document.getElementById('inv-paid-from').value||null;
     if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
+    if(paidFromId&&paidFromId===assetId){alert('The asset purchased and the account used to pay cannot be the same.');return;}
     // Update holding: new avg cost and qty
     const newQty=h.qty+qty;
     const newAvg=(h.qty*h.avg_cost+qty*price)/newQty;
@@ -1987,6 +1990,7 @@ async function saveInvTransaction(){
     const saleToId=document.getElementById('inv-sale-to').value||null;
     if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
     if(qty>h.qty){alert(`You only have ${h.qty} units of ${h.ticker}.`);return;}
+    if(saleToId&&saleToId===assetId){alert('The asset sold and the destination account cannot be the same.');return;}
     // Reduce holding qty
     const newQty=h.qty-qty;
     await api(`holdings?id=eq.${assetId}`,{method:'PATCH',body:JSON.stringify({qty:newQty})});
@@ -2108,7 +2112,7 @@ async function deleteRecur(id){
 const lastPage = localStorage.getItem('fh_page') || 'overview';
 const matchingBtn = [...document.querySelectorAll('.nav-item')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+lastPage+"'"));
 showPage(lastPage, matchingBtn);
-loadAll();
+loadAll().then(()=>refreshPrices());
 loadCashflow();
 </script>
 </body>
