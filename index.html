@@ -315,7 +315,7 @@ tbody tr:hover td{background:var(--surface2)}
   <button class="nav-item active" onclick="showPage('overview',this)"><i class="ti ti-home-2"></i><span>Overview</span></button>
   <button class="nav-item" onclick="showPage('holdings',this)"><i class="ti ti-briefcase"></i><span>Holdings</span></button>
   <button class="nav-item" onclick="showPage('cashflow',this)"><i class="ti ti-arrows-exchange"></i><span>Cashflow</span></button>
-  <button class="nav-item" onclick="showPage('allocation',this)"><i class="ti ti-chart-bar"></i><span>Insights</span></button>
+  <button class="nav-item" onclick="showPage('insights',this)"><i class="ti ti-chart-bar"></i><span>Insights</span></button>
   <button class="nav-item" onclick="showPage('settings',this)"><i class="ti ti-settings"></i><span>Settings</span></button>
   <div id="refresh-info" style="display:none"></div>
 </nav>
@@ -760,7 +760,7 @@ const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
 }).then(r=>r.json());
 
 let holdings=[], transactions=[], prices={}, snapshots=[], txFilter='all', activePeriod=30;
-let trendChart, allocTypeChart, allocHoldChart;
+let trendChart, allocTypeChart, allocHoldChart, liquidityChart, monthlyChart, yearlyIncomeChart, yearlyOutcomeChart, savingsChart, investedChart;
 
 const TYPE_LABELS = {bank:'Bank',bond:'Bond',cash:'Cash',crypto:'Crypto',etf:'ETF',stock:'Stock'};
 const TYPE_ICONS  = {bank:'ti-building-bank',bond:'ti-certificate',cash:'ti-cash',crypto:'ti-currency-bitcoin',etf:'ti-trending-up',stock:'ti-chart-candle'};
@@ -1454,7 +1454,6 @@ function renderHoldingBoxes(){
 }
 
 // ── INSIGHTS ──
-let allocTypeChart,allocHoldChart,liqChart,monthlyChart,yrIncChart,yrOutChart,savingsChart,investedChart;
 
 // Italian national holidays (MM-DD format)
 const IT_HOLIDAYS = ['01-01','01-06','04-25','05-01','06-02','08-15','11-01','12-08','12-25','12-26'];
@@ -2421,7 +2420,6 @@ function renderAllocation(){
 }
 
 // ── INSIGHTS ──
-let liquidityChart, monthlyChart, yearlyIncomeChart, yearlyOutcomeChart, savingsChart, investedChart;
 
 // Italian national holidays (MM-DD)
 const IT_HOLIDAYS = ['01-01','01-06','04-25','05-01','06-02','08-15','11-01','12-08','12-25','12-26'];
