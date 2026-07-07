@@ -181,6 +181,7 @@ tbody tr:hover td{background:var(--surface2)}
 #h-search-results .sr-name { color: var(--text2); font-size: 12px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #h-search-results .sr-exch { font-size: 11px; color: var(--text3); }
 #h-search-results .sr-loading { color: var(--text3); font-style: italic; justify-content: center; }
+.ins-section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.75rem;margin-top:0.25rem}
 /* ── Category accordion ── */
 .cat-block { margin-bottom: 12px; }
 .cat-header {
@@ -314,7 +315,7 @@ tbody tr:hover td{background:var(--surface2)}
   <button class="nav-item active" onclick="showPage('overview',this)"><i class="ti ti-home-2"></i><span>Overview</span></button>
   <button class="nav-item" onclick="showPage('holdings',this)"><i class="ti ti-briefcase"></i><span>Holdings</span></button>
   <button class="nav-item" onclick="showPage('cashflow',this)"><i class="ti ti-arrows-exchange"></i><span>Cashflow</span></button>
-  <button class="nav-item" onclick="showPage('allocation',this)"><i class="ti ti-chart-donut"></i><span>Allocation</span></button>
+  <button class="nav-item" onclick="showPage('allocation',this)"><i class="ti ti-chart-bar"></i><span>Insights</span></button>
   <button class="nav-item" onclick="showPage('settings',this)"><i class="ti ti-settings"></i><span>Settings</span></button>
   <div id="refresh-info" style="display:none"></div>
 </nav>
@@ -586,19 +587,70 @@ tbody tr:hover td{background:var(--surface2)}
     </div>
   </div>
 
-  <!-- ALLOCATION -->
-  <div class="page" id="page-allocation">
-    <div class="page-header"><div><div class="page-title">Allocation</div><div class="page-sub">How your portfolio is distributed</div></div></div>
-    <div class="alloc-grid">
+  <!-- INSIGHTS -->
+  <div class="page" id="page-insights">
+    <div class="page-header">
+      <div><div class="page-title">Insights</div><div class="page-sub">Financial analytics across all your accounts</div></div>
+    </div>
+
+    <!-- Row 1: Portfolio allocation -->
+    <div class="ins-section-title">Portfolio allocation</div>
+    <div class="alloc-grid" style="margin-bottom:1.5rem">
       <div class="card">
         <div class="card-title" style="margin-bottom:1rem">By asset type</div>
-        <div class="chart-wrap" style="height:200px"><canvas id="alloc-type-chart" role="img" aria-label="Doughnut chart by asset type">Allocation by asset type.</canvas></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="alloc-type-chart">Allocation by asset type.</canvas></div>
         <div class="legend" id="alloc-type-legend"></div>
       </div>
       <div class="card">
         <div class="card-title" style="margin-bottom:1rem">By holding</div>
-        <div class="chart-wrap" style="height:200px"><canvas id="alloc-hold-chart" role="img" aria-label="Doughnut chart by holding">Allocation by holding.</canvas></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="alloc-hold-chart">Allocation by holding.</canvas></div>
         <div class="legend" id="alloc-hold-legend"></div>
+      </div>
+    </div>
+
+    <!-- Row 2: Liquidity over time -->
+    <div class="ins-section-title">Liquidity over time</div>
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-header">
+        <div class="card-title">Bank &amp; Cash balance</div>
+        <div class="card-sub" id="ins-liquidity-sub"></div>
+      </div>
+      <div class="chart-wrap" style="height:220px"><canvas id="ins-liquidity-chart">Liquidity over time.</canvas></div>
+    </div>
+
+    <!-- Row 3: Monthly income vs outcomes -->
+    <div class="ins-section-title">Monthly income &amp; outcomes <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:8px">Salary period: 27th → 26th</span></div>
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-header">
+        <div class="card-title">Income vs Outcomes by period</div>
+        <div id="ins-monthly-legend" class="legend"></div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="ins-monthly-chart">Monthly income vs outcomes.</canvas></div>
+    </div>
+
+    <!-- Row 4: Yearly totals -->
+    <div class="ins-section-title">Year by year</div>
+    <div class="alloc-grid" style="margin-bottom:1.5rem">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem">Total income per year</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="ins-yr-income-chart">Yearly income.</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem">Total outcomes per year</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="ins-yr-outcome-chart">Yearly outcomes.</canvas></div>
+      </div>
+    </div>
+
+    <!-- Row 5: Savings + Invested capital -->
+    <div class="alloc-grid" style="margin-bottom:1.5rem">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem">Savings per year</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="ins-savings-chart">Savings per year.</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1rem">Invested capital over time</div>
+        <div class="card-sub" style="font-size:11px;color:var(--text3);margin-bottom:0.75rem">Cumulative money spent on purchases</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="ins-invested-chart">Invested capital over time.</canvas></div>
       </div>
     </div>
   </div>
@@ -742,7 +794,7 @@ function showPage(name,btn){
     });
   }
   if(name==='overview') renderOverview();
-  if(name==='allocation') renderAllocation();
+  if(name==='insights'){ renderAllocation(); renderInsights(); }
   // prices only refresh manually via the Refresh button
   if(name==='cashflow'){ renderCashflow(); const fab=document.getElementById('cf-fab'); if(fab) fab.style.display=''; }
   if(name==='settings') renderSettings();
@@ -1401,8 +1453,75 @@ function renderHoldingBoxes(){
   }).join('');
 }
 
-// ── ALLOCATION ──
+// ── INSIGHTS ──
+let allocTypeChart,allocHoldChart,liqChart,monthlyChart,yrIncChart,yrOutChart,savingsChart,investedChart;
+
+// Italian national holidays (MM-DD format)
+const IT_HOLIDAYS = ['01-01','01-06','04-25','05-01','06-02','08-15','11-01','12-08','12-25','12-26'];
+function isItalianHoliday(d){ return IT_HOLIDAYS.includes(`${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); }
+function isWeekend(d){ return d.getDay()===0||d.getDay()===6; }
+
+// Get the actual salary payment date for a given year/month
+// Salary is on 27th; if weekend or Italian holiday, move back to first working day before
+function salaryDate(year, month){
+  let d = new Date(year, month, 27);
+  while(isWeekend(d)||isItalianHoliday(d)){
+    d.setDate(d.getDate()-1);
+  }
+  return d;
+}
+
+// Get salary period boundaries: period starts on salary date of given month,
+// ends day before salary date of next month
+function salaryPeriodStart(year, month){ return salaryDate(year, month); }
+function salaryPeriodEnd(year, month){
+  const next = month===11 ? salaryDate(year+1,0) : salaryDate(year,month+1);
+  const end = new Date(next); end.setDate(end.getDate()-1); end.setHours(23,59,59,999);
+  return end;
+}
+
+// Label for a salary period: "Dec 27 – Jan 26"
+function periodLabel(year, month){
+  const start = salaryDate(year,month);
+  const endM  = month===11 ? 0 : month+1;
+  const endY  = month===11 ? year+1 : year;
+  const endD  = salaryDate(endY,endM);
+  const s = start.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const e = new Date(endD); e.setDate(e.getDate()-1);
+  const el = e.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  return `${s} – ${el}`;
+}
+
+function chartDefaults(){
+  const isDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  return {
+    gridColor: isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)',
+    textColor: isDark?'#94a3b8':'#6b7280',
+    tooltipBg: isDark?'#1a1d27':'#fff',
+    tooltipBody: isDark?'#f1f5f9':'#111',
+    tooltipBorder: isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)',
+  };
+}
+
+function makeChartOpts(extra={}){
+  const cd=chartDefaults();
+  return {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:false},
+      tooltip:{backgroundColor:cd.tooltipBg,titleColor:cd.textColor,bodyColor:cd.tooltipBody,borderColor:cd.tooltipBorder,borderWidth:1,callbacks:{label:ctx=>fmt(ctx.raw)}}
+    },
+    scales:{
+      x:{grid:{display:false},ticks:{color:cd.textColor,font:{size:11},maxTicksLimit:12}},
+      y:{grid:{color:cd.gridColor},ticks:{color:cd.textColor,font:{size:11},callback:v=>'€'+Number(v).toLocaleString('it-IT')}}
+    },
+    ...extra
+  };
+}
+
 function renderAllocation(){
+  // ── 1. Allocation doughnuts ──
   const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
   const byType={};
   holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
@@ -1411,26 +1530,174 @@ function renderAllocation(){
   const tData=tKeys.map(k=>byType[k]);
   const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
   const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
+  const dOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}};
 
   if(allocTypeChart) allocTypeChart.destroy();
-  allocTypeChart=new Chart(document.getElementById('alloc-type-chart'),{
-    type:'doughnut', data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}
-  });
-  document.getElementById('alloc-type-legend').innerHTML=tLabels.map((l,i)=>
-    `<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l} ${(tData[i]/total*100).toFixed(1)}%</div>`).join('');
+  allocTypeChart=new Chart(document.getElementById('alloc-type-chart'),{type:'doughnut',data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},options:dOpts});
+  document.getElementById('alloc-type-legend').innerHTML=tLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l} ${(tData[i]/total*100).toFixed(1)}%</div>`).join('');
 
-  const hLabels=holdings.map(h=>h.ticker);
+  const hLabels=holdings.map(h=>h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker);
   const hData=holdings.map(h=>getVal(h));
   const hColors=hLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
-
   if(allocHoldChart) allocHoldChart.destroy();
-  allocHoldChart=new Chart(document.getElementById('alloc-hold-chart'),{
-    type:'doughnut', data:{labels:hLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}
-  });
-  document.getElementById('alloc-hold-legend').innerHTML=hLabels.map((l,i)=>
-    `<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
+  allocHoldChart=new Chart(document.getElementById('alloc-hold-chart'),{type:'doughnut',data:{labels:hLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},options:dOpts});
+  document.getElementById('alloc-hold-legend').innerHTML=hLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
+
+  // ── 2. Liquidity over time ──
+  // One datapoint per salary period: sum of bank+cash holdings' avg_cost
+  // Since we don't have historical balances stored, we calculate from cashflow transactions
+  const liquidTypes=['bank','cash'];
+  const liquidHoldings=holdings.filter(h=>liquidTypes.includes(h.type));
+  // Build monthly liquidity from transactions: start with current balances, work backwards? 
+  // Actually we go forwards: find earliest tx date, build period snapshots
+  const allDates=cfTransactions.map(t=>new Date(t.date)).filter(d=>!isNaN(d));
+  if(allDates.length && liquidHoldings.length){
+    const earliest=new Date(Math.min(...allDates));
+    const now=new Date();
+    // Build periods from earliest salary date to now
+    const periods=[];
+    let y=earliest.getFullYear(), m=earliest.getMonth();
+    while(new Date(y,m,27)<=now){
+      const start=salaryPeriodStart(y,m);
+      const end=salaryPeriodEnd(y,m);
+      if(end>=earliest) periods.push({start,end,label:periodLabel(y,m),y,m});
+      m++; if(m>11){m=0;y++;}
+    }
+    // For each period end, compute liquid balance:
+    // current balance minus transactions that happened after period end
+    const liqLabels=periods.map(p=>p.label);
+    const liqData=periods.map(p=>{
+      let bal=liquidHoldings.reduce((s,h)=>s+h.avg_cost,0);
+      // Add back expenses that happened after period end (they reduced the balance)
+      // Subtract incomes that happened after period end (they increased the balance)
+      cfTransactions.forEach(t=>{
+        const tDate=new Date(t.date);
+        if(tDate>p.end){
+          const isLiqFrom=liquidHoldings.some(h=>h.id===t.holding_id);
+          const isLiqTo=liquidHoldings.some(h=>h.id===t.holding_to_id);
+          if(t.type==='expense'&&isLiqFrom) bal+=t.amount;
+          if(t.type==='income'&&isLiqFrom) bal-=t.amount;
+          if(t.type==='transfer'&&isLiqFrom) bal+=t.amount;
+          if(t.type==='transfer'&&isLiqTo) bal-=t.amount;
+          if(t.type==='purchase'&&isLiqTo) bal+=t.amount;
+          if(t.type==='sale'&&isLiqFrom) bal-=t.amount;
+        }
+      });
+      return Math.max(0,bal);
+    });
+    const cd=chartDefaults();
+    if(liqChart) liqChart.destroy();
+    liqChart=new Chart(document.getElementById('ins-liquidity-chart'),{
+      type:'line',
+      data:{labels:liqLabels,datasets:[{
+        label:'Liquidity',data:liqData,
+        borderColor:'#0ea5e9',
+        backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,220);g.addColorStop(0,'rgba(14,165,233,0.2)');g.addColorStop(1,'rgba(14,165,233,0)');return g;},
+        borderWidth:2.5,fill:true,tension:0.4,
+        pointRadius:liqData.length>8?0:4,pointHoverRadius:6,pointBackgroundColor:'#0ea5e9'
+      }]},
+      options:makeChartOpts()
+    });
+    document.getElementById('ins-liquidity-sub').textContent=`${periods.length} salary periods`;
+  } else {
+    document.getElementById('ins-liquidity-sub').textContent='No data yet';
+  }
+
+  // ── 3. Monthly income vs outcomes (salary periods) ──
+  const incomeTypes=['income','sale'];
+  const outcomeTypes=['expense','purchase'];
+  const allTxDates=cfTransactions.map(t=>new Date(t.date)).filter(d=>!isNaN(d));
+  if(allTxDates.length){
+    const earliest2=new Date(Math.min(...allTxDates));
+    const now2=new Date();
+    const mPeriods=[];
+    let y2=earliest2.getFullYear(), m2=earliest2.getMonth();
+    while(new Date(y2,m2,27)<=now2){
+      const start=salaryPeriodStart(y2,m2);
+      const end=salaryPeriodEnd(y2,m2);
+      if(end>=earliest2) mPeriods.push({start,end,label:new Date(y2,m2,27).toLocaleDateString('en-GB',{month:'short',year:'numeric'})});
+      m2++; if(m2>11){m2=0;y2++;}
+    }
+    const mLabels=mPeriods.map(p=>p.label);
+    const mIncome=mPeriods.map(p=>cfTransactions.filter(t=>{
+      const d=new Date(t.date); return d>=p.start&&d<=p.end&&incomeTypes.includes(t.type);
+    }).reduce((s,t)=>s+t.amount,0));
+    const mOutcome=mPeriods.map(p=>cfTransactions.filter(t=>{
+      const d=new Date(t.date); return d>=p.start&&d<=p.end&&outcomeTypes.includes(t.type);
+    }).reduce((s,t)=>s+t.amount,0));
+
+    const cd2=chartDefaults();
+    if(monthlyChart) monthlyChart.destroy();
+    monthlyChart=new Chart(document.getElementById('ins-monthly-chart'),{
+      type:'bar',
+      data:{labels:mLabels,datasets:[
+        {label:'Income', data:mIncome, backgroundColor:'rgba(16,185,129,0.75)',borderRadius:5,borderSkipped:false},
+        {label:'Outcomes',data:mOutcome,backgroundColor:'rgba(239,68,68,0.7)', borderRadius:5,borderSkipped:false}
+      ]},
+      options:{...makeChartOpts(),plugins:{...makeChartOpts().plugins,legend:{display:false}}}
+    });
+    document.getElementById('ins-monthly-legend').innerHTML=
+      `<div class="legend-item"><span class="legend-dot" style="background:#10b981"></span>Income</div>
+       <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Outcomes</div>`;
+  }
+
+  // ── 4. Yearly income and outcomes ──
+  const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort();
+  if(years.length){
+    const yrIncome=years.map(y=>cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&incomeTypes.includes(t.type)).reduce((s,t)=>s+t.amount,0));
+    const yrOutcome=years.map(y=>cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&outcomeTypes.includes(t.type)).reduce((s,t)=>s+t.amount,0));
+    const yrSavings=years.map((_,i)=>Math.max(0,yrIncome[i]-yrOutcome[i]));
+    const yLabels=years.map(String);
+
+    if(yrIncChart) yrIncChart.destroy();
+    yrIncChart=new Chart(document.getElementById('ins-yr-income-chart'),{
+      type:'bar',data:{labels:yLabels,datasets:[{label:'Income',data:yrIncome,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:6,borderSkipped:false}]},
+      options:makeChartOpts()
+    });
+    if(yrOutChart) yrOutChart.destroy();
+    yrOutChart=new Chart(document.getElementById('ins-yr-outcome-chart'),{
+      type:'bar',data:{labels:yLabels,datasets:[{label:'Outcomes',data:yrOutcome,backgroundColor:'rgba(239,68,68,0.7)',borderRadius:6,borderSkipped:false}]},
+      options:makeChartOpts()
+    });
+
+    // ── 5. Savings per year ──
+    if(savingsChart) savingsChart.destroy();
+    savingsChart=new Chart(document.getElementById('ins-savings-chart'),{
+      type:'bar',
+      data:{labels:yLabels,datasets:[{
+        label:'Savings',data:yrSavings,
+        backgroundColor:yrSavings.map(v=>v>=0?'rgba(99,102,241,0.75)':'rgba(239,68,68,0.7)'),
+        borderRadius:6,borderSkipped:false
+      }]},
+      options:makeChartOpts()
+    });
+  }
+
+  // ── 6. Invested capital over time (cumulative purchases) ──
+  const purchaseTxs=cfTransactions.filter(t=>t.type==='purchase').sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(purchaseTxs.length){
+    let cum=0;
+    const invLabels=[], invData=[];
+    purchaseTxs.forEach(t=>{
+      cum+=t.amount;
+      invLabels.push(new Date(t.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'}));
+      invData.push(cum);
+    });
+    const cd3=chartDefaults();
+    if(investedChart) investedChart.destroy();
+    investedChart=new Chart(document.getElementById('ins-invested-chart'),{
+      type:'line',
+      data:{labels:invLabels,datasets:[{
+        label:'Invested',data:invData,
+        borderColor:'#818cf8',
+        backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(129,140,248,0.22)');g.addColorStop(1,'rgba(129,140,248,0)');return g;},
+        borderWidth:2.5,fill:true,tension:0.3,
+        pointRadius:invData.length>20?0:4,pointHoverRadius:6,pointBackgroundColor:'#818cf8',
+        stepped:true
+      }]},
+      options:makeChartOpts()
+    });
+  }
 }
 
 // ─────────────────────────────────────────
@@ -1511,6 +1778,7 @@ async function loadCashflow(){
   await processRecurrences();
   renderCashflow();
   renderSettings();
+  renderInsights();
 }
 
 async function processRecurrences(){
@@ -2116,4 +2384,256 @@ loadAll().then(()=>refreshPrices());
 loadCashflow();
 </script>
 </body>
-</html>
+</html// ── ALLOCATION ──
+function renderAllocation(){
+  const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
+  const byType={};
+  holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
+  const tKeys=Object.keys(byType);
+  const tLabels=tKeys.map(k=>TYPE_LABELS[k]||k);
+  const tData=tKeys.map(k=>byType[k]);
+  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
+  const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
+
+  if(allocTypeChart) allocTypeChart.destroy();
+  const atc=document.getElementById('alloc-type-chart');
+  if(atc) allocTypeChart=new Chart(atc,{
+    type:'doughnut', data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}
+  });
+  const atl=document.getElementById('alloc-type-legend');
+  if(atl) atl.innerHTML=tLabels.map((l,i)=>
+    `<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l} ${(tData[i]/total*100).toFixed(1)}%</div>`).join('');
+
+  const hLabels=holdings.map(h=>h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker);
+  const hData=holdings.map(h=>getVal(h));
+  const hColors=hLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
+
+  if(allocHoldChart) allocHoldChart.destroy();
+  const ahc=document.getElementById('alloc-hold-chart');
+  if(ahc) allocHoldChart=new Chart(ahc,{
+    type:'doughnut', data:{labels:hLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}
+  });
+  const ahl=document.getElementById('alloc-hold-legend');
+  if(ahl) ahl.innerHTML=hLabels.map((l,i)=>
+    `<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
+}
+
+// ── INSIGHTS ──
+let liquidityChart, monthlyChart, yearlyIncomeChart, yearlyOutcomeChart, savingsChart, investedChart;
+
+// Italian national holidays (MM-DD)
+const IT_HOLIDAYS = ['01-01','01-06','04-25','05-01','06-02','08-15','11-01','12-08','12-25','12-26'];
+
+function isItalianHoliday(date){
+  const mm=String(date.getMonth()+1).padStart(2,'0');
+  const dd=String(date.getDate()).padStart(2,'0');
+  return IT_HOLIDAYS.includes(`${mm}-${dd}`);
+}
+function isWeekend(date){ return date.getDay()===0||date.getDay()===6; }
+
+function getSalaryDate(year,month){
+  let d=new Date(year,month,27);
+  while(isWeekend(d)||isItalianHoliday(d)) d.setDate(d.getDate()-1);
+  return d;
+}
+
+function buildSalaryPeriods(){
+  if(!cfTransactions.length) return [];
+  const sorted=[...cfTransactions].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const first=new Date(sorted[0].date);
+  const now=new Date();
+  let year=first.getFullYear(), month=first.getMonth();
+  const sd27=getSalaryDate(year,month);
+  if(first<sd27){ month--; if(month<0){month=11;year--;} }
+  const periods=[];
+  while(true){
+    const start=getSalaryDate(year,month);
+    let em=month+1,ey=year; if(em>11){em=0;ey++;}
+    const nextStart=getSalaryDate(ey,em);
+    const periodEnd=new Date(nextStart); periodEnd.setDate(periodEnd.getDate()-1); periodEnd.setHours(23,59,59,999);
+    periods.push({start,end:periodEnd,label:start.toLocaleDateString('en-GB',{month:'short',year:'2-digit'})});
+    month++; if(month>11){month=0;year++;}
+    if(start>now) break;
+  }
+  return periods;
+}
+
+function isIncomeTx(t){ return t.type==='income'||t.type==='sale'; }
+function isOutcomeTx(t){ return t.type==='expense'||t.type==='purchase'; }
+
+// Year filter state for monthly chart
+let insightsYear = null; // null = all years
+
+function renderInsights(){
+  // Populate year selector
+  const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort((a,b)=>b-a);
+  if(insightsYear===null && years.length) insightsYear=years[0];
+  const sel=document.getElementById('insights-year-sel');
+  if(sel){
+    sel.innerHTML=years.map(y=>`<option value="${y}"${y===insightsYear?'selected':''}>${y}</option>`).join('');
+    sel.onchange=e=>{ insightsYear=parseInt(e.target.value); renderMonthlyChart(); };
+  }
+  renderLiquidityChart();
+  renderMonthlyChart();
+  renderYearlyCharts();
+  renderSavingsChart();
+  renderInvestedChart();
+}
+
+function getChartColors(){
+  const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  return {
+    grid:dark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)',
+    text:dark?'#94a3b8':'#6b7280',
+    surface:dark?'#1a1d27':'#fff',
+    border:dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)'
+  };
+}
+
+function fmtShort(n){
+  if(Math.abs(n)>=1000) return '€'+(n/1000).toFixed(1)+'k';
+  return '€'+Math.round(n);
+}
+
+// ── Liquidity over time ──
+function renderLiquidityChart(){
+  const el=document.getElementById('liquidity-chart'); if(!el) return;
+  const liqHoldings=holdings.filter(h=>h.type==='bank'||h.type==='cash');
+  if(!liqHoldings.length){ el.closest('.chart-wrap').innerHTML='<div class="empty" style="padding:2rem"><i class="ti ti-droplet"></i><p>No bank or cash holdings yet</p></div>'; return; }
+  const periods=buildSalaryPeriods();
+  if(!periods.length){ el.closest('.chart-wrap').innerHTML='<div class="empty"><p>No data yet</p></div>'; return; }
+  const liqIds=new Set(liqHoldings.map(h=>h.id));
+  // Reconstruct balance backwards from current
+  const sortedTx=[...cfTransactions].filter(t=>liqIds.has(t.holding_id)||liqIds.has(t.holding_to_id)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  let bal=liqHoldings.reduce((s,h)=>s+h.avg_cost,0);
+  const balByPeriod={};
+  balByPeriod[periods.length-1]=bal;
+  for(let i=periods.length-2;i>=0;i--){
+    const p=periods[i+1];
+    sortedTx.forEach(t=>{
+      const td=new Date(t.date);
+      if(td>=p.start&&td<=p.end){
+        if(t.type==='income'&&liqIds.has(t.holding_id)) bal-=t.amount;
+        else if(t.type==='expense'&&liqIds.has(t.holding_id)) bal+=t.amount;
+        else if(t.type==='transfer'){
+          if(liqIds.has(t.holding_to_id)) bal-=t.amount;
+          if(liqIds.has(t.holding_id)) bal+=t.amount;
+        }
+        else if(t.type==='purchase'&&liqIds.has(t.holding_to_id)) bal+=t.amount;
+        else if(t.type==='sale'&&liqIds.has(t.holding_to_id)) bal-=t.amount;
+      }
+    });
+    balByPeriod[i]=Math.max(0,bal);
+  }
+  const labels=periods.map(p=>p.label);
+  const data=periods.map((_,i)=>+(balByPeriod[i]??0).toFixed(2));
+  const c=getChartColors();
+  if(liquidityChart) liquidityChart.destroy();
+  liquidityChart=new Chart(el,{
+    type:'line',
+    data:{labels,datasets:[{data,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,0.08)',borderWidth:2,tension:0.3,fill:true,pointRadius:3,pointBackgroundColor:'#0ea5e9',pointHoverRadius:5,borderDash:[]}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
+  });
+}
+
+// ── Monthly income vs outcomes (year-filtered) ──
+function renderMonthlyChart(){
+  const el=document.getElementById('monthly-chart'); if(!el) return;
+  const allPeriods=buildSalaryPeriods();
+  const periods=insightsYear ? allPeriods.filter(p=>p.start.getFullYear()===insightsYear||p.end.getFullYear()===insightsYear) : allPeriods;
+  if(!periods.length) return;
+  const incomes=[],outcomes=[];
+  periods.forEach(p=>{
+    const pTxs=cfTransactions.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end;});
+    incomes.push(+(pTxs.filter(t=>isIncomeTx(t)).reduce((s,t)=>s+t.amount,0)).toFixed(2));
+    outcomes.push(+(pTxs.filter(t=>isOutcomeTx(t)).reduce((s,t)=>s+t.amount,0)).toFixed(2));
+  });
+  const labels=periods.map(p=>p.label);
+  const c=getChartColors();
+  if(monthlyChart) monthlyChart.destroy();
+  monthlyChart=new Chart(el,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Income',data:incomes,backgroundColor:'rgba(16,185,129,0.85)',borderRadius:4,borderSkipped:false},
+      {label:'Outcomes',data:outcomes,backgroundColor:'rgba(248,113,113,0.85)',borderRadius:4,borderSkipped:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index'},
+      plugins:{
+        legend:{labels:{color:c.text,font:{size:12},boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1},
+        datalabels:{display:false} // no datalabels plugin loaded, keep clean
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxRotation:45}},
+        y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}
+      }
+    }
+  });
+}
+
+// ── Yearly charts (horizontal bars) ──
+function renderYearlyCharts(){
+  const yIncome=document.getElementById('yearly-income-chart');
+  const yOutcome=document.getElementById('yearly-outcome-chart');
+  if(!yIncome||!yOutcome) return;
+  const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort();
+  const incByYear=years.map(y=>+(cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&isIncomeTx(t)).reduce((s,t)=>s+t.amount,0)).toFixed(2));
+  const outByYear=years.map(y=>+(cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&isOutcomeTx(t)).reduce((s,t)=>s+t.amount,0)).toFixed(2));
+  const c=getChartColors();
+  const hOpts=(color)=>({
+    responsive:true,maintainAspectRatio:false,
+    indexAxis:'y',
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},
+    scales:{
+      x:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}},
+      y:{grid:{display:false},ticks:{color:c.text,font:{size:11}}}
+    }
+  });
+  if(yearlyIncomeChart) yearlyIncomeChart.destroy();
+  yearlyIncomeChart=new Chart(yIncome,{type:'bar',data:{labels:years,datasets:[{data:incByYear,backgroundColor:'rgba(16,185,129,0.85)',borderRadius:4,borderSkipped:false}]},options:hOpts('green')});
+  if(yearlyOutcomeChart) yearlyOutcomeChart.destroy();
+  yearlyOutcomeChart=new Chart(yOutcome,{type:'bar',data:{labels:years,datasets:[{data:outByYear,backgroundColor:'rgba(248,113,113,0.85)',borderRadius:4,borderSkipped:false}]},options:hOpts('red')});
+}
+
+// ── Savings per year (vertical, color-coded) ──
+function renderSavingsChart(){
+  const el=document.getElementById('savings-chart'); if(!el) return;
+  const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort();
+  const savings=years.map(y=>{
+    const inc=cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&isIncomeTx(t)).reduce((s,t)=>s+t.amount,0);
+    const out=cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&isOutcomeTx(t)).reduce((s,t)=>s+t.amount,0);
+    return +(inc-out).toFixed(2);
+  });
+  const c=getChartColors();
+  if(savingsChart) savingsChart.destroy();
+  savingsChart=new Chart(el,{
+    type:'bar',
+    data:{labels:years,datasets:[{data:savings,backgroundColor:savings.map(s=>s>=0?'rgba(16,185,129,0.85)':'rgba(248,113,113,0.85)'),borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
+  });
+}
+
+// ── Cumulative invested capital (dashed line, per period) ──
+function renderInvestedChart(){
+  const el=document.getElementById('invested-chart'); if(!el) return;
+  const purchases=[...cfTransactions].filter(t=>t.type==='purchase').sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(!purchases.length) return;
+  const periods=buildSalaryPeriods();
+  let cum=0;
+  const labels=[],data=[];
+  periods.forEach(p=>{
+    cum+=purchases.filter(t=>new Date(t.date)>=p.start&&new Date(t.date)<=p.end).reduce((s,t)=>s+t.amount,0);
+    labels.push(p.label); data.push(+cum.toFixed(2));
+  });
+  const c=getChartColors();
+  if(investedChart) investedChart.destroy();
+  investedChart=new Chart(el,{
+    type:'line',
+    data:{labels,datasets:[{data,borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.07)',borderWidth:2,borderDash:[6,3],tension:0,fill:true,pointRadius:3,pointBackgroundColor:'#818cf8',pointHoverRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
+  });
+}
+
+>
