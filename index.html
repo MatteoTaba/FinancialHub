@@ -615,7 +615,7 @@ tbody tr:hover td{background:var(--surface2)}
         <div class="card-title">Bank &amp; Cash balance</div>
         <div class="card-sub" id="ins-liquidity-sub"></div>
       </div>
-      <div class="chart-wrap" style="height:220px"><canvas id="ins-liquidity-chart">Liquidity over time.</canvas></div>
+      <div class="chart-wrap" style="height:220px"><canvas id="liquidity-chart">Liquidity over time.</canvas></div>
     </div>
 
     <!-- Row 3: Monthly income vs outcomes -->
@@ -625,7 +625,7 @@ tbody tr:hover td{background:var(--surface2)}
         <div class="card-title">Income vs Outcomes by period</div>
         <div id="ins-monthly-legend" class="legend"></div>
       </div>
-      <div class="chart-wrap" style="height:260px"><canvas id="ins-monthly-chart">Monthly income vs outcomes.</canvas></div>
+      <div class="chart-wrap" style="height:260px"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
     </div>
 
     <!-- Row 4: Yearly totals -->
@@ -633,11 +633,11 @@ tbody tr:hover td{background:var(--surface2)}
     <div class="alloc-grid" style="margin-bottom:1.5rem">
       <div class="card">
         <div class="card-title" style="margin-bottom:1rem">Total income per year</div>
-        <div class="chart-wrap" style="height:220px"><canvas id="ins-yr-income-chart">Yearly income.</canvas></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="yearly-income-chart">Yearly income.</canvas></div>
       </div>
       <div class="card">
         <div class="card-title" style="margin-bottom:1rem">Total outcomes per year</div>
-        <div class="chart-wrap" style="height:220px"><canvas id="ins-yr-outcome-chart">Yearly outcomes.</canvas></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="yearly-outcome-chart">Yearly outcomes.</canvas></div>
       </div>
     </div>
 
@@ -645,12 +645,12 @@ tbody tr:hover td{background:var(--surface2)}
     <div class="alloc-grid" style="margin-bottom:1.5rem">
       <div class="card">
         <div class="card-title" style="margin-bottom:1rem">Savings per year</div>
-        <div class="chart-wrap" style="height:220px"><canvas id="ins-savings-chart">Savings per year.</canvas></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="savings-chart">Savings per year.</canvas></div>
       </div>
       <div class="card">
         <div class="card-title" style="margin-bottom:1rem">Invested capital over time</div>
         <div class="card-sub" style="font-size:11px;color:var(--text3);margin-bottom:0.75rem">Cumulative money spent on purchases</div>
-        <div class="chart-wrap" style="height:200px"><canvas id="ins-invested-chart">Invested capital over time.</canvas></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="invested-chart">Invested capital over time.</canvas></div>
       </div>
     </div>
   </div>
@@ -1177,6 +1177,7 @@ const TX_COLORS={buy:'var(--green)',sell:'var(--red)',dividend:'var(--blue)',tra
 function renderTx(){
   const filtered=txFilter==='all'?transactions:transactions.filter(t=>t.type===txFilter);
   const empty=document.getElementById('tx-empty'), table=document.getElementById('tx-table'), tbody=document.getElementById('tx-tbody');
+  if(!empty||!table||!tbody) return; // old tx page removed
   if(!filtered.length){empty.style.display='';table.style.display='none';return;}
   empty.style.display='none'; table.style.display='';
   tbody.innerHTML=filtered.map(t=>`<tr>
@@ -1519,210 +1520,8 @@ function makeChartOpts(extra={}){
   };
 }
 
-function renderAllocation(){
-  // ── 1. Allocation doughnuts ──
-  const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
-  const byType={};
-  holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
-  const tKeys=Object.keys(byType);
-  const tLabels=tKeys.map(k=>TYPE_LABELS[k]||k);
-  const tData=tKeys.map(k=>byType[k]);
-  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
-  const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
-  const dOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}};
+// old liqChart fn removed
 
-  if(allocTypeChart) allocTypeChart.destroy();
-  allocTypeChart=new Chart(document.getElementById('alloc-type-chart'),{type:'doughnut',data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},options:dOpts});
-  document.getElementById('alloc-type-legend').innerHTML=tLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l} ${(tData[i]/total*100).toFixed(1)}%</div>`).join('');
-
-  const hLabels=holdings.map(h=>h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker);
-  const hData=holdings.map(h=>getVal(h));
-  const hColors=hLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
-  if(allocHoldChart) allocHoldChart.destroy();
-  allocHoldChart=new Chart(document.getElementById('alloc-hold-chart'),{type:'doughnut',data:{labels:hLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},options:dOpts});
-  document.getElementById('alloc-hold-legend').innerHTML=hLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
-
-  // ── 2. Liquidity over time ──
-  // One datapoint per salary period: sum of bank+cash holdings' avg_cost
-  // Since we don't have historical balances stored, we calculate from cashflow transactions
-  const liquidTypes=['bank','cash'];
-  const liquidHoldings=holdings.filter(h=>liquidTypes.includes(h.type));
-  // Build monthly liquidity from transactions: start with current balances, work backwards? 
-  // Actually we go forwards: find earliest tx date, build period snapshots
-  const allDates=cfTransactions.map(t=>new Date(t.date)).filter(d=>!isNaN(d));
-  if(allDates.length && liquidHoldings.length){
-    const earliest=new Date(Math.min(...allDates));
-    const now=new Date();
-    // Build periods from earliest salary date to now
-    const periods=[];
-    let y=earliest.getFullYear(), m=earliest.getMonth();
-    while(new Date(y,m,27)<=now){
-      const start=salaryPeriodStart(y,m);
-      const end=salaryPeriodEnd(y,m);
-      if(end>=earliest) periods.push({start,end,label:periodLabel(y,m),y,m});
-      m++; if(m>11){m=0;y++;}
-    }
-    // For each period end, compute liquid balance:
-    // current balance minus transactions that happened after period end
-    const liqLabels=periods.map(p=>p.label);
-    const liqData=periods.map(p=>{
-      let bal=liquidHoldings.reduce((s,h)=>s+h.avg_cost,0);
-      // Add back expenses that happened after period end (they reduced the balance)
-      // Subtract incomes that happened after period end (they increased the balance)
-      cfTransactions.forEach(t=>{
-        const tDate=new Date(t.date);
-        if(tDate>p.end){
-          const isLiqFrom=liquidHoldings.some(h=>h.id===t.holding_id);
-          const isLiqTo=liquidHoldings.some(h=>h.id===t.holding_to_id);
-          if(t.type==='expense'&&isLiqFrom) bal+=t.amount;
-          if(t.type==='income'&&isLiqFrom) bal-=t.amount;
-          if(t.type==='transfer'&&isLiqFrom) bal+=t.amount;
-          if(t.type==='transfer'&&isLiqTo) bal-=t.amount;
-          if(t.type==='purchase'&&isLiqTo) bal+=t.amount;
-          if(t.type==='sale'&&isLiqFrom) bal-=t.amount;
-        }
-      });
-      return Math.max(0,bal);
-    });
-    const cd=chartDefaults();
-    if(liqChart) liqChart.destroy();
-    liqChart=new Chart(document.getElementById('ins-liquidity-chart'),{
-      type:'line',
-      data:{labels:liqLabels,datasets:[{
-        label:'Liquidity',data:liqData,
-        borderColor:'#0ea5e9',
-        backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,220);g.addColorStop(0,'rgba(14,165,233,0.2)');g.addColorStop(1,'rgba(14,165,233,0)');return g;},
-        borderWidth:2.5,fill:true,tension:0.4,
-        pointRadius:liqData.length>8?0:4,pointHoverRadius:6,pointBackgroundColor:'#0ea5e9'
-      }]},
-      options:makeChartOpts()
-    });
-    document.getElementById('ins-liquidity-sub').textContent=`${periods.length} salary periods`;
-  } else {
-    document.getElementById('ins-liquidity-sub').textContent='No data yet';
-  }
-
-  // ── 3. Monthly income vs outcomes (salary periods) ──
-  const incomeTypes=['income','sale'];
-  const outcomeTypes=['expense','purchase'];
-  const allTxDates=cfTransactions.map(t=>new Date(t.date)).filter(d=>!isNaN(d));
-  if(allTxDates.length){
-    const earliest2=new Date(Math.min(...allTxDates));
-    const now2=new Date();
-    const mPeriods=[];
-    let y2=earliest2.getFullYear(), m2=earliest2.getMonth();
-    while(new Date(y2,m2,27)<=now2){
-      const start=salaryPeriodStart(y2,m2);
-      const end=salaryPeriodEnd(y2,m2);
-      if(end>=earliest2) mPeriods.push({start,end,label:new Date(y2,m2,27).toLocaleDateString('en-GB',{month:'short',year:'numeric'})});
-      m2++; if(m2>11){m2=0;y2++;}
-    }
-    const mLabels=mPeriods.map(p=>p.label);
-    const mIncome=mPeriods.map(p=>cfTransactions.filter(t=>{
-      const d=new Date(t.date); return d>=p.start&&d<=p.end&&incomeTypes.includes(t.type);
-    }).reduce((s,t)=>s+t.amount,0));
-    const mOutcome=mPeriods.map(p=>cfTransactions.filter(t=>{
-      const d=new Date(t.date); return d>=p.start&&d<=p.end&&outcomeTypes.includes(t.type);
-    }).reduce((s,t)=>s+t.amount,0));
-
-    const cd2=chartDefaults();
-    if(monthlyChart) monthlyChart.destroy();
-    monthlyChart=new Chart(document.getElementById('ins-monthly-chart'),{
-      type:'bar',
-      data:{labels:mLabels,datasets:[
-        {label:'Income', data:mIncome, backgroundColor:'rgba(16,185,129,0.75)',borderRadius:5,borderSkipped:false},
-        {label:'Outcomes',data:mOutcome,backgroundColor:'rgba(239,68,68,0.7)', borderRadius:5,borderSkipped:false}
-      ]},
-      options:{...makeChartOpts(),plugins:{...makeChartOpts().plugins,legend:{display:false}}}
-    });
-    document.getElementById('ins-monthly-legend').innerHTML=
-      `<div class="legend-item"><span class="legend-dot" style="background:#10b981"></span>Income</div>
-       <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Outcomes</div>`;
-  }
-
-  // ── 4. Yearly income and outcomes ──
-  const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort();
-  if(years.length){
-    const yrIncome=years.map(y=>cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&incomeTypes.includes(t.type)).reduce((s,t)=>s+t.amount,0));
-    const yrOutcome=years.map(y=>cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&outcomeTypes.includes(t.type)).reduce((s,t)=>s+t.amount,0));
-    const yrSavings=years.map((_,i)=>Math.max(0,yrIncome[i]-yrOutcome[i]));
-    const yLabels=years.map(String);
-
-    if(yrIncChart) yrIncChart.destroy();
-    yrIncChart=new Chart(document.getElementById('ins-yr-income-chart'),{
-      type:'bar',data:{labels:yLabels,datasets:[{label:'Income',data:yrIncome,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:6,borderSkipped:false}]},
-      options:makeChartOpts()
-    });
-    if(yrOutChart) yrOutChart.destroy();
-    yrOutChart=new Chart(document.getElementById('ins-yr-outcome-chart'),{
-      type:'bar',data:{labels:yLabels,datasets:[{label:'Outcomes',data:yrOutcome,backgroundColor:'rgba(239,68,68,0.7)',borderRadius:6,borderSkipped:false}]},
-      options:makeChartOpts()
-    });
-
-    // ── 5. Savings per year ──
-    if(savingsChart) savingsChart.destroy();
-    savingsChart=new Chart(document.getElementById('ins-savings-chart'),{
-      type:'bar',
-      data:{labels:yLabels,datasets:[{
-        label:'Savings',data:yrSavings,
-        backgroundColor:yrSavings.map(v=>v>=0?'rgba(99,102,241,0.75)':'rgba(239,68,68,0.7)'),
-        borderRadius:6,borderSkipped:false
-      }]},
-      options:makeChartOpts()
-    });
-  }
-
-  // ── 6. Invested capital over time (cumulative purchases) ──
-  const purchaseTxs=cfTransactions.filter(t=>t.type==='purchase').sort((a,b)=>new Date(a.date)-new Date(b.date));
-  if(purchaseTxs.length){
-    let cum=0;
-    const invLabels=[], invData=[];
-    purchaseTxs.forEach(t=>{
-      cum+=t.amount;
-      invLabels.push(new Date(t.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'}));
-      invData.push(cum);
-    });
-    const cd3=chartDefaults();
-    if(investedChart) investedChart.destroy();
-    investedChart=new Chart(document.getElementById('ins-invested-chart'),{
-      type:'line',
-      data:{labels:invLabels,datasets:[{
-        label:'Invested',data:invData,
-        borderColor:'#818cf8',
-        backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(129,140,248,0.22)');g.addColorStop(1,'rgba(129,140,248,0)');return g;},
-        borderWidth:2.5,fill:true,tension:0.3,
-        pointRadius:invData.length>20?0:4,pointHoverRadius:6,pointBackgroundColor:'#818cf8',
-        stepped:true
-      }]},
-      options:makeChartOpts()
-    });
-  }
-}
-
-// ─────────────────────────────────────────
-// CASHFLOW
-// ─────────────────────────────────────────
-let cfCategories = [], cfTransactions = [], cfRecurrences = [];
-let cfType = 'expense', cfCtx = 'account', cfIType = 'purchase';
-
-const DEFAULT_CATS = [
-  {name:'Food & Dining',    icon:'ti-tools-kitchen-2', color:'#f59e0b'},
-  {name:'Transport',        icon:'ti-car',              color:'#3b82f6'},
-  {name:'Bills & Utilities',icon:'ti-file-invoice',     color:'#6366f1'},
-  {name:'Health',           icon:'ti-heart-rate-monitor',color:'#ec4899'},
-  {name:'Entertainment',    icon:'ti-device-tv',         color:'#8b5cf6'},
-  {name:'Shopping',         icon:'ti-shopping-bag',      color:'#f97316'},
-  {name:'Salary',           icon:'ti-briefcase',         color:'#10b981'},
-  {name:'Investment',       icon:'ti-trending-up',       color:'#0ea5e9'},
-];
-
-const TYPE_COLOR_CF = {expense:'var(--red)',income:'var(--green)',transfer:'var(--accent)',purchase:'var(--blue)',sale:'#f59e0b'};
-const TYPE_ICON_CF  = {expense:'ti-arrow-up-right',income:'ti-arrow-down-left',transfer:'ti-arrows-exchange',purchase:'ti-shopping-cart',sale:'ti-tag'};
-const TYPE_BG_CF    = {expense:'var(--red-bg)',income:'var(--green-bg)',transfer:'rgba(99,102,241,0.12)',purchase:'rgba(96,165,250,0.12)',sale:'rgba(245,158,11,0.12)'};
-const INVEST_TYPES  = ['stock','etf','crypto','bond'];
-const SIMPLE_TYPES  = ['bank','cash'];
-
-// ── Date helpers (Rome timezone) ──
 function nowRome(){
   return new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Rome'}));
 }
