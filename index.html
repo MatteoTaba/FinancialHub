@@ -1456,773 +1456,8 @@ function renderHoldingBoxes(){
 
 // ── INSIGHTS ──
 
-// Italian national holidays (MM-DD format)
+
 const IT_HOLIDAYS = ['01-01','01-06','04-25','05-01','06-02','08-15','11-01','12-08','12-25','12-26'];
-function isItalianHoliday(d){ return IT_HOLIDAYS.includes(`${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); }
-function isWeekend(d){ return d.getDay()===0||d.getDay()===6; }
-
-// Get the actual salary payment date for a given year/month
-// Salary is on 27th; if weekend or Italian holiday, move back to first working day before
-function salaryDate(year, month){
-  let d = new Date(year, month, 27);
-  while(isWeekend(d)||isItalianHoliday(d)){
-    d.setDate(d.getDate()-1);
-  }
-  return d;
-}
-
-// Get salary period boundaries: period starts on salary date of given month,
-// ends day before salary date of next month
-function salaryPeriodStart(year, month){ return salaryDate(year, month); }
-function salaryPeriodEnd(year, month){
-  const next = month===11 ? salaryDate(year+1,0) : salaryDate(year,month+1);
-  const end = new Date(next); end.setDate(end.getDate()-1); end.setHours(23,59,59,999);
-  return end;
-}
-
-// Label for a salary period: "Dec 27 – Jan 26"
-function periodLabel(year, month){
-  const start = salaryDate(year,month);
-  const endM  = month===11 ? 0 : month+1;
-  const endY  = month===11 ? year+1 : year;
-  const endD  = salaryDate(endY,endM);
-  const s = start.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  const e = new Date(endD); e.setDate(e.getDate()-1);
-  const el = e.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-  return `${s} – ${el}`;
-}
-
-function chartDefaults(){
-  const isDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
-  return {
-    gridColor: isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)',
-    textColor: isDark?'#94a3b8':'#6b7280',
-    tooltipBg: isDark?'#1a1d27':'#fff',
-    tooltipBody: isDark?'#f1f5f9':'#111',
-    tooltipBorder: isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)',
-  };
-}
-
-function makeChartOpts(extra={}){
-  const cd=chartDefaults();
-  return {
-    responsive:true, maintainAspectRatio:false,
-    interaction:{mode:'index',intersect:false},
-    plugins:{
-      legend:{display:false},
-      tooltip:{backgroundColor:cd.tooltipBg,titleColor:cd.textColor,bodyColor:cd.tooltipBody,borderColor:cd.tooltipBorder,borderWidth:1,callbacks:{label:ctx=>fmt(ctx.raw)}}
-    },
-    scales:{
-      x:{grid:{display:false},ticks:{color:cd.textColor,font:{size:11},maxTicksLimit:12}},
-      y:{grid:{color:cd.gridColor},ticks:{color:cd.textColor,font:{size:11},callback:v=>'€'+Number(v).toLocaleString('it-IT')}}
-    },
-    ...extra
-  };
-}
-
-// old liqChart fn removed
-
-function nowRome(){
-  return new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Rome'}));
-}
-function toRomeString(date){
-  return new Intl.DateTimeFormat('en-GB',{
-    timeZone:'Europe/Rome', day:'2-digit', month:'2-digit', year:'numeric',
-    hour:'2-digit', minute:'2-digit', hour12:false
-  }).format(date).replace(',','');
-}
-function parseDateInput(input, hiddenId){
-  const val = input.value;
-  // Accept: dd/mm/yyyy hh:mm or dd/mm/yyyy
-  const m = val.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
-  const previewId = input.id + '-preview';
-  const preview = document.getElementById(previewId);
-  if(m){
-    const d=m[1].padStart(2,'0'),mo=m[2].padStart(2,'0'),y=m[3],h=(m[4]||'00').padStart(2,'0'),min=(m[5]||'00').padStart(2,'0');
-    const iso = `${y}-${mo}-${d}T${h}:${min}:00`;
-    const parsed = new Date(iso);
-    if(!isNaN(parsed)){
-      if(hiddenId) document.getElementById(hiddenId).value = iso;
-      else input.dataset.iso = iso;
-      if(preview) preview.textContent = '✓ ' + parsed.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      return iso;
-    }
-  }
-  if(preview && val.length>0) preview.textContent = 'Format: dd/mm/yyyy hh:mm';
-  else if(preview) preview.textContent = '';
-  if(hiddenId) document.getElementById(hiddenId).value = '';
-  return null;
-}
-function getDateIso(inputId, hiddenId){
-  if(hiddenId){
-    const v = document.getElementById(hiddenId).value;
-    return v || null;
-  }
-  return document.getElementById(inputId).dataset.iso || null;
-}
-
-async function loadCashflow(){
-  [cfCategories, cfTransactions, cfRecurrences] = await Promise.all([
-    api('cashflow_categories?order=name.asc'),
-    api('cashflow_transactions?order=date.desc'),
-    api('recurrences?order=next_due.asc'),
-  ]);
-  if(!cfCategories.length){
-    for(const c of DEFAULT_CATS){
-      const r = await api('cashflow_categories',{method:'POST',body:JSON.stringify(c)});
-      if(Array.isArray(r)&&r[0]) cfCategories.push(r[0]);
-    }
-  }
-  await processRecurrences();
-  renderCashflow();
-  renderSettings();
-  renderInsights();
-}
-
-async function processRecurrences(){
-  const now = new Date();
-  let anyCreated = false;
-  for(const r of cfRecurrences){
-    if(!r.active) continue;
-    let due = new Date(r.next_due);
-    while(due <= now){
-      await api('cashflow_transactions',{method:'POST',body:JSON.stringify({
-        type:r.type, amount:r.amount, description:r.description,
-        category_id:r.category_id, holding_id:r.holding_id,
-        holding_to_id:r.holding_to_id, date:due.toISOString(), recurring_id:r.id
-      })});
-      await applyBalanceChange(r.type, r.amount, r.holding_id, r.holding_to_id);
-      due = advanceDue(due, r.frequency);
-      anyCreated = true;
-    }
-    await api(`recurrences?id=eq.${r.id}`,{method:'PATCH',body:JSON.stringify({next_due:due.toISOString(),last_run:now.toISOString()})});
-  }
-  if(anyCreated){
-    cfTransactions = await api('cashflow_transactions?order=date.desc');
-    holdings = await api('holdings?order=created_at.asc');
-  }
-}
-
-function advanceDue(date,freq){
-  const d=new Date(date);
-  if(freq==='daily') d.setDate(d.getDate()+1);
-  if(freq==='weekly') d.setDate(d.getDate()+7);
-  if(freq==='monthly') d.setMonth(d.getMonth()+1);
-  if(freq==='yearly') d.setFullYear(d.getFullYear()+1);
-  return d;
-}
-
-async function applyBalanceChange(type, amount, fromId, toId){
-  holdings = await api('holdings?order=created_at.asc');
-  if(type==='expense'&&fromId){
-    const h=holdings.find(x=>x.id===fromId);
-    if(h) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(h.avg_cost||0)-amount)})});
-  } else if(type==='income'&&fromId){
-    const h=holdings.find(x=>x.id===fromId);
-    if(h) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(h.avg_cost||0)+amount})});
-  } else if(type==='transfer'&&fromId&&toId){
-    const hf=holdings.find(x=>x.id===fromId), ht=holdings.find(x=>x.id===toId);
-    if(hf) await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(hf.avg_cost||0)-amount)})});
-    if(ht) await api(`holdings?id=eq.${toId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(ht.avg_cost||0)+amount})});
-  }
-}
-
-// ── Render cashflow: grouped by category, sub-grouped by holding ──
-function renderCashflow(){
-  const container = document.getElementById('cf-accounts');
-  if(!container) return;
-  if(!holdings.length){ container.innerHTML='<div class="card"><div class="empty"><i class="ti ti-wallet"></i><p>No holdings yet.</p></div></div>'; return; }
-  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
-
-  // Group holdings by type
-  const byType={};
-  holdings.forEach(h=>{ if(!byType[h.type]) byType[h.type]=[]; byType[h.type].push(h); });
-  const sortedTypes=Object.keys(byType).sort((a,b)=>(TYPE_LABELS[a]||a).localeCompare(TYPE_LABELS[b]||b));
-
-  container.innerHTML = sortedTypes.map(type=>{
-    const items=byType[type];
-    const color=typeColorMap[type]||'#888';
-    const icon=TYPE_ICONS[type]||'ti-wallet';
-    const catTotal=items.reduce((s,h)=>s+getVal(h),0);
-    const allTxs=cfTransactions.filter(t=>items.some(h=>h.id===t.holding_id||h.id===t.holding_to_id));
-
-    // Sub-groups per holding
-    const subGroups=items.map(h=>{
-      const dispName=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
-      const hTxs=cfTransactions.filter(t=>t.holding_id===h.id||t.holding_to_id===h.id);
-      const recent=hTxs.slice(0,5);
-      const txRows=recent.map(t=>cfTxRow(t,h)).join('');
-      const seeAll=`<button class="cf-see-all" onclick="showAllTx('${h.id}')" style="border-top:1px solid var(--border)">See all transactions <i class="ti ti-chevron-right" style="font-size:11px;vertical-align:middle"></i></button>`;
-      return `<div style="border-top:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 1.25rem;background:var(--surface2)">
-          <span style="font-size:13px;font-weight:600;flex:1">${dispName}</span>
-          <span style="font-size:13px;font-weight:700">${fmt(getVal(h))}</span>
-        </div>
-        ${txRows||'<div style="padding:10px 1.25rem;color:var(--text3);font-size:12px">No transactions yet</div>'}
-        ${seeAll}
-      </div>`;
-    }).join('');
-
-    return `<div class="cf-account-block">
-      <div class="cf-account-header" onclick="toggleCfAccount(this)">
-        <div class="cf-account-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
-        <div>
-          <div class="cf-account-name">${TYPE_LABELS[type]||type}</div>
-          <div class="cf-account-sub">${items.length} holding${items.length>1?'s':''} · ${allTxs.length} transaction${allTxs.length!==1?'s':''}</div>
-        </div>
-        <div class="cf-account-val"><div class="cf-account-val-num">${fmt(catTotal)}</div></div>
-        <i class="ti ti-chevron-down cf-account-chevron"></i>
-      </div>
-      <div class="cf-account-body">${subGroups}</div>
-    </div>`;
-  }).join('');
-}
-
-function cfTxRow(t,h){
-  const cat=cfCategories.find(c=>c.id===t.category_id);
-  const txType=t.type||'expense';
-  const hId=h?.id;
-
-  // Determine sign and color from the perspective of the holding being displayed:
-  // purchase: holding_id = asset acquired (+), holding_to_id = account debited (-)
-  // sale:     holding_id = asset sold (-),     holding_to_id = account credited (+)
-  // transfer: holding_id = source (-),         holding_to_id = destination (+)
-  // income:   always + for holding_id
-  // expense:  always - for holding_id
-  let amtSign, amtColor, bgColor, icon;
-  if(txType==='purchase'){
-    const isAcquired = hId===t.holding_id;
-    amtSign  = isAcquired ? '+' : '-';
-    amtColor = isAcquired ? 'var(--green)' : 'var(--red)';
-    bgColor  = isAcquired ? 'var(--green-bg)' : 'var(--red-bg)';
-    icon     = isAcquired ? 'ti-arrow-down-left' : 'ti-arrow-up-right';
-  } else if(txType==='sale'){
-    const isSold = hId===t.holding_id;
-    amtSign  = isSold ? '-' : '+';
-    amtColor = isSold ? 'var(--red)' : 'var(--green)';
-    bgColor  = isSold ? 'var(--red-bg)' : 'var(--green-bg)';
-    icon     = isSold ? 'ti-arrow-up-right' : 'ti-arrow-down-left';
-  } else if(txType==='transfer'){
-    const isSource = hId===t.holding_id;
-    amtSign  = isSource ? '-' : '+';
-    amtColor = isSource ? 'var(--red)' : 'var(--green)';
-    bgColor  = 'rgba(99,102,241,0.12)';
-    icon     = 'ti-arrows-exchange';
-  } else if(txType==='income'){
-    amtSign='+'  ; amtColor='var(--green)'; bgColor='var(--green-bg)'; icon='ti-arrow-down-left';
-  } else {
-    amtSign='-'  ; amtColor='var(--red)'  ; bgColor='var(--red-bg)'  ; icon='ti-arrow-up-right';
-  }
-
-  const date=new Date(t.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'});
-  const catLabel=cat?`<span style="color:${cat.color}">${cat.name}</span>`:'';
-  const typeLabel=txType==='purchase'?'Purchase':txType==='sale'?'Sale':'';
-  const recurLabel=t.recurring_id?`<span style="color:var(--accent);display:inline-flex;align-items:center;gap:3px"><i class="ti ti-repeat" style="font-size:10px"></i>Recurring</span>`:'';
-  const subLabel=[catLabel,typeLabel,recurLabel].filter(x=>x&&x.trim()).join(' · ');
-  return `<div class="cf-tx-row">
-    <div class="cf-tx-icon" style="background:${bgColor};color:${amtColor}"><i class="ti ${icon}"></i></div>
-    <div class="cf-tx-desc">
-      <div class="cf-tx-name">${t.description||'—'}</div>
-      <div class="cf-tx-cat">${subLabel||''}</div>
-    </div>
-    <div style="text-align:right">
-      <div class="cf-tx-amount" style="color:${amtColor}">${amtSign}${fmt(t.amount)}</div>
-      <div class="cf-tx-date">${date}</div>
-    </div>
-    <button class="btn btn-sm btn-danger" style="margin-left:8px" onclick="deleteCfTx('${t.id}','${t.holding_id||''}','${t.holding_to_id||''}','${t.type}',${t.amount})"><i class="ti ti-trash"></i></button>
-  </div>`;
-}
-
-function toggleCfAccount(header){
-  const body=header.nextElementSibling;
-  const open=body.classList.contains('open');
-  body.classList.toggle('open',!open);
-  header.classList.toggle('open',!open);
-}
-
-// Types considered "income-like" from the holding's perspective
-function isIncomeSide(t, hId){
-  if(t.type==='income') return true;
-  if(t.type==='sale' && t.holding_to_id===hId) return true;   // proceeds credited here
-  if(t.type==='purchase' && t.holding_id===hId) return true;  // asset acquired here
-  if(t.type==='transfer' && t.holding_to_id===hId) return true;
-  return false;
-}
-function isOutcomeSide(t, hId){
-  if(t.type==='expense') return true;
-  if(t.type==='purchase' && t.holding_to_id===hId) return true; // paid from here
-  if(t.type==='sale' && t.holding_id===hId) return true;         // asset reduced here
-  if(t.type==='transfer' && t.holding_id===hId) return true;
-  return false;
-}
-function isTransferSide(t){ return t.type==='transfer'; }
-
-let allTxHoldingId=null, allTxFilter='all';
-
-function showAllTx(holdingId){
-  allTxHoldingId=holdingId;
-  allTxFilter='all';
-  renderAllTx();
-}
-
-function setAllTxFilter(f, btn){
-  allTxFilter=f;
-  document.querySelectorAll('.alltx-filter').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  renderAllTxBody();
-}
-
-function renderAllTx(){
-  const h=holdings.find(x=>x.id===allTxHoldingId);
-  const dispName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'Account';
-  const container=document.getElementById('cf-accounts');
-  // Build header
-  const header=document.createElement('div');
-  header.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap';
-  header.innerHTML=`<button class="btn" onclick="renderCashflow()"><i class="ti ti-arrow-left"></i> Back</button><div style="font-size:18px;font-weight:700;flex:1">${dispName} — All transactions</div>`;
-  // Build filters
-  const filters=document.createElement('div');
-  filters.className='filters';
-  filters.style.marginBottom='1rem';
-  filters.innerHTML=`
-    <button class="alltx-filter filter-btn active" onclick="setAllTxFilter('all',this)">All</button>
-    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('income',this)"><i class="ti ti-arrow-down-left" style="font-size:11px"></i> Income</button>
-    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('outcome',this)"><i class="ti ti-arrow-up-right" style="font-size:11px"></i> Outcome</button>
-    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('transfer',this)"><i class="ti ti-arrows-exchange" style="font-size:11px"></i> Transfer</button>`;
-  // Build body container
-  const body=document.createElement('div');
-  body.id='alltx-body';
-  // Mount all at once
-  container.innerHTML='';
-  container.appendChild(header);
-  container.appendChild(filters);
-  container.appendChild(body);
-  renderAllTxBody();
-}
-
-function renderAllTxBody(){
-  const h=holdings.find(x=>x.id===allTxHoldingId);
-  const hId=allTxHoldingId;
-  let hTxs=cfTransactions.filter(t=>t.holding_id===hId||t.holding_to_id===hId);
-  if(allTxFilter==='income')   hTxs=hTxs.filter(t=>isIncomeSide(t,hId)&&!isTransferSide(t));
-  if(allTxFilter==='outcome')  hTxs=hTxs.filter(t=>isOutcomeSide(t,hId)&&!isTransferSide(t));
-  if(allTxFilter==='transfer') hTxs=hTxs.filter(t=>isTransferSide(t));
-
-  const groups={};
-  hTxs.forEach(t=>{
-    const key=new Date(t.date).toLocaleDateString('en-GB',{year:'numeric',month:'long',timeZone:'Europe/Rome'});
-    if(!groups[key]) groups[key]=[];
-    groups[key].push(t);
-  });
-
-  const body=document.getElementById('alltx-body');
-  if(!body) return;
-  body.innerHTML=Object.keys(groups).length
-    ? `<div class="card" style="padding:0;overflow:hidden">`+
-      Object.entries(groups).map(([month,txs])=>`
-        <div style="padding:10px 1.25rem 4px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;background:var(--surface2);border-bottom:1px solid var(--border)">${month}</div>
-        ${txs.map(t=>cfTxRow(t,h)).join('')}
-      `).join('')+`</div>`
-    : '<div class="card"><div class="empty"><i class="ti ti-list"></i><p>No transactions for this filter</p></div></div>';
-}
-
-// ── Form show/hide ──
-function showCfForm(){
-  document.getElementById('cf-main').style.display='none';
-  document.getElementById('cf-form').style.display='';
-  document.getElementById('cf-fab').style.display='none';
-  populateCfForm();
-}
-function showCfMain(){
-  document.getElementById('cf-main').style.display='';
-  document.getElementById('cf-form').style.display='none';
-  document.getElementById('cf-fab').style.display='';
-}
-
-function updateInvCounterparts(){
-  const selectedId = document.getElementById('inv-asset').value;
-  const opts = holdings.filter(h=>h.id!==selectedId).map(h=>{
-    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
-    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
-  }).join('');
-  document.getElementById('inv-paid-from').innerHTML=opts;
-  document.getElementById('inv-sale-to').innerHTML=opts;
-}
-
-function setCfCtx(ctx, btn){
-  cfCtx=ctx;
-  document.querySelectorAll('[data-ctx]').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  document.getElementById('cf-account-form').style.display = ctx==='account'?'':'none';
-  document.getElementById('cf-invest-form').style.display  = ctx==='investment'?'':'none';
-}
-
-function populateCfForm(){
-  const now=nowRome();
-  const str=toRomeString(now);
-  ['cf-date','inv-date'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el){ el.value=str; el.dataset.iso=now.toISOString(); }
-  });
-  const isoNow=now.toISOString().slice(0,16);
-  document.getElementById('cf-recur-start').value=toRomeString(now);
-  document.getElementById('cf-recur-start-parsed').value=isoNow;
-  ['cf-date-preview','inv-date-preview'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent=''; });
-  document.getElementById('cf-recurring').checked=false;
-  document.getElementById('cf-recurring-opts').style.display='none';
-  document.getElementById('cf-amount').value='';
-  document.getElementById('cf-desc').value='';
-  document.getElementById('inv-desc').value='';
-
-  // Populate category selects
-  const catOpts=cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  document.getElementById('cf-cat').innerHTML=catOpts;
-  document.getElementById('inv-cat').innerHTML=catOpts;
-
-  // Bank/cash holdings for account form
-  const simplHoldings=holdings.filter(h=>SIMPLE_TYPES.includes(h.type));
-  const allHoldings=holdings;
-  const simpleOpts=simplHoldings.map(h=>`<option value="${h.id}">${h.name||h.ticker} (${TYPE_LABELS[h.type]})</option>`).join('');
-  const allOpts=allHoldings.map(h=>{
-    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
-    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]})</option>`;
-  }).join('');
-  document.getElementById('cf-from').innerHTML=simpleOpts||allOpts;
-  document.getElementById('cf-to').innerHTML=simpleOpts||allOpts;
-
-  // Investment holdings for investment form
-  const investHoldings=holdings.filter(h=>INVEST_TYPES.includes(h.type));
-  document.getElementById('inv-asset').innerHTML=investHoldings.map(h=>{
-    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
-    return `<option value="${h.id}">${n} (${h.ticker})</option>`;
-  }).join('');
-  // Update paid-from/sale-to when asset changes
-  document.getElementById('inv-asset').onchange = updateInvCounterparts;
-
-  // "Paid from" / "Sale to" = all holdings except the selected asset
-  updateInvCounterparts();
-  document.getElementById('inv-expinc-acct').innerHTML=allOpts;
-
-  setCfCtx('account', document.querySelector('[data-ctx="account"]'));
-  setCfType('expense', document.querySelector('[data-type="expense"]'));
-  setCfIType('purchase', document.querySelector('[data-itype="purchase"]'));
-}
-
-function setCfType(type, btn){
-  cfType=type;
-  document.querySelectorAll('.cf-type-btn[data-type]').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else { const b=document.querySelector(`.cf-type-btn[data-type="${type}"]`); if(b) b.classList.add('active'); }
-  document.getElementById('cf-to-wrap').style.display  =type==='transfer'?'':'none';
-  document.getElementById('cf-cat-wrap').style.display =type==='transfer'?'none':'';
-  document.getElementById('cf-from-label').textContent =type==='income'?'To account':'From account';
-}
-
-function setCfIType(itype, btn){
-  cfIType=itype;
-  document.querySelectorAll('.cf-type-btn[data-itype]').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else { const b=document.querySelector(`.cf-type-btn[data-itype="${itype}"]`); if(b) b.classList.add('active'); }
-  document.getElementById('inv-purchase-fields').style.display=itype==='purchase'?'':'none';
-  document.getElementById('inv-sale-fields').style.display    =itype==='sale'?'':'none';
-  document.getElementById('inv-expinc-fields').style.display  =(itype==='expense'||itype==='income')?'':'none';
-  document.getElementById('inv-expinc-acct-label').textContent=itype==='income'?'To account':'From account';
-}
-
-function onInvAssetChange(){
-  calcSaleTotal(); // refresh P&L if sale
-}
-
-function calcInvTotal(){
-  const qty=parseFloat(document.getElementById('inv-qty').value)||0;
-  const price=parseFloat(document.getElementById('inv-price').value)||0;
-  if(qty&&price) document.getElementById('inv-total').value=(qty*price).toFixed(2);
-}
-function calcInvFromTotal(){
-  const total=parseFloat(document.getElementById('inv-total').value)||0;
-  const qty=parseFloat(document.getElementById('inv-qty').value)||0;
-  if(total&&qty) document.getElementById('inv-price').value=(total/qty).toFixed(4);
-  else if(total&&!qty){ /* can't back-calc qty without price */ }
-}
-function calcSaleTotal(){
-  const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
-  const price=parseFloat(document.getElementById('inv-sale-price').value)||0;
-  if(qty&&price){
-    const total=qty*price;
-    document.getElementById('inv-sale-total').value=total.toFixed(2);
-    updatePnl(qty,price);
-  }
-}
-function calcSaleFromTotal(){
-  const total=parseFloat(document.getElementById('inv-sale-total').value)||0;
-  const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
-  if(total&&qty){
-    const price=total/qty;
-    document.getElementById('inv-sale-price').value=price.toFixed(4);
-    updatePnl(qty,price);
-  }
-}
-function updatePnl(qty,salePrice){
-  const assetId=document.getElementById('inv-asset').value;
-  const h=holdings.find(x=>x.id===assetId);
-  if(!h||!qty||!salePrice){ document.getElementById('inv-pnl-preview').style.display='none'; return; }
-  const costBasis=h.avg_cost*qty;
-  const revenue=qty*salePrice;
-  const pnl=revenue-costBasis;
-  const pct=costBasis>0?pnl/costBasis*100:0;
-  const pnlEl=document.getElementById('inv-pnl-val');
-  const detEl=document.getElementById('inv-pnl-detail');
-  pnlEl.textContent=(pnl>=0?'+':'')+fmt(pnl)+' ('+fmtPct(pct)+')';
-  pnlEl.style.color=pnl>=0?'var(--green)':'var(--red)';
-  detEl.textContent=`Cost basis ${fmt(costBasis)} · Revenue ${fmt(revenue)} · Avg cost ${fmt(h.avg_cost)}/unit`;
-  document.getElementById('inv-pnl-preview').style.display='';
-}
-
-function toggleRecurring(on){
-  document.getElementById('cf-recurring-opts').style.display=on?'':'none';
-}
-
-// ── Save account transaction ──
-async function saveCfTransaction(){
-  const amount=parseFloat(document.getElementById('cf-amount').value)||0;
-  const desc=document.getElementById('cf-desc').value.trim();
-  const catId=document.getElementById('cf-cat').value||null;
-  const dateIso=document.getElementById('cf-date').dataset.iso||new Date().toISOString();
-  const fromId=document.getElementById('cf-from').value||null;
-  const toId=document.getElementById('cf-to').value||null;
-  const isRecur=document.getElementById('cf-recurring').checked;
-  if(amount<=0){alert('Please enter an amount.');return;}
-  if(!fromId){alert('Please select an account.');return;}
-  if(cfType==='transfer'&&fromId===toId){alert('Source and destination account must be different.');return;}
-  const txData={
-    type:cfType, amount, description:desc||null,
-    category_id:cfType==='transfer'?null:catId,
-    holding_id:fromId,
-    holding_to_id:cfType==='transfer'?toId:null,
-    date:dateIso
-  };
-  if(isRecur){
-    const freq=document.getElementById('cf-freq').value;
-    const startIso=document.getElementById('cf-recur-start-parsed').value||dateIso;
-    const recur=await api('recurrences',{method:'POST',body:JSON.stringify({
-      type:cfType, amount, description:desc||null,
-      category_id:cfType==='transfer'?null:catId,
-      holding_id:fromId, holding_to_id:cfType==='transfer'?toId:null,
-      frequency:freq, next_due:startIso, active:true
-    })});
-    if(Array.isArray(recur)&&recur[0]) txData.recurring_id=recur[0].id;
-  }
-  await api('cashflow_transactions',{method:'POST',body:JSON.stringify(txData)});
-  await applyBalanceChange(cfType, amount, fromId, cfType==='transfer'?toId:null);
-  await reloadCfData();
-  renderCashflow(); renderSettings(); renderOverview();
-  showCfMain(); toast('Transaction saved ✓');
-}
-
-// ── Save investment transaction ──
-async function saveInvTransaction(){
-  const assetId=document.getElementById('inv-asset').value;
-  const desc=document.getElementById('inv-desc').value.trim();
-  const catId=document.getElementById('inv-cat').value||null;
-  const dateIso=document.getElementById('inv-date').dataset.iso||new Date().toISOString();
-  const h=holdings.find(x=>x.id===assetId);
-  if(!h){alert('Please select an asset.');return;}
-
-  if(cfIType==='purchase'){
-    const qty=parseFloat(document.getElementById('inv-qty').value)||0;
-    const price=parseFloat(document.getElementById('inv-price').value)||0;
-    const total=parseFloat(document.getElementById('inv-total').value)||(qty*price);
-    const paidFromId=document.getElementById('inv-paid-from').value||null;
-    if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
-    if(paidFromId&&paidFromId===assetId){alert('The asset purchased and the account used to pay cannot be the same.');return;}
-    // Update holding: new avg cost and qty
-    const newQty=h.qty+qty;
-    const newAvg=(h.qty*h.avg_cost+qty*price)/newQty;
-    await api(`holdings?id=eq.${assetId}`,{method:'PATCH',body:JSON.stringify({qty:newQty,avg_cost:newAvg})});
-    // Deduct from paid-from holding if selected
-    if(paidFromId){
-      const pf=holdings.find(x=>x.id===paidFromId);
-      if(pf) await api(`holdings?id=eq.${paidFromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(pf.avg_cost||0)-total)})});
-    }
-    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({
-      type:'purchase', amount:total, description:desc||`Purchased ${qty} ${h.ticker}`,
-      category_id:catId, holding_id:assetId, holding_to_id:paidFromId, date:dateIso
-    })});
-
-  } else if(cfIType==='sale'){
-    const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
-    const price=parseFloat(document.getElementById('inv-sale-price').value)||0;
-    const total=parseFloat(document.getElementById('inv-sale-total').value)||(qty*price);
-    const saleToId=document.getElementById('inv-sale-to').value||null;
-    if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
-    if(qty>h.qty){alert(`You only have ${h.qty} units of ${h.ticker}.`);return;}
-    if(saleToId&&saleToId===assetId){alert('The asset sold and the destination account cannot be the same.');return;}
-    // Reduce holding qty
-    const newQty=h.qty-qty;
-    await api(`holdings?id=eq.${assetId}`,{method:'PATCH',body:JSON.stringify({qty:newQty})});
-    // Credit proceeds to target holding
-    if(saleToId){
-      const st=holdings.find(x=>x.id===saleToId);
-      if(st) await api(`holdings?id=eq.${saleToId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(st.avg_cost||0)+total})});
-    }
-    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({
-      type:'sale', amount:total, description:desc||`Sold ${qty} ${h.ticker}`,
-      category_id:catId, holding_id:assetId, holding_to_id:saleToId, date:dateIso
-    })});
-
-  } else {
-    // Expense or Income on investment
-    const amount=parseFloat(document.getElementById('inv-amount').value)||0;
-    const acctId=document.getElementById('inv-expinc-acct').value||null;
-    if(amount<=0){alert('Please enter an amount.');return;}
-    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({
-      type:cfIType, amount, description:desc||null,
-      category_id:catId, holding_id:assetId, date:dateIso
-    })});
-    await applyBalanceChange(cfIType, amount, cfIType==='expense'?acctId:acctId, null);
-  }
-
-  await reloadCfData();
-  renderCashflow(); renderOverview(); renderSettings();
-  showCfMain(); toast('Transaction saved ✓');
-}
-
-async function reloadCfData(){
-  [cfTransactions, cfRecurrences, holdings] = await Promise.all([
-    api('cashflow_transactions?order=date.desc'),
-    api('recurrences?order=next_due.asc'),
-    api('holdings?order=created_at.asc'),
-  ]);
-}
-
-async function deleteCfTx(id, holdingId, holdingToId, type, amount){
-  if(!confirm('Delete this transaction? The holding balance will be reversed.')) return;
-  const reverseType=type==='expense'?'income':type==='income'?'expense':type;
-  if(!['purchase','sale'].includes(type))
-    await applyBalanceChange(reverseType, Number(amount), holdingId||null, holdingToId||null);
-  await api(`cashflow_transactions?id=eq.${id}`,{method:'DELETE'});
-  await reloadCfData();
-  renderCashflow(); renderOverview(); toast('Transaction deleted');
-}
-
-// ── Settings ──
-function renderSettings(){
-  const catEl=document.getElementById('settings-cats');
-  if(catEl) catEl.innerHTML=cfCategories.length
-    ?cfCategories.map(c=>`
-      <div class="settings-cat-row">
-        <i class="ti ${c.icon}" style="color:${c.color};font-size:18px;width:24px;text-align:center"></i>
-        <span style="flex:1;font-size:13px">${c.name}</span>
-        <button class="btn btn-sm btn-danger" onclick="deleteCat('${c.id}')"><i class="ti ti-trash"></i></button>
-      </div>`).join('')
-    :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No categories yet</div>';
-
-  const recEl=document.getElementById('settings-recurrences');
-  if(recEl) recEl.innerHTML=cfRecurrences.length
-    ?cfRecurrences.map(r=>{
-        const cat=cfCategories.find(c=>c.id===r.category_id);
-        const h=holdings.find(x=>x.id===r.holding_id);
-        const hName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'—';
-        const due=new Date(r.next_due).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'});
-        return `<div class="settings-recur-row">
-          <i class="ti ti-repeat" style="color:var(--accent);font-size:18px;flex-shrink:0;margin-top:2px"></i>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500">${r.description||'—'}</div>
-            <div style="font-size:11px;color:var(--text2);margin-top:2px">
-              ${fmt(r.amount)} · ${r.frequency} · ${hName} · Next: ${due}
-              ${cat?`· <span style="color:${cat.color}">${cat.name}</span>`:''}
-              ${!r.active?'<span style="color:var(--text3)"> · Paused</span>':''}
-            </div>
-          </div>
-          <button class="btn btn-sm" onclick="toggleRecurActive('${r.id}',${!r.active})">
-            <i class="ti ti-${r.active?'player-pause':'player-play'}"></i>
-          </button>
-          <button class="btn btn-sm btn-danger" onclick="deleteRecur('${r.id}')"><i class="ti ti-trash"></i></button>
-        </div>`;
-      }).join('')
-    :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No recurring transactions set up</div>';
-}
-
-async function saveCat(){
-  const name=document.getElementById('cat-name').value.trim();
-  const icon=document.getElementById('cat-icon').value.trim()||'ti-tag';
-  const color=document.getElementById('cat-color').value||'#6366f1';
-  if(!name){alert('Please enter a name.');return;}
-  await api('cashflow_categories',{method:'POST',body:JSON.stringify({name,icon,color})});
-  cfCategories=await api('cashflow_categories?order=name.asc');
-  closeModal('modal-cat'); renderSettings();
-  document.getElementById('cat-name').value='';
-  toast('Category saved ✓');
-}
-async function deleteCat(id){
-  if(!confirm('Delete this category?')) return;
-  await api(`cashflow_categories?id=eq.${id}`,{method:'DELETE'});
-  cfCategories=await api('cashflow_categories?order=name.asc');
-  renderSettings(); toast('Category removed');
-}
-async function toggleRecurActive(id,active){
-  await api(`recurrences?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({active})});
-  cfRecurrences=await api('recurrences?order=next_due.asc');
-  renderSettings(); toast(active?'Recurrence resumed':'Recurrence paused');
-}
-async function deleteRecur(id){
-  if(!confirm('Delete this recurrence?')) return;
-  await api(`recurrences?id=eq.${id}`,{method:'DELETE'});
-  cfRecurrences=await api('recurrences?order=next_due.asc');
-  renderSettings(); toast('Recurrence removed');
-}
-
-// ─────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────
-const lastPage = localStorage.getItem('fh_page') || 'overview';
-const matchingBtn = [...document.querySelectorAll('.nav-item')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+lastPage+"'"));
-showPage(lastPage, matchingBtn);
-loadAll().then(()=>refreshPrices());
-loadCashflow();
-</script>
-</body>
-</html// ── ALLOCATION ──
-function renderAllocation(){
-  const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
-  const byType={};
-  holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
-  const tKeys=Object.keys(byType);
-  const tLabels=tKeys.map(k=>TYPE_LABELS[k]||k);
-  const tData=tKeys.map(k=>byType[k]);
-  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
-  const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
-
-  if(allocTypeChart) allocTypeChart.destroy();
-  const atc=document.getElementById('alloc-type-chart');
-  if(atc) allocTypeChart=new Chart(atc,{
-    type:'doughnut', data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}
-  });
-  const atl=document.getElementById('alloc-type-legend');
-  if(atl) atl.innerHTML=tLabels.map((l,i)=>
-    `<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l} ${(tData[i]/total*100).toFixed(1)}%</div>`).join('');
-
-  const hLabels=holdings.map(h=>h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker);
-  const hData=holdings.map(h=>getVal(h));
-  const hColors=hLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
-
-  if(allocHoldChart) allocHoldChart.destroy();
-  const ahc=document.getElementById('alloc-hold-chart');
-  if(ahc) allocHoldChart=new Chart(ahc,{
-    type:'doughnut', data:{labels:hLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}
-  });
-  const ahl=document.getElementById('alloc-hold-legend');
-  if(ahl) ahl.innerHTML=hLabels.map((l,i)=>
-    `<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
-}
-
-// ── INSIGHTS ──
-
-// Italian national holidays (MM-DD)
-const IT_HOLIDAYS = ['01-01','01-06','04-25','05-01','06-02','08-15','11-01','12-08','12-25','12-26'];
-
 function isItalianHoliday(date){
   const mm=String(date.getMonth()+1).padStart(2,'0');
   const dd=String(date.getDate()).padStart(2,'0');
@@ -2432,5 +1667,534 @@ function renderInvestedChart(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
   });
 }
+// ── ALLOCATION ──
+function renderAllocation(){
+  const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
+  const byType={};
+  holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
+  const tKeys=Object.keys(byType);
+  const tLabels=tKeys.map(k=>TYPE_LABELS[k]||k);
+  const tData=tKeys.map(k=>byType[k]);
+  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
+  const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
+  if(allocTypeChart) allocTypeChart.destroy();
+  const atc=document.getElementById('alloc-type-chart');
+  if(atc) allocTypeChart=new Chart(atc,{type:'doughnut',data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}});
+  const atl=document.getElementById('alloc-type-legend');
+  if(atl) atl.innerHTML=tLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l} ${(tData[i]/total*100).toFixed(1)}%</div>`).join('');
+  const hLabels=holdings.map(h=>h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker);
+  const hData=holdings.map(h=>getVal(h));
+  const hColors=hLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
+  if(allocHoldChart) allocHoldChart.destroy();
+  const ahc=document.getElementById('alloc-hold-chart');
+  if(ahc) allocHoldChart=new Chart(ahc,{type:'doughnut',data:{labels:hLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}});
+  const ahl=document.getElementById('alloc-hold-legend');
+  if(ahl) ahl.innerHTML=hLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
+}
 
->
+// ─────────────────────────────────────────
+// CASHFLOW
+// ─────────────────────────────────────────
+let cfCategories=[], cfTransactions=[], cfRecurrences=[];
+let cfType='expense', cfIType='purchase', cfCtx='account';
+
+const DEFAULT_CATS=[
+  {name:'Food & Dining',icon:'ti-tools-kitchen-2',color:'#f59e0b'},
+  {name:'Transport',icon:'ti-car',color:'#3b82f6'},
+  {name:'Bills & Utilities',icon:'ti-file-invoice',color:'#6366f1'},
+  {name:'Health',icon:'ti-heart-rate-monitor',color:'#ec4899'},
+  {name:'Entertainment',icon:'ti-device-tv',color:'#8b5cf6'},
+  {name:'Shopping',icon:'ti-shopping-bag',color:'#f97316'},
+  {name:'Salary',icon:'ti-briefcase',color:'#10b981'},
+  {name:'Investment',icon:'ti-trending-up',color:'#0ea5e9'},
+];
+const TYPE_COLOR_CF={expense:'var(--red)',income:'var(--green)',transfer:'var(--accent)',purchase:'#0ea5e9',sale:'#f59e0b'};
+const TYPE_ICON_CF={expense:'ti-arrow-up-right',income:'ti-arrow-down-left',transfer:'ti-arrows-exchange',purchase:'ti-shopping-cart',sale:'ti-coin'};
+const TYPE_BG_CF={expense:'var(--red-bg)',income:'var(--green-bg)',transfer:'rgba(99,102,241,0.12)',purchase:'rgba(14,165,233,0.12)',sale:'rgba(245,158,11,0.12)'};
+
+async function loadCashflow(){
+  [cfCategories,cfTransactions,cfRecurrences]=await Promise.all([
+    api('cashflow_categories?order=name.asc'),
+    api('cashflow_transactions?order=date.desc'),
+    api('recurrences?order=next_due.asc'),
+  ]);
+  if(!cfCategories.length){
+    for(const c of DEFAULT_CATS){
+      const r=await api('cashflow_categories',{method:'POST',body:JSON.stringify(c)});
+      if(Array.isArray(r)&&r[0]) cfCategories.push(r[0]);
+    }
+  }
+  await processRecurrences();
+  renderCashflow();
+  renderSettings();
+  renderInsights();
+}
+
+async function processRecurrences(){
+  const now=new Date(); let anyCreated=false;
+  for(const r of cfRecurrences){
+    if(!r.active) continue;
+    let due=new Date(r.next_due);
+    while(due<=now){
+      await api('cashflow_transactions',{method:'POST',body:JSON.stringify({type:r.type,amount:r.amount,description:r.description,category_id:r.category_id,holding_id:r.holding_id,holding_to_id:r.holding_to_id,date:due.toISOString(),recurring_id:r.id})});
+      await applyBalanceChange(r.type,r.amount,r.holding_id,r.holding_to_id);
+      due=advanceDue(due,r.frequency); anyCreated=true;
+    }
+    await api(`recurrences?id=eq.${r.id}`,{method:'PATCH',body:JSON.stringify({next_due:due.toISOString(),last_run:now.toISOString()})});
+  }
+  if(anyCreated){cfTransactions=await api('cashflow_transactions?order=date.desc');holdings=await api('holdings?order=created_at.asc');}
+}
+
+function advanceDue(date,freq){
+  const d=new Date(date);
+  if(freq==='daily') d.setDate(d.getDate()+1);
+  if(freq==='weekly') d.setDate(d.getDate()+7);
+  if(freq==='monthly') d.setMonth(d.getMonth()+1);
+  if(freq==='yearly') d.setFullYear(d.getFullYear()+1);
+  return d;
+}
+
+async function applyBalanceChange(type,amount,fromId,toId){
+  holdings=await api('holdings?order=created_at.asc');
+  if(type==='expense'&&fromId){const h=holdings.find(x=>x.id===fromId);if(h)await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(h.avg_cost||0)-amount)})});}
+  else if(type==='income'&&fromId){const h=holdings.find(x=>x.id===fromId);if(h)await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(h.avg_cost||0)+amount})});}
+  else if(type==='transfer'&&fromId&&toId){
+    const hf=holdings.find(x=>x.id===fromId),ht=holdings.find(x=>x.id===toId);
+    if(hf)await api(`holdings?id=eq.${fromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(hf.avg_cost||0)-amount)})});
+    if(ht)await api(`holdings?id=eq.${toId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(ht.avg_cost||0)+amount})});
+  }
+}
+
+function isIncomeSide(t,hId){
+  if(t.type==='income') return t.holding_id===hId;
+  if(t.type==='sale') return t.holding_to_id===hId;
+  if(t.type==='transfer') return t.holding_to_id===hId;
+  return false;
+}
+function isOutcomeSide(t,hId){
+  if(t.type==='expense') return t.holding_id===hId;
+  if(t.type==='purchase') return t.holding_to_id===hId;
+  if(t.type==='transfer') return t.holding_id===hId;
+  return false;
+}
+function isTransferSide(t){ return t.type==='transfer'; }
+
+function renderCashflow(){
+  const container=document.getElementById('cf-accounts'); if(!container) return;
+  if(!holdings.length){container.innerHTML='<div class="card"><div class="empty"><i class="ti ti-wallet"></i><p>No holdings yet.</p></div></div>';return;}
+  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
+  // Group by type
+  const byType={};
+  holdings.forEach(h=>{if(!byType[h.type])byType[h.type]=[];byType[h.type].push(h);});
+  const sortedTypes=Object.keys(byType).sort((a,b)=>(TYPE_LABELS[a]||a).localeCompare(TYPE_LABELS[b]||b));
+  container.innerHTML=sortedTypes.map(type=>{
+    const typeHoldings=byType[type];
+    const color=typeColorMap[type]||'#888';
+    const icon=TYPE_ICONS[type]||'ti-wallet';
+    const typeLabel=TYPE_LABELS[type]||type;
+    const typeTxCount=cfTransactions.filter(t=>typeHoldings.some(h=>t.holding_id===h.id||t.holding_to_id===h.id)).length;
+    const typeTotal=typeHoldings.reduce((s,h)=>s+getVal(h),0);
+    const subGroups=typeHoldings.map(h=>{
+      const dispName=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+      const hTxs=cfTransactions.filter(t=>t.holding_id===h.id||t.holding_to_id===h.id);
+      const recent=hTxs.slice(0,5);
+      return `<div style="border-top:1px solid var(--border)">
+        <div style="padding:8px 1.25rem;background:var(--surface2);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:600">${dispName}</span>
+          <span style="font-size:13px;font-weight:600">${fmt(getVal(h))}</span>
+        </div>
+        ${recent.length?recent.map(t=>cfTxRow(t,h)).join(''):'<div style="padding:10px 1.25rem;color:var(--text3);font-size:13px">No transactions yet</div>'}
+        <button class="cf-see-all" onclick="showAllTx('${h.id}')" style="border-top:1px solid var(--border)">See all transactions <i class="ti ti-chevron-right" style="font-size:11px;vertical-align:middle"></i></button>
+      </div>`;
+    }).join('');
+    return `<div class="cf-account-block">
+      <div class="cf-account-header" onclick="toggleCfAccount(this)">
+        <div class="cf-account-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
+        <div><div class="cf-account-name">${typeLabel}</div><div class="cf-account-sub">${typeHoldings.length} holding${typeHoldings.length>1?'s':''} · ${typeTxCount} transaction${typeTxCount!==1?'s':''}</div></div>
+        <div class="cf-account-val"><div class="cf-account-val-num">${fmt(typeTotal)}</div></div>
+        <i class="ti ti-chevron-down cf-account-chevron"></i>
+      </div>
+      <div class="cf-account-body">${subGroups}</div>
+    </div>`;
+  }).join('');
+}
+
+function cfTxRow(t,h){
+  const cat=cfCategories.find(c=>c.id===t.category_id);
+  const txType=t.type||'expense';
+  const hId=h?.id;
+  let amtSign,amtColor,bgColor,icon;
+  if(txType==='purchase'){
+    const isAcquired=hId===t.holding_id;
+    amtSign=isAcquired?'+':'-'; amtColor=isAcquired?'var(--green)':'var(--red)';
+    bgColor=isAcquired?'var(--green-bg)':'var(--red-bg)'; icon=isAcquired?'ti-arrow-down-left':'ti-arrow-up-right';
+  } else if(txType==='sale'){
+    const isSold=hId===t.holding_id;
+    amtSign=isSold?'-':'+'; amtColor=isSold?'var(--red)':'var(--green)';
+    bgColor=isSold?'var(--red-bg)':'var(--green-bg)'; icon=isSold?'ti-arrow-up-right':'ti-arrow-down-left';
+  } else if(txType==='transfer'){
+    const isSource=hId===t.holding_id;
+    amtSign=isSource?'-':'+'; amtColor=isSource?'var(--red)':'var(--green)';
+    bgColor='rgba(99,102,241,0.12)'; icon='ti-arrows-exchange';
+  } else if(txType==='income'){
+    amtSign='+'; amtColor='var(--green)'; bgColor='var(--green-bg)'; icon='ti-arrow-down-left';
+  } else {
+    amtSign='-'; amtColor='var(--red)'; bgColor='var(--red-bg)'; icon='ti-arrow-up-right';
+  }
+  const date=new Date(t.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'});
+  const catLabel=cat?`<span style="color:${cat.color}">${cat.name}</span>`:'';
+  const typeLabel=txType==='purchase'?'Purchase':txType==='sale'?'Sale':'';
+  const recurLabel=t.recurring_id?`<span style="color:var(--accent);display:inline-flex;align-items:center;gap:3px"><i class="ti ti-repeat" style="font-size:10px"></i>Recurring</span>`:'';
+  const subLabel=[catLabel,typeLabel,recurLabel].filter(x=>x&&x.trim()).join(' · ');
+  return `<div class="cf-tx-row">
+    <div class="cf-tx-icon" style="background:${bgColor};color:${amtColor}"><i class="ti ${icon}"></i></div>
+    <div class="cf-tx-desc"><div class="cf-tx-name">${t.description||'—'}</div><div class="cf-tx-cat">${subLabel||''}</div></div>
+    <div style="text-align:right">
+      <div class="cf-tx-amount" style="color:${amtColor}">${amtSign}${fmt(t.amount)}</div>
+      <div class="cf-tx-date">${date}</div>
+    </div>
+    <button class="btn btn-sm btn-danger" style="margin-left:8px" onclick="deleteCfTx('${t.id}','${t.holding_id||''}','${t.holding_to_id||''}','${t.type}',${t.amount})"><i class="ti ti-trash"></i></button>
+  </div>`;
+}
+
+function toggleCfAccount(header){
+  const body=header.nextElementSibling;
+  const open=body.classList.contains('open');
+  body.classList.toggle('open',!open);
+  header.classList.toggle('open',!open);
+}
+
+let allTxHoldingId=null, allTxFilter='all';
+
+function setAllTxFilter(f,btn){
+  allTxFilter=f;
+  document.querySelectorAll('.alltx-filter').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAllTxBody();
+}
+
+function renderAllTxBody(){
+  const h=holdings.find(x=>x.id===allTxHoldingId);
+  const hId=allTxHoldingId;
+  let hTxs=cfTransactions.filter(t=>t.holding_id===hId||t.holding_to_id===hId);
+  if(allTxFilter==='income')   hTxs=hTxs.filter(t=>isIncomeSide(t,hId));
+  if(allTxFilter==='outcome')  hTxs=hTxs.filter(t=>isOutcomeSide(t,hId));
+  if(allTxFilter==='transfer') hTxs=hTxs.filter(t=>isTransferSide(t));
+  const body=document.getElementById('alltx-body'); if(!body) return;
+  const groups={};
+  hTxs.forEach(t=>{
+    const key=new Date(t.date).toLocaleDateString('en-GB',{year:'numeric',month:'long',timeZone:'Europe/Rome'});
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(t);
+  });
+  body.innerHTML=Object.keys(groups).length
+    ?Object.entries(groups).map(([month,txs])=>`
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">
+        <div style="padding:8px 1.25rem 4px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;background:var(--surface2)">${month}</div>
+        ${txs.map(t=>cfTxRow(t,h)).join('')}
+      </div>`).join('')
+    :'<div class="empty"><i class="ti ti-list"></i><p>No transactions</p></div>';
+}
+
+function renderAllTx(){
+  const h=holdings.find(x=>x.id===allTxHoldingId);
+  const dispName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'Account';
+  const container=document.getElementById('cf-accounts');
+  const header=document.createElement('div');
+  header.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap';
+  header.innerHTML=`<button class="btn" onclick="renderCashflow()"><i class="ti ti-arrow-left"></i> Back</button><div style="font-size:18px;font-weight:700;flex:1">${dispName} — All transactions</div>`;
+  const filters=document.createElement('div');
+  filters.className='filters'; filters.style.marginBottom='1rem';
+  filters.innerHTML=`
+    <button class="alltx-filter filter-btn active" onclick="setAllTxFilter('all',this)">All</button>
+    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('income',this)"><i class="ti ti-arrow-down-left" style="font-size:11px"></i> Income</button>
+    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('outcome',this)"><i class="ti ti-arrow-up-right" style="font-size:11px"></i> Outcome</button>
+    <button class="alltx-filter filter-btn" onclick="setAllTxFilter('transfer',this)"><i class="ti ti-arrows-exchange" style="font-size:11px"></i> Transfer</button>`;
+  const body=document.createElement('div'); body.id='alltx-body';
+  container.innerHTML='';
+  container.appendChild(header);
+  container.appendChild(filters);
+  container.appendChild(body);
+  renderAllTxBody();
+}
+
+function showAllTx(holdingId){
+  allTxHoldingId=holdingId; allTxFilter='all';
+  renderAllTx();
+}
+
+function showCfForm(){
+  document.getElementById('cf-main').style.display='none';
+  document.getElementById('cf-form').style.display='';
+  document.getElementById('cf-fab').style.display='none';
+  populateCfForm();
+}
+function showCfMain(){
+  document.getElementById('cf-main').style.display='';
+  document.getElementById('cf-form').style.display='none';
+  document.getElementById('cf-fab').style.display='';
+}
+
+function setCfCtx(ctx,btn){
+  cfCtx=ctx;
+  document.querySelectorAll('.cf-type-btn[data-ctx]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else {const b=document.querySelector(`.cf-type-btn[data-ctx="${ctx}"]`);if(b)b.classList.add('active');}
+  document.getElementById('cf-account-form').style.display=ctx==='account'?'':'none';
+  document.getElementById('cf-invest-form').style.display=ctx==='investment'?'':'none';
+}
+
+function setCfType(type,btn){
+  cfType=type;
+  document.querySelectorAll('.cf-type-btn[data-type]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else {const b=document.querySelector(`.cf-type-btn[data-type="${type}"]`);if(b)b.classList.add('active');}
+  document.getElementById('cf-to-wrap').style.display=type==='transfer'?'':'none';
+  document.getElementById('cf-cat-wrap').style.display=type==='transfer'?'none':'';
+  document.getElementById('cf-from-label').textContent=type==='income'?'To account':'From account';
+}
+
+function setCfIType(itype,btn){
+  cfIType=itype;
+  document.querySelectorAll('.cf-type-btn[data-itype]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else {const b=document.querySelector(`.cf-type-btn[data-itype="${itype}"]`);if(b)b.classList.add('active');}
+  document.getElementById('inv-purchase-fields').style.display=itype==='purchase'?'':'none';
+  document.getElementById('inv-sale-fields').style.display=itype==='sale'?'':'none';
+  document.getElementById('inv-expinc-fields').style.display=(itype==='expense'||itype==='income')?'':'none';
+  document.getElementById('inv-expinc-acct-label').textContent=itype==='income'?'To account':'From account';
+}
+
+function toggleRecurring(on){
+  document.getElementById('cf-recurring-opts').style.display=on?'':'none';
+}
+
+function updateInvCounterparts(){
+  const selectedId=document.getElementById('inv-asset').value;
+  const opts=holdings.filter(h=>h.id!==selectedId).map(h=>{
+    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
+  }).join('');
+  document.getElementById('inv-paid-from').innerHTML=opts;
+  document.getElementById('inv-sale-to').innerHTML=opts;
+}
+
+function calcPurchaseFromUnit(){
+  const qty=parseFloat(document.getElementById('inv-qty').value)||0;
+  const price=parseFloat(document.getElementById('inv-price').value)||0;
+  if(qty&&price) document.getElementById('inv-total').value=(qty*price).toFixed(2);
+}
+function calcPurchaseFromTotal(){
+  const qty=parseFloat(document.getElementById('inv-qty').value)||0;
+  const total=parseFloat(document.getElementById('inv-total').value)||0;
+  if(qty&&total) document.getElementById('inv-price').value=(total/qty).toFixed(4);
+}
+function calcSaleFromUnit(){
+  const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
+  const price=parseFloat(document.getElementById('inv-sale-price').value)||0;
+  if(qty&&price){ document.getElementById('inv-sale-total').value=(qty*price).toFixed(2); updatePnl(); }
+}
+function calcSaleFromTotal(){
+  const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
+  const total=parseFloat(document.getElementById('inv-sale-total').value)||0;
+  if(qty&&total){ document.getElementById('inv-sale-price').value=(total/qty).toFixed(4); updatePnl(); }
+}
+function updatePnl(){
+  const assetId=document.getElementById('inv-asset').value;
+  const h=holdings.find(x=>x.id===assetId); if(!h) return;
+  const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
+  const total=parseFloat(document.getElementById('inv-sale-total').value)||0;
+  if(!qty||!total) return;
+  const costBasis=h.avg_cost*qty;
+  const pnl=total-costBasis;
+  const pct=costBasis>0?pnl/costBasis*100:0;
+  const el=document.getElementById('inv-pnl-preview'); if(!el) return;
+  el.style.display='';
+  el.innerHTML=`<span style="color:${pnl>=0?'var(--green)':'var(--red)'};font-weight:600">${pnl>=0?'+':''}${fmt(pnl)} (${fmtPct(pct)})</span> vs avg cost of ${fmt(h.avg_cost)}/unit`;
+}
+
+function populateCfForm(){
+  const now=new Date(); now.setSeconds(0,0);
+  const iso=now.toISOString().slice(0,16);
+  document.getElementById('cf-date').value=iso;
+  document.getElementById('cf-recur-start').value=iso;
+  document.getElementById('cf-recurring').checked=false;
+  document.getElementById('cf-recurring-opts').style.display='none';
+  document.getElementById('cf-amount').value='';
+  document.getElementById('cf-desc').value='';
+  const catSel=document.getElementById('cf-cat');
+  catSel.innerHTML=cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const opts=holdings.map(h=>{
+    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
+  }).join('');
+  document.getElementById('cf-from').innerHTML=opts;
+  document.getElementById('cf-to').innerHTML=opts;
+  const investHoldings=holdings.filter(h=>['stock','etf','crypto','bond'].includes(h.type));
+  const allOpts=holdings.map(h=>{
+    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
+  }).join('');
+  document.getElementById('inv-asset').innerHTML=investHoldings.map(h=>{
+    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+    return `<option value="${h.id}">${n} (${h.ticker})</option>`;
+  }).join('');
+  document.getElementById('inv-asset').onchange=updateInvCounterparts;
+  updateInvCounterparts();
+  document.getElementById('inv-cat').innerHTML=catSel.innerHTML;
+  document.getElementById('inv-expinc-cat').innerHTML=catSel.innerHTML;
+  document.getElementById('inv-date').value=iso;
+  document.getElementById('inv-sale-date').value=iso;
+  document.getElementById('inv-expinc-date').value=iso;
+  if(document.getElementById('inv-pnl-preview')) document.getElementById('inv-pnl-preview').style.display='none';
+  setCfCtx(cfCtx, null);
+  setCfType(cfType, null);
+  setCfIType(cfIType, null);
+}
+
+async function saveCfTransaction(){
+  const amount=parseFloat(document.getElementById('cf-amount').value)||0;
+  const desc=document.getElementById('cf-desc').value.trim();
+  const catId=document.getElementById('cf-cat').value||null;
+  const date=document.getElementById('cf-date').value;
+  const fromId=document.getElementById('cf-from').value||null;
+  const toId=document.getElementById('cf-to').value||null;
+  const isRecur=document.getElementById('cf-recurring').checked;
+  if(amount<=0){alert('Please enter an amount.');return;}
+  if(!fromId){alert('Please select an account.');return;}
+  if(cfType==='transfer'&&fromId===toId){alert('Source and destination account must be different.');return;}
+  const txData={type:cfType,amount,description:desc||null,category_id:cfType==='transfer'?null:catId,holding_id:fromId,holding_to_id:cfType==='transfer'?toId:null,date:new Date(date).toISOString()};
+  if(isRecur){
+    const freq=document.getElementById('cf-freq').value;
+    const start=document.getElementById('cf-recur-start').value;
+    const recur=await api('recurrences',{method:'POST',body:JSON.stringify({type:cfType,amount,description:desc||null,category_id:cfType==='transfer'?null:catId,holding_id:fromId,holding_to_id:cfType==='transfer'?toId:null,frequency:freq,next_due:new Date(start).toISOString(),active:true})});
+    if(Array.isArray(recur)&&recur[0]) txData.recurring_id=recur[0].id;
+  }
+  await api('cashflow_transactions',{method:'POST',body:JSON.stringify(txData)});
+  await applyBalanceChange(cfType,amount,fromId,cfType==='transfer'?toId:null);
+  [cfTransactions,cfRecurrences,holdings]=await Promise.all([api('cashflow_transactions?order=date.desc'),api('recurrences?order=next_due.asc'),api('holdings?order=created_at.asc')]);
+  renderCashflow(); renderSettings(); renderOverview();
+  showCfMain(); toast('Transaction saved ✓');
+}
+
+async function saveInvTransaction(){
+  const assetId=document.getElementById('inv-asset').value;
+  const h=holdings.find(x=>x.id===assetId);
+  if(!h){alert('Please select an asset.');return;}
+  const desc=document.getElementById('inv-cat').value;
+  const dateIso=new Date(document.getElementById('inv-date').value||document.getElementById('inv-sale-date').value||document.getElementById('inv-expinc-date').value).toISOString();
+  if(cfIType==='purchase'){
+    const qty=parseFloat(document.getElementById('inv-qty').value)||0;
+    const price=parseFloat(document.getElementById('inv-price').value)||0;
+    const total=parseFloat(document.getElementById('inv-total').value)||(qty*price);
+    const paidFromId=document.getElementById('inv-paid-from').value||null;
+    if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
+    if(paidFromId&&paidFromId===assetId){alert('The asset purchased and the account used to pay cannot be the same.');return;}
+    // Update holding qty and avg cost
+    const newAvgCost=(h.qty*h.avg_cost+qty*price)/(h.qty+qty);
+    const newQty=h.qty+qty;
+    await api(`holdings?id=eq.${assetId}`,{method:'PATCH',body:JSON.stringify({qty:newQty,avg_cost:newAvgCost})});
+    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({type:'purchase',amount:total,description:`Purchased ${qty} ${cleanCryptoTicker(h.ticker)||h.ticker}`,holding_id:assetId,holding_to_id:paidFromId,date:dateIso})});
+    if(paidFromId){const hf=holdings.find(x=>x.id===paidFromId);if(hf)await api(`holdings?id=eq.${paidFromId}`,{method:'PATCH',body:JSON.stringify({avg_cost:Math.max(0,(hf.avg_cost||0)-total)})});}
+  } else if(cfIType==='sale'){
+    const qty=parseFloat(document.getElementById('inv-sale-qty').value)||0;
+    const price=parseFloat(document.getElementById('inv-sale-price').value)||0;
+    const total=parseFloat(document.getElementById('inv-sale-total').value)||(qty*price);
+    const saleToId=document.getElementById('inv-sale-to').value||null;
+    if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
+    if(qty>h.qty){alert(`You only have ${h.qty} units of ${h.ticker}.`);return;}
+    if(saleToId&&saleToId===assetId){alert('The asset sold and the destination account cannot be the same.');return;}
+    const newQty=h.qty-qty;
+    await api(`holdings?id=eq.${assetId}`,{method:'PATCH',body:JSON.stringify({qty:newQty})});
+    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({type:'sale',amount:total,description:`Sold ${qty} ${cleanCryptoTicker(h.ticker)||h.ticker}`,holding_id:assetId,holding_to_id:saleToId,date:dateIso})});
+    if(saleToId){const ht=holdings.find(x=>x.id===saleToId);if(ht)await api(`holdings?id=eq.${saleToId}`,{method:'PATCH',body:JSON.stringify({avg_cost:(ht.avg_cost||0)+total})});}
+  } else {
+    const amount=parseFloat(document.getElementById('inv-expinc-amount').value)||0;
+    const catId=document.getElementById('inv-expinc-cat').value||null;
+    const acctId=document.getElementById('inv-expinc-acct').value||null;
+    const desc2=document.getElementById('inv-expinc-desc').value.trim();
+    if(amount<=0){alert('Please enter an amount.');return;}
+    await api('cashflow_transactions',{method:'POST',body:JSON.stringify({type:cfIType,amount,description:desc2||null,category_id:catId,holding_id:assetId,holding_to_id:null,date:dateIso})});
+    await applyBalanceChange(cfIType,amount,acctId||assetId,null);
+  }
+  [cfTransactions,holdings]=await Promise.all([api('cashflow_transactions?order=date.desc'),api('holdings?order=created_at.asc')]);
+  renderCashflow(); renderHoldings(); renderOverview();
+  showCfMain(); toast('Transaction saved ✓');
+}
+
+async function deleteCfTx(id,holdingId,holdingToId,type,amount){
+  if(!confirm('Delete this transaction? The holding balance will be reversed.')) return;
+  const reverseType=type==='expense'?'income':type==='income'?'expense':type;
+  await applyBalanceChange(reverseType,Number(amount),holdingId||null,holdingToId||null);
+  await api(`cashflow_transactions?id=eq.${id}`,{method:'DELETE'});
+  [cfTransactions,holdings]=await Promise.all([api('cashflow_transactions?order=date.desc'),api('holdings?order=created_at.asc')]);
+  renderCashflow(); renderOverview(); toast('Transaction deleted');
+}
+
+// ── Settings ──
+function renderSettings(){
+  const catEl=document.getElementById('settings-cats');
+  if(catEl) catEl.innerHTML=cfCategories.length
+    ?cfCategories.map(c=>`<div class="settings-cat-row"><i class="ti ${c.icon}" style="color:${c.color};font-size:18px;width:24px;text-align:center"></i><span style="flex:1;font-size:13px">${c.name}</span><button class="btn btn-sm btn-danger" onclick="deleteCat('${c.id}')"><i class="ti ti-trash"></i></button></div>`).join('')
+    :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No categories yet</div>';
+  const recEl=document.getElementById('settings-recurrences');
+  if(recEl) recEl.innerHTML=cfRecurrences.length
+    ?cfRecurrences.map(r=>{
+        const cat=cfCategories.find(c=>c.id===r.category_id);
+        const h=holdings.find(x=>x.id===r.holding_id);
+        const hName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'—';
+        const due=new Date(r.next_due).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'});
+        return `<div class="settings-recur-row">
+          <i class="ti ti-repeat" style="color:var(--accent);font-size:18px;flex-shrink:0;margin-top:2px"></i>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${r.description||'—'}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${fmt(r.amount)} · ${r.frequency} · ${hName} · Next: ${due}${cat?` · <span style="color:${cat.color}">${cat.name}</span>`:''}${!r.active?' · <span style="color:var(--text3)">Paused</span>':''}</div></div>
+          <button class="btn btn-sm" onclick="toggleRecurActive('${r.id}',${!r.active})"><i class="ti ti-${r.active?'player-pause':'player-play'}"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteRecur('${r.id}')"><i class="ti ti-trash"></i></button>
+        </div>`;
+      }).join('')
+    :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No recurring transactions set up</div>';
+}
+
+async function saveCat(){
+  const name=document.getElementById('cat-name').value.trim();
+  const icon=document.getElementById('cat-icon').value.trim()||'ti-tag';
+  const color=document.getElementById('cat-color').value||'#6366f1';
+  if(!name){alert('Please enter a name.');return;}
+  await api('cashflow_categories',{method:'POST',body:JSON.stringify({name,icon,color})});
+  cfCategories=await api('cashflow_categories?order=name.asc');
+  closeModal('modal-cat'); renderSettings();
+  document.getElementById('cat-name').value='';
+  toast('Category saved ✓');
+}
+
+async function deleteCat(id){
+  if(!confirm('Delete this category?')) return;
+  await api(`cashflow_categories?id=eq.${id}`,{method:'DELETE'});
+  cfCategories=await api('cashflow_categories?order=name.asc');
+  renderSettings(); toast('Category removed');
+}
+
+async function toggleRecurActive(id,active){
+  await api(`recurrences?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({active})});
+  cfRecurrences=await api('recurrences?order=next_due.asc');
+  renderSettings(); toast(active?'Recurrence resumed':'Recurrence paused');
+}
+
+async function deleteRecur(id){
+  if(!confirm('Delete this recurrence?')) return;
+  await api(`recurrences?id=eq.${id}`,{method:'DELETE'});
+  cfRecurrences=await api('recurrences?order=next_due.asc');
+  renderSettings(); toast('Recurrence removed');
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+const lastPage=localStorage.getItem('fh_page')||'overview';
+const matchingBtn=[...document.querySelectorAll('.nav-item')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+lastPage+"'"));
+showPage(lastPage,matchingBtn);
+loadAll().then(()=>refreshPrices());
+loadCashflow();
+</script>
+</body>
+</html>
