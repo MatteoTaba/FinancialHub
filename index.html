@@ -597,14 +597,16 @@ tbody tr:hover td{background:var(--surface2)}
     <div class="ins-section-title">Portfolio allocation</div>
     <div class="alloc-grid" style="margin-bottom:1.5rem">
       <div class="card">
-        <div class="card-title" style="margin-bottom:1rem">By asset type</div>
-        <div class="chart-wrap" style="height:200px"><canvas id="alloc-type-chart">Allocation by asset type.</canvas></div>
-        <div class="legend" id="alloc-type-legend"></div>
+        <div class="card-title" style="margin-bottom:0.5rem">By asset type</div>
+        <div id="alloc-type-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
+          <div class="spin" style="width:24px;height:24px"></div>
+        </div>
       </div>
       <div class="card">
-        <div class="card-title" style="margin-bottom:1rem">By holding</div>
-        <div class="chart-wrap" style="height:200px"><canvas id="alloc-hold-chart">Allocation by holding.</canvas></div>
-        <div class="legend" id="alloc-hold-legend"></div>
+        <div class="card-title" style="margin-bottom:0.5rem">By holding</div>
+        <div id="alloc-hold-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
+          <div class="spin" style="width:24px;height:24px"></div>
+        </div>
       </div>
     </div>
 
@@ -760,7 +762,7 @@ const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
 }).then(r=>r.json());
 
 let holdings=[], transactions=[], prices={}, snapshots=[], txFilter='all', activePeriod=30;
-let trendChart, allocTypeChart, allocHoldChart, liquidityChart, monthlyChart, yearlyIncomeChart, yearlyOutcomeChart, savingsChart, investedChart;
+let trendChart, liquidityChart, monthlyChart, yearlyIncomeChart, yearlyOutcomeChart, savingsChart, investedChart;
 
 const TYPE_LABELS = {bank:'Bank',bond:'Bond',cash:'Cash',crypto:'Crypto',etf:'ETF',stock:'Stock'};
 const TYPE_ICONS  = {bank:'ti-building-bank',bond:'ti-certificate',cash:'ti-cash',crypto:'ti-currency-bitcoin',etf:'ti-trending-up',stock:'ti-chart-candle'};
@@ -1726,160 +1728,122 @@ function renderInvestedChart(){
 }
 // ── ALLOCATION ──
 function renderAllocation(){
-  const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
   const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
-  const labelColor=dark?'#f1f5f9':'#111827';
-  const labelBg=dark?'rgba(26,29,39,0.85)':'rgba(255,255,255,0.9)';
+  const textColor=dark?'#f1f5f9':'#111827';
+  const dimColor=dark?'#94a3b8':'#6b7280';
+  const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
 
-  // Build pointer-label plugin: line from slice midpoint to label box
-  function makePointerPlugin(getLabel){
-    return {
-      id:'pointerLabels',
-      afterDraw(chart){
-        const {ctx,data,chartArea}=chart;
-        const dataset=data.datasets[0];
-        const meta=chart.getDatasetMeta(0);
-        const chartTotal=dataset.data.reduce((a,b)=>a+b,0)||1;
-        const cx=(chartArea.left+chartArea.right)/2;
-        const cy=(chartArea.top+chartArea.bottom)/2;
-        const outerR=meta.data[0]?meta.data[0].outerRadius:80;
-
-        // Build items sorted by angle
-        const items=[];
-        meta.data.forEach((arc,i)=>{
-          const pct=dataset.data[i]/chartTotal*100;
-          const angle=(arc.startAngle+arc.endAngle)/2;
-          items.push({i,angle,pct,label:getLabel(i,pct,data),color:dataset.backgroundColor[i],
-            tipX:cx+Math.cos(angle)*(outerR+8),
-            tipY:cy+Math.sin(angle)*(outerR+8)
-          });
-        });
-
-        // Split into left/right by angle, sort each by Y (i.e. angle)
-        const left=items.filter(it=>Math.cos(it.angle)<0).sort((a,b)=>a.tipY-b.tipY);
-        const right=items.filter(it=>Math.cos(it.angle)>=0).sort((a,b)=>a.tipY-b.tipY);
-
-        // Assign label Y positions: spread evenly across available chart height
-        // with enough gap per label (lineHeight ~26px for name+pct)
-        const lineH=26;
-        const pad=24;
-        const availH=chartArea.bottom-chartArea.top-pad*2;
-
-        function assignYPositions(group){
-          if(!group.length) return;
-          // First pass: use natural tip Y
-          group.forEach(it=>{ it.labelY=it.tipY; });
-          // Clamp to chart area
-          group.forEach(it=>{
-            it.labelY=Math.max(chartArea.top+pad, Math.min(chartArea.bottom-pad, it.labelY));
-          });
-          // Spread pass: push items apart until no overlap
-          const minGap=lineH;
-          for(let pass=0;pass<30;pass++){
-            let moved=false;
-            for(let k=1;k<group.length;k++){
-              const gap=group[k].labelY-group[k-1].labelY;
-              if(gap<minGap){
-                const shift=(minGap-gap)/2;
-                group[k-1].labelY-=shift;
-                group[k].labelY+=shift;
-                moved=true;
-              }
-            }
-            // Re-clamp after each pass
-            group.forEach(it=>{
-              it.labelY=Math.max(chartArea.top+pad, Math.min(chartArea.bottom-pad, it.labelY));
-            });
-            if(!moved) break;
-          }
-        }
-
-        assignYPositions(left);
-        assignYPositions(right);
-
-        // Label X: far left/right of chart area with inset
-        const leftX=chartArea.left+4;
-        const rightX=chartArea.right-4;
-
-        ctx.save();
-        function drawGroup(group,isLeft){
-          group.forEach(it=>{
-            const labelX=isLeft?leftX:rightX;
-            const labelY=it.labelY;
-
-            // Connector: tip → elbow → horizontal to label edge
-            const elbowX=isLeft?cx-outerR-22:cx+outerR+22;
-            ctx.beginPath();
-            ctx.moveTo(it.tipX,it.tipY);
-            ctx.lineTo(elbowX,labelY);
-            ctx.lineTo(labelX+(isLeft?8:-8),labelY);
-            ctx.strokeStyle=it.color+'cc';
-            ctx.lineWidth=1.2;
-            ctx.stroke();
-
-            // Dot at tip
-            ctx.beginPath();
-            ctx.arc(it.tipX,it.tipY,2.5,0,Math.PI*2);
-            ctx.fillStyle=it.color;
-            ctx.fill();
-
-            // Label: name on top, pct below
-            ctx.textAlign=isLeft?'left':'right';
-            ctx.font='bold 11px -apple-system,BlinkMacSystemFont,sans-serif';
-            ctx.fillStyle=it.color;
-            ctx.textBaseline='bottom';
-            ctx.fillText(it.label,isLeft?labelX+10:labelX-10,labelY-1);
-            ctx.font='10px -apple-system,BlinkMacSystemFont,sans-serif';
-            ctx.fillStyle=labelColor;
-            ctx.textBaseline='top';
-            ctx.fillText(it.pct.toFixed(1)+'%',isLeft?labelX+10:labelX-10,labelY+1);
-          });
-        }
-
-        drawGroup(left,true);
-        drawGroup(right,false);
-        ctx.restore();
-      }
-    };
-  }
-
+  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
   const byType={};
   holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
-  const tKeys=Object.keys(byType);
-  const tLabels=tKeys.map(k=>TYPE_LABELS[k]||k);
-  const tData=tKeys.map(k=>byType[k]);
-  const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
-  const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
+  const typeSlices=Object.keys(byType).map(k=>({label:TYPE_LABELS[k]||k,value:byType[k],color:typeColorMap[k]||'#888'}));
 
-  if(allocTypeChart) allocTypeChart.destroy();
-  const atc=document.getElementById('alloc-type-chart');
-  if(atc) allocTypeChart=new Chart(atc,{
-    type:'doughnut',
-    data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:40,bottom:40,left:80,right:80}},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}},
-    plugins:[makePointerPlugin((i,pct,data)=>data.labels[i])]
+  const holdSlices=holdings.map((h,i)=>{
+    const isInv=['stock','etf','crypto','bond'].includes(h.type);
+    const label=isInv?(h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker.toUpperCase()):(h.name||h.ticker);
+    return {label,value:getVal(h),color:PALETTE[i%PALETTE.length]};
   });
 
-  // By holding: investment types use ticker only (uppercase), bank/cash use name
-  const hDisplayLabels=holdings.map(h=>{
-    const isInvestment=['stock','etf','crypto','bond'].includes(h.type);
-    if(isInvestment) return h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker.toUpperCase();
-    return h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
-  });
-  const hData=holdings.map(h=>getVal(h));
-  const hColors=hDisplayLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
-
-  if(allocHoldChart) allocHoldChart.destroy();
-  const ahc=document.getElementById('alloc-hold-chart');
-  if(ahc) allocHoldChart=new Chart(ahc,{
-    type:'doughnut',
-    data:{labels:hDisplayLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:40,bottom:40,left:80,right:80}},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}},
-    plugins:[makePointerPlugin((i,pct,data)=>data.labels[i])]
-  });
+  renderDonutSVG('alloc-type-container', typeSlices, total, textColor, dimColor);
+  renderDonutSVG('alloc-hold-container', holdSlices, total, textColor, dimColor);
 }
+
+function renderDonutSVG(containerId, slices, total, textColor, dimColor){
+  const container=document.getElementById(containerId);
+  if(!container) return;
+
+  const W=container.clientWidth||380, H=280;
+  const cx=W/2, cy=H/2;
+  const outerR=Math.min(W,H)*0.28;
+  const innerR=outerR*0.52;
+
+  // Build arc paths
+  let startAngle=-Math.PI/2;
+  const arcs=slices.map(s=>{
+    const pct=s.value/total;
+    const sweep=pct*2*Math.PI;
+    const endAngle=startAngle+sweep;
+    const midAngle=startAngle+sweep/2;
+    const arc={...s, pct:pct*100, startAngle, endAngle, midAngle, sweep};
+    startAngle=endAngle;
+    return arc;
+  });
+
+  // Compute initial label positions at midpoint angle, pushed out
+  const labelR=outerR+18;
+  arcs.forEach(a=>{
+    a.tipX=cx+Math.cos(a.midAngle)*(outerR+6);
+    a.tipY=cy+Math.sin(a.midAngle)*(outerR+6);
+    a.lx=cx+Math.cos(a.midAngle)*labelR;
+    a.ly=cy+Math.sin(a.midAngle)*labelR;
+    a.side=Math.cos(a.midAngle)<0?'left':'right';
+  });
+
+  // Separate and sort each side by Y
+  const left=arcs.filter(a=>a.side==='left').sort((a,b)=>a.ly-b.ly);
+  const right=arcs.filter(a=>a.side==='right').sort((a,b)=>a.ly-b.ly);
+
+  // Spread labels: distribute evenly, keeping them within chart height
+  function spreadLabels(group, anchor){
+    if(!group.length) return;
+    const lineH=28;
+    const totalH=lineH*(group.length-1);
+    const midY=group.reduce((s,a)=>s+a.ly,0)/group.length;
+    let startY=Math.max(16, Math.min(H-16-totalH, midY-totalH/2));
+    group.forEach((a,i)=>{ a.finalY=startY+i*lineH; a.finalX=anchor; });
+  }
+
+  spreadLabels(left, 8);
+  spreadLabels(right, W-8);
+
+  // SVG arc helper
+  function arcPath(cx,cy,r,startA,endA){
+    const x1=cx+Math.cos(startA)*r, y1=cy+Math.sin(startA)*r;
+    const x2=cx+Math.cos(endA)*r,   y2=cy+Math.sin(endA)*r;
+    const large=endA-startA>Math.PI?1:0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  }
+
+  // Build SVG
+  let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">`;
+
+  // Draw slices
+  arcs.forEach(a=>{
+    if(a.sweep<0.001) return;
+    const outerPath=arcPath(cx,cy,outerR,a.startAngle,a.endAngle);
+    const innerPath=arcPath(cx,cy,innerR,a.endAngle,a.startAngle);
+    svg+=`<path d="${outerPath} L ${cx+Math.cos(a.endAngle)*innerR} ${cy+Math.sin(a.endAngle)*innerR} ${innerPath} Z"
+      fill="${a.color}" opacity="0.92"/>`;
+  });
+
+  // Draw labels + connector lines
+  [...left,...right].forEach(a=>{
+    if(!a.finalY) return;
+    const isLeft=a.side==='left';
+    const textAnchor=isLeft?'start':'end';
+    const fx=a.finalX;
+    const fy=a.finalY;
+
+    // Line: tip -> elbow -> horizontal
+    const elbowX=isLeft?cx-outerR-16:cx+outerR+16;
+    svg+=`<circle cx="${a.tipX}" cy="${a.tipY}" r="2.5" fill="${a.color}"/>`;
+    svg+=`<polyline points="${a.tipX},${a.tipY} ${elbowX},${fy} ${fx+(isLeft?6:-6)},${fy}"
+      stroke="${a.color}" stroke-width="1.2" fill="none" opacity="0.8"/>`;
+
+    // Name
+    svg+=`<text x="${fx+(isLeft?10:-10)}" y="${fy-2}" text-anchor="${textAnchor}"
+      font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="11" font-weight="600"
+      fill="${a.color}">${a.label}</text>`;
+    // Pct
+    svg+=`<text x="${fx+(isLeft?10:-10)}" y="${fy+11}" text-anchor="${textAnchor}"
+      font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="10"
+      fill="${dimColor}">${a.pct.toFixed(1)}%</text>`;
+  });
+
+  svg+='</svg>';
+  container.innerHTML=svg;
+}
+
 
 // ─────────────────────────────────────────
 // CASHFLOW
