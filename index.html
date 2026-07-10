@@ -1670,6 +1670,35 @@ function renderInvestedChart(){
 // ── ALLOCATION ──
 function renderAllocation(){
   const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
+  const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const labelColor=dark?'#f1f5f9':'#1a1a1a';
+
+  // Shared doughnut plugin: draws % label outside each slice
+  const outerLabelPlugin={
+    id:'outerLabels',
+    afterDatasetDraw(chart){
+      const {ctx,data}=chart;
+      const dataset=data.datasets[0];
+      const meta=chart.getDatasetMeta(0);
+      const chartTotal=dataset.data.reduce((a,b)=>a+b,0)||1;
+      ctx.save();
+      meta.data.forEach((arc,i)=>{
+        const pct=(dataset.data[i]/chartTotal*100);
+        if(pct<3) return; // skip tiny slices
+        const angle=(arc.startAngle+arc.endAngle)/2;
+        const r=arc.outerRadius+18;
+        const x=arc.x+Math.cos(angle)*r;
+        const y=arc.y+Math.sin(angle)*r;
+        ctx.fillStyle=labelColor;
+        ctx.font='bold 11px -apple-system,BlinkMacSystemFont,sans-serif';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText(pct.toFixed(1)+'%',x,y);
+      });
+      ctx.restore();
+    }
+  };
+
   const byType={};
   holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
   const tKeys=Object.keys(byType);
@@ -1679,17 +1708,31 @@ function renderAllocation(){
   const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
   if(allocTypeChart) allocTypeChart.destroy();
   const atc=document.getElementById('alloc-type-chart');
-  if(atc) allocTypeChart=new Chart(atc,{type:'doughnut',data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}});
+  if(atc) allocTypeChart=new Chart(atc,{
+    type:'doughnut',
+    data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:28},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}},
+    plugins:[outerLabelPlugin]
+  });
   const atl=document.getElementById('alloc-type-legend');
-  if(atl) atl.innerHTML=tLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l} ${(tData[i]/total*100).toFixed(1)}%</div>`).join('');
-  const hLabels=holdings.map(h=>h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker);
+  if(atl) atl.innerHTML=tLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l}</div>`).join('');
+
+  // By holding: ticker uppercase, name normal case
+  const hTickers=holdings.map(h=>h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker);
+  const hNames=holdings.map(h=>h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker));
+  // Legend shows "TICKER — Name", chart label is ticker only
   const hData=holdings.map(h=>getVal(h));
-  const hColors=hLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
+  const hColors=hTickers.map((_,i)=>PALETTE[i%PALETTE.length]);
   if(allocHoldChart) allocHoldChart.destroy();
   const ahc=document.getElementById('alloc-hold-chart');
-  if(ahc) allocHoldChart=new Chart(ahc,{type:'doughnut',data:{labels:hLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}}});
+  if(ahc) allocHoldChart=new Chart(ahc,{
+    type:'doughnut',
+    data:{labels:hTickers,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:28},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${hNames[ctx.dataIndex]} · ${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}},
+    plugins:[outerLabelPlugin]
+  });
   const ahl=document.getElementById('alloc-hold-legend');
-  if(ahl) ahl.innerHTML=hLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span>${l} ${(hData[i]/total*100).toFixed(1)}%</div>`).join('');
+  if(ahl) ahl.innerHTML=hTickers.map((t,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span><strong style="font-size:11px">${t}</strong>&nbsp;<span style="color:var(--text2)">${hNames[i]}</span></div>`).join('');
 }
 
 // ─────────────────────────────────────────
