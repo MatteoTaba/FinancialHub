@@ -1742,88 +1742,102 @@ function renderAllocation(){
         const chartTotal=dataset.data.reduce((a,b)=>a+b,0)||1;
         const cx=(chartArea.left+chartArea.right)/2;
         const cy=(chartArea.top+chartArea.bottom)/2;
+        const outerR=meta.data[0]?meta.data[0].outerRadius:80;
 
-        // First pass: compute raw label positions
+        // Build items sorted by angle
         const items=[];
         meta.data.forEach((arc,i)=>{
           const pct=dataset.data[i]/chartTotal*100;
           const angle=(arc.startAngle+arc.endAngle)/2;
-          const midR=(arc.innerRadius+arc.outerRadius)/2;
-          const tipR=arc.outerRadius+10;
-          const labelR=arc.outerRadius+38;
-          items.push({
-            i, angle, pct,
-            tipX:cx+Math.cos(angle)*tipR,
-            tipY:cy+Math.sin(angle)*tipR,
-            rawX:cx+Math.cos(angle)*labelR,
-            rawY:cy+Math.sin(angle)*labelR,
-            label:getLabel(i,pct,data),
-            color:dataset.backgroundColor[i]
+          items.push({i,angle,pct,label:getLabel(i,pct,data),color:dataset.backgroundColor[i],
+            tipX:cx+Math.cos(angle)*(outerR+8),
+            tipY:cy+Math.sin(angle)*(outerR+8)
           });
         });
 
-        // Separate left/right halves and sort by Y
-        const left=items.filter(it=>it.rawX<=cx).sort((a,b)=>a.rawY-b.rawY);
-        const right=items.filter(it=>it.rawX>cx).sort((a,b)=>a.rawY-b.rawY);
+        // Split into left/right by angle, sort each by Y (i.e. angle)
+        const left=items.filter(it=>Math.cos(it.angle)<0).sort((a,b)=>a.tipY-b.tipY);
+        const right=items.filter(it=>Math.cos(it.angle)>=0).sort((a,b)=>a.tipY-b.tipY);
 
-        // Resolve overlaps within each half by nudging
-        function resolveOverlaps(group){
-          const minGap=16;
-          for(let pass=0;pass<10;pass++){
+        // Assign label Y positions: spread evenly across available chart height
+        // with enough gap per label (lineHeight ~26px for name+pct)
+        const lineH=26;
+        const pad=24;
+        const availH=chartArea.bottom-chartArea.top-pad*2;
+
+        function assignYPositions(group){
+          if(!group.length) return;
+          // First pass: use natural tip Y
+          group.forEach(it=>{ it.labelY=it.tipY; });
+          // Clamp to chart area
+          group.forEach(it=>{
+            it.labelY=Math.max(chartArea.top+pad, Math.min(chartArea.bottom-pad, it.labelY));
+          });
+          // Spread pass: push items apart until no overlap
+          const minGap=lineH;
+          for(let pass=0;pass<30;pass++){
             let moved=false;
             for(let k=1;k<group.length;k++){
-              const diff=group[k].rawY-group[k-1].rawY;
-              if(diff<minGap){
-                const shift=(minGap-diff)/2;
-                group[k-1].rawY-=shift;
-                group[k].rawY+=shift;
+              const gap=group[k].labelY-group[k-1].labelY;
+              if(gap<minGap){
+                const shift=(minGap-gap)/2;
+                group[k-1].labelY-=shift;
+                group[k].labelY+=shift;
                 moved=true;
               }
             }
+            // Re-clamp after each pass
+            group.forEach(it=>{
+              it.labelY=Math.max(chartArea.top+pad, Math.min(chartArea.bottom-pad, it.labelY));
+            });
             if(!moved) break;
           }
         }
-        resolveOverlaps(left);
-        resolveOverlaps(right);
 
-        // Draw
+        assignYPositions(left);
+        assignYPositions(right);
+
+        // Label X: far left/right of chart area with inset
+        const leftX=chartArea.left+4;
+        const rightX=chartArea.right-4;
+
         ctx.save();
-        [...left,...right].forEach(it=>{
-          const lx=it.rawX;
-          const ly=it.rawY;
-          const isLeft=lx<=cx;
-          const textAlign=isLeft?'right':'left';
-          const elbow1X=it.tipX+(isLeft?-12:12);
-          const elbow1Y=it.tipY;
-          const elbow2X=isLeft?lx+6:lx-6;
-          const elbow2Y=ly;
+        function drawGroup(group,isLeft){
+          group.forEach(it=>{
+            const labelX=isLeft?leftX:rightX;
+            const labelY=it.labelY;
 
-          // Connector line
-          ctx.beginPath();
-          ctx.moveTo(it.tipX,it.tipY);
-          ctx.lineTo(elbow1X,elbow1Y);
-          ctx.lineTo(elbow2X,elbow2Y);
-          ctx.strokeStyle=it.color;
-          ctx.lineWidth=1.5;
-          ctx.stroke();
+            // Connector: tip → elbow → horizontal to label edge
+            const elbowX=isLeft?cx-outerR-22:cx+outerR+22;
+            ctx.beginPath();
+            ctx.moveTo(it.tipX,it.tipY);
+            ctx.lineTo(elbowX,labelY);
+            ctx.lineTo(labelX+(isLeft?8:-8),labelY);
+            ctx.strokeStyle=it.color+'cc';
+            ctx.lineWidth=1.2;
+            ctx.stroke();
 
-          // Dot at tip
-          ctx.beginPath();
-          ctx.arc(it.tipX,it.tipY,3,0,Math.PI*2);
-          ctx.fillStyle=it.color;
-          ctx.fill();
+            // Dot at tip
+            ctx.beginPath();
+            ctx.arc(it.tipX,it.tipY,2.5,0,Math.PI*2);
+            ctx.fillStyle=it.color;
+            ctx.fill();
 
-          // Label text
-          ctx.font='bold 11px -apple-system,BlinkMacSystemFont,sans-serif';
-          ctx.fillStyle=it.color;
-          ctx.textAlign=textAlign;
-          ctx.textBaseline='bottom';
-          ctx.fillText(it.label,isLeft?elbow2X-2:elbow2X+2,ly-1);
-          ctx.font='10px -apple-system,BlinkMacSystemFont,sans-serif';
-          ctx.fillStyle=labelColor;
-          ctx.textBaseline='top';
-          ctx.fillText(it.pct.toFixed(1)+'%',isLeft?elbow2X-2:elbow2X+2,ly+1);
-        });
+            // Label: name on top, pct below
+            ctx.textAlign=isLeft?'left':'right';
+            ctx.font='bold 11px -apple-system,BlinkMacSystemFont,sans-serif';
+            ctx.fillStyle=it.color;
+            ctx.textBaseline='bottom';
+            ctx.fillText(it.label,isLeft?labelX+10:labelX-10,labelY-1);
+            ctx.font='10px -apple-system,BlinkMacSystemFont,sans-serif';
+            ctx.fillStyle=labelColor;
+            ctx.textBaseline='top';
+            ctx.fillText(it.pct.toFixed(1)+'%',isLeft?labelX+10:labelX-10,labelY+1);
+          });
+        }
+
+        drawGroup(left,true);
+        drawGroup(right,false);
         ctx.restore();
       }
     };
