@@ -1594,14 +1594,34 @@ function renderMonthlyChart(){
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index'},
       plugins:{
         legend:{labels:{color:c.text,font:{size:12},boxWidth:12}},
-        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1},
-        datalabels:{display:false} // no datalabels plugin loaded, keep clean
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}
       },
       scales:{
         x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxRotation:45}},
         y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}
       }
-    }
+    },
+    plugins:[{
+      id:'barValueLabels',
+      afterDatasetsDraw(chart){
+        const {ctx}=chart;
+        chart.data.datasets.forEach((ds,di)=>{
+          const meta=chart.getDatasetMeta(di);
+          if(meta.hidden) return;
+          meta.data.forEach((bar,bi)=>{
+            const val=ds.data[bi];
+            if(!val) return;
+            ctx.save();
+            ctx.fillStyle=c.text;
+            ctx.font='bold 9px -apple-system,BlinkMacSystemFont,sans-serif';
+            ctx.textAlign='center';
+            ctx.textBaseline='bottom';
+            ctx.fillText(fmtShort(val),bar.x,bar.y-2);
+            ctx.restore();
+          });
+        });
+      }
+    }]
   });
 }
 
@@ -1614,9 +1634,29 @@ function renderYearlyCharts(){
   const incByYear=years.map(y=>+(cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&isIncomeTx(t)).reduce((s,t)=>s+t.amount,0)).toFixed(2));
   const outByYear=years.map(y=>+(cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&isOutcomeTx(t)).reduce((s,t)=>s+t.amount,0)).toFixed(2));
   const c=getChartColors();
+  const endLabelPlugin={
+    id:'endLabels',
+    afterDatasetsDraw(chart){
+      const {ctx}=chart;
+      chart.data.datasets.forEach((ds,di)=>{
+        const meta=chart.getDatasetMeta(di);
+        meta.data.forEach((bar,bi)=>{
+          const val=ds.data[bi]; if(!val) return;
+          ctx.save();
+          ctx.fillStyle=c.text;
+          ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
+          ctx.textAlign='left';
+          ctx.textBaseline='middle';
+          ctx.fillText(fmtShort(val),bar.x+5,bar.y);
+          ctx.restore();
+        });
+      });
+    }
+  };
   const hOpts=(color)=>({
     responsive:true,maintainAspectRatio:false,
     indexAxis:'y',
+    layout:{padding:{right:60}},
     plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},
     scales:{
       x:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}},
@@ -1624,9 +1664,9 @@ function renderYearlyCharts(){
     }
   });
   if(yearlyIncomeChart) yearlyIncomeChart.destroy();
-  yearlyIncomeChart=new Chart(yIncome,{type:'bar',data:{labels:years,datasets:[{data:incByYear,backgroundColor:'rgba(16,185,129,0.85)',borderRadius:4,borderSkipped:false}]},options:hOpts('green')});
+  yearlyIncomeChart=new Chart(yIncome,{type:'bar',data:{labels:years,datasets:[{data:incByYear,backgroundColor:'rgba(16,185,129,0.85)',borderRadius:4,borderSkipped:false}]},options:hOpts('green'),plugins:[endLabelPlugin]});
   if(yearlyOutcomeChart) yearlyOutcomeChart.destroy();
-  yearlyOutcomeChart=new Chart(yOutcome,{type:'bar',data:{labels:years,datasets:[{data:outByYear,backgroundColor:'rgba(248,113,113,0.85)',borderRadius:4,borderSkipped:false}]},options:hOpts('red')});
+  yearlyOutcomeChart=new Chart(yOutcome,{type:'bar',data:{labels:years,datasets:[{data:outByYear,backgroundColor:'rgba(248,113,113,0.85)',borderRadius:4,borderSkipped:false}]},options:hOpts('red'),plugins:[endLabelPlugin]});
 }
 
 // ── Savings per year (vertical, color-coded) ──
@@ -1643,7 +1683,24 @@ function renderSavingsChart(){
   savingsChart=new Chart(el,{
     type:'bar',
     data:{labels:years,datasets:[{data:savings,backgroundColor:savings.map(s=>s>=0?'rgba(16,185,129,0.85)':'rgba(248,113,113,0.85)'),borderRadius:4,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}},
+    plugins:[{
+      id:'savingsLabels',
+      afterDatasetsDraw(chart){
+        const {ctx}=chart;
+        const meta=chart.getDatasetMeta(0);
+        meta.data.forEach((bar,i)=>{
+          const val=savings[i]; if(val===undefined) return;
+          ctx.save();
+          ctx.fillStyle=c.text;
+          ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
+          ctx.textAlign='center';
+          ctx.textBaseline=val>=0?'bottom':'top';
+          ctx.fillText(fmtShort(val),bar.x,val>=0?bar.y-3:bar.y+3);
+          ctx.restore();
+        });
+      }
+    }]
   });
 }
 
@@ -1671,33 +1728,106 @@ function renderInvestedChart(){
 function renderAllocation(){
   const total=holdings.reduce((s,h)=>s+getVal(h),0)||1;
   const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
-  const labelColor=dark?'#f1f5f9':'#1a1a1a';
+  const labelColor=dark?'#f1f5f9':'#111827';
+  const labelBg=dark?'rgba(26,29,39,0.85)':'rgba(255,255,255,0.9)';
 
-  // Shared doughnut plugin: draws % label outside each slice
-  const outerLabelPlugin={
-    id:'outerLabels',
-    afterDatasetDraw(chart){
-      const {ctx,data}=chart;
-      const dataset=data.datasets[0];
-      const meta=chart.getDatasetMeta(0);
-      const chartTotal=dataset.data.reduce((a,b)=>a+b,0)||1;
-      ctx.save();
-      meta.data.forEach((arc,i)=>{
-        const pct=(dataset.data[i]/chartTotal*100);
-        if(pct<3) return; // skip tiny slices
-        const angle=(arc.startAngle+arc.endAngle)/2;
-        const r=arc.outerRadius+18;
-        const x=arc.x+Math.cos(angle)*r;
-        const y=arc.y+Math.sin(angle)*r;
-        ctx.fillStyle=labelColor;
-        ctx.font='bold 11px -apple-system,BlinkMacSystemFont,sans-serif';
-        ctx.textAlign='center';
-        ctx.textBaseline='middle';
-        ctx.fillText(pct.toFixed(1)+'%',x,y);
-      });
-      ctx.restore();
-    }
-  };
+  // Build pointer-label plugin: line from slice midpoint to label box
+  function makePointerPlugin(getLabel){
+    return {
+      id:'pointerLabels',
+      afterDraw(chart){
+        const {ctx,data,chartArea}=chart;
+        const dataset=data.datasets[0];
+        const meta=chart.getDatasetMeta(0);
+        const chartTotal=dataset.data.reduce((a,b)=>a+b,0)||1;
+        const cx=(chartArea.left+chartArea.right)/2;
+        const cy=(chartArea.top+chartArea.bottom)/2;
+
+        // First pass: compute raw label positions
+        const items=[];
+        meta.data.forEach((arc,i)=>{
+          const pct=dataset.data[i]/chartTotal*100;
+          const angle=(arc.startAngle+arc.endAngle)/2;
+          const midR=(arc.innerRadius+arc.outerRadius)/2;
+          const tipR=arc.outerRadius+10;
+          const labelR=arc.outerRadius+38;
+          items.push({
+            i, angle, pct,
+            tipX:cx+Math.cos(angle)*tipR,
+            tipY:cy+Math.sin(angle)*tipR,
+            rawX:cx+Math.cos(angle)*labelR,
+            rawY:cy+Math.sin(angle)*labelR,
+            label:getLabel(i,pct,data),
+            color:dataset.backgroundColor[i]
+          });
+        });
+
+        // Separate left/right halves and sort by Y
+        const left=items.filter(it=>it.rawX<=cx).sort((a,b)=>a.rawY-b.rawY);
+        const right=items.filter(it=>it.rawX>cx).sort((a,b)=>a.rawY-b.rawY);
+
+        // Resolve overlaps within each half by nudging
+        function resolveOverlaps(group){
+          const minGap=16;
+          for(let pass=0;pass<10;pass++){
+            let moved=false;
+            for(let k=1;k<group.length;k++){
+              const diff=group[k].rawY-group[k-1].rawY;
+              if(diff<minGap){
+                const shift=(minGap-diff)/2;
+                group[k-1].rawY-=shift;
+                group[k].rawY+=shift;
+                moved=true;
+              }
+            }
+            if(!moved) break;
+          }
+        }
+        resolveOverlaps(left);
+        resolveOverlaps(right);
+
+        // Draw
+        ctx.save();
+        [...left,...right].forEach(it=>{
+          const lx=it.rawX;
+          const ly=it.rawY;
+          const isLeft=lx<=cx;
+          const textAlign=isLeft?'right':'left';
+          const elbow1X=it.tipX+(isLeft?-12:12);
+          const elbow1Y=it.tipY;
+          const elbow2X=isLeft?lx+6:lx-6;
+          const elbow2Y=ly;
+
+          // Connector line
+          ctx.beginPath();
+          ctx.moveTo(it.tipX,it.tipY);
+          ctx.lineTo(elbow1X,elbow1Y);
+          ctx.lineTo(elbow2X,elbow2Y);
+          ctx.strokeStyle=it.color;
+          ctx.lineWidth=1.5;
+          ctx.stroke();
+
+          // Dot at tip
+          ctx.beginPath();
+          ctx.arc(it.tipX,it.tipY,3,0,Math.PI*2);
+          ctx.fillStyle=it.color;
+          ctx.fill();
+
+          // Label text
+          ctx.font='bold 11px -apple-system,BlinkMacSystemFont,sans-serif';
+          ctx.fillStyle=it.color;
+          ctx.textAlign=textAlign;
+          ctx.textBaseline='bottom';
+          ctx.fillText(it.label,isLeft?elbow2X-2:elbow2X+2,ly-1);
+          ctx.font='10px -apple-system,BlinkMacSystemFont,sans-serif';
+          ctx.fillStyle=labelColor;
+          ctx.textBaseline='top';
+          ctx.fillText(it.pct.toFixed(1)+'%',isLeft?elbow2X-2:elbow2X+2,ly+1);
+        });
+        ctx.restore();
+      }
+    };
+  }
 
   const byType={};
   holdings.forEach(h=>{ byType[h.type]=(byType[h.type]||0)+getVal(h); });
@@ -1706,33 +1836,35 @@ function renderAllocation(){
   const tData=tKeys.map(k=>byType[k]);
   const typeColorMap={bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
   const tColors=tKeys.map(k=>typeColorMap[k]||'#888');
+
   if(allocTypeChart) allocTypeChart.destroy();
   const atc=document.getElementById('alloc-type-chart');
   if(atc) allocTypeChart=new Chart(atc,{
     type:'doughnut',
     data:{labels:tLabels,datasets:[{data:tData,backgroundColor:tColors,borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:28},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}},
-    plugins:[outerLabelPlugin]
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:40,bottom:40,left:80,right:80}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}},
+    plugins:[makePointerPlugin((i,pct,data)=>data.labels[i])]
   });
-  const atl=document.getElementById('alloc-type-legend');
-  if(atl) atl.innerHTML=tLabels.map((l,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${tColors[i]}"></span>${l}</div>`).join('');
 
-  // By holding: ticker uppercase, name normal case
-  const hTickers=holdings.map(h=>h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker);
-  const hNames=holdings.map(h=>h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker));
-  // Legend shows "TICKER — Name", chart label is ticker only
+  // By holding: investment types use ticker only (uppercase), bank/cash use name
+  const hDisplayLabels=holdings.map(h=>{
+    const isInvestment=['stock','etf','crypto','bond'].includes(h.type);
+    if(isInvestment) return h.type==='crypto'?cleanCryptoTicker(h.ticker):h.ticker.toUpperCase();
+    return h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
+  });
   const hData=holdings.map(h=>getVal(h));
-  const hColors=hTickers.map((_,i)=>PALETTE[i%PALETTE.length]);
+  const hColors=hDisplayLabels.map((_,i)=>PALETTE[i%PALETTE.length]);
+
   if(allocHoldChart) allocHoldChart.destroy();
   const ahc=document.getElementById('alloc-hold-chart');
   if(ahc) allocHoldChart=new Chart(ahc,{
     type:'doughnut',
-    data:{labels:hTickers,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:28},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${hNames[ctx.dataIndex]} · ${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}},
-    plugins:[outerLabelPlugin]
+    data:{labels:hDisplayLabels,datasets:[{data:hData,backgroundColor:hColors,borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:40,bottom:40,left:80,right:80}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}}}},
+    plugins:[makePointerPlugin((i,pct,data)=>data.labels[i])]
   });
-  const ahl=document.getElementById('alloc-hold-legend');
-  if(ahl) ahl.innerHTML=hTickers.map((t,i)=>`<div class="legend-item"><span class="legend-dot" style="background:${hColors[i]}"></span><strong style="font-size:11px">${t}</strong>&nbsp;<span style="color:var(--text2)">${hNames[i]}</span></div>`).join('');
 }
 
 // ─────────────────────────────────────────
