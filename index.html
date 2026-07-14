@@ -619,17 +619,15 @@ tbody tr:hover td{background:var(--surface2)}
     </div>
 
     <!-- Asset tables -->
-    <div class="alloc-grid">
-      <div class="rpt-section">
-        <div class="ins-section-header"><i class="ti ti-currency-bitcoin"></i> Crypto</div>
-        <div class="rpt-summary" id="rpt-crypto-summary"></div>
-        <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-crypto-table"></table></div>
-      </div>
-      <div class="rpt-section">
-        <div class="ins-section-header"><i class="ti ti-trending-up"></i> ETFs</div>
-        <div class="rpt-summary" id="rpt-etf-summary"></div>
-        <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-etf-table"></table></div>
-      </div>
+    <div class="rpt-section">
+      <div class="ins-section-header"><i class="ti ti-currency-bitcoin"></i> Crypto</div>
+      <div class="rpt-summary" id="rpt-crypto-summary"></div>
+      <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-crypto-table"></table></div>
+    </div>
+    <div class="rpt-section">
+      <div class="ins-section-header"><i class="ti ti-trending-up"></i> ETFs</div>
+      <div class="rpt-summary" id="rpt-etf-summary"></div>
+      <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-etf-table"></table></div>
     </div>
     <div class="rpt-section">
       <div class="ins-section-header"><i class="ti ti-chart-candle"></i> Stocks</div>
@@ -2594,11 +2592,19 @@ const EXTRA_CATS = [
 
 async function ensureExtraCategories(){
   const existing = cfCategories.map(c=>c.name.toLowerCase());
+  let added = false;
   for(const cat of EXTRA_CATS){
     if(!existing.includes(cat.name.toLowerCase())){
-      const r = await api('cashflow_categories',{method:'POST',body:JSON.stringify(cat)});
-      if(Array.isArray(r)&&r[0]) cfCategories.push(r[0]);
+      try{
+        const r = await api('cashflow_categories',{method:'POST',body:JSON.stringify(cat)});
+        if(Array.isArray(r)&&r[0]){ cfCategories.push(r[0]); added=true; }
+      }catch(e){ console.warn('Could not add category:', cat.name, e); }
     }
+  }
+  if(added){
+    // Re-fetch to ensure correct order
+    cfCategories = await api('cashflow_categories?order=name.asc');
+    renderSettings();
   }
 }
 
