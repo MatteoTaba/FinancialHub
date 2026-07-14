@@ -648,20 +648,10 @@ tbody tr:hover td{background:var(--surface2)}
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
     <div class="page-header"><div><div class="page-title">Settings</div><div class="page-sub">Manage categories and recurring transactions</div></div></div>
-    <div style="margin-bottom:1rem">
-      <!-- Categories -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Transaction categories</div>
-          <button class="btn btn-sm btn-primary" onclick="openCatModal()"><i class="ti ti-plus"></i> Add</button>
-        </div>
-        <div id="settings-cats"></div>
-      </div>
-      <!-- Hidden recurrences list (still needed for logic) -->
-      <div id="settings-recurrences" style="display:none"></div>
-    </div>
+    <!-- Hidden recurrences list (still needed for logic) -->
+    <div id="settings-recurrences" style="display:none"></div>
     <!-- Recurrences calendar — full width -->
-    <div class="card">
+    <div class="card" style="margin-bottom:1rem">
       <div class="card-header">
         <div class="card-title">Recurrences calendar</div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -671,6 +661,14 @@ tbody tr:hover td{background:var(--surface2)}
         </div>
       </div>
       <div id="recur-calendar"></div>
+    </div>
+    <!-- Categories -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Transaction categories</div>
+        <button class="btn btn-sm btn-primary" onclick="openCatModal()"><i class="ti ti-plus"></i> Add</button>
+      </div>
+      <div id="settings-cats"></div>
     </div>
   </div>
 
