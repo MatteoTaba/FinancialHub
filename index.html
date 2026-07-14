@@ -184,6 +184,15 @@ tbody tr:hover td{background:var(--surface2)}
 .ins-section-block{background:var(--surface2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem;border:1px solid var(--border)}
 .ins-section-header{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.2px;margin-bottom:1.25rem;display:flex;align-items:center;gap:10px;padding-bottom:0.875rem;border-bottom:2px solid var(--accent)}
 .ins-section-header i{font-size:18px;color:var(--accent)}
+/* Recurrences calendar */
+.recur-cal{width:100%;border-collapse:collapse}
+.recur-cal th{text-align:center;font-size:11px;font-weight:600;color:var(--text3);padding:4px 0;text-transform:uppercase;letter-spacing:0.05em}
+.recur-cal td{vertical-align:top;border:1px solid var(--border);width:calc(100%/7);min-height:80px;padding:4px;font-size:11px}
+.recur-cal td.today{background:rgba(99,102,241,0.07);border-color:var(--accent)}
+.recur-cal td.other-month{opacity:0.35}
+.recur-cal .cal-day-num{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:3px;text-align:right}
+.recur-cal td.today .cal-day-num{color:var(--accent)}
+.recur-event{display:flex;align-items:center;gap:3px;padding:2px 4px;border-radius:4px;margin-bottom:2px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
 /* Reports page */
 .rpt-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
 .rpt-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.75rem 1rem}
@@ -639,7 +648,7 @@ tbody tr:hover td{background:var(--surface2)}
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
     <div class="page-header"><div><div class="page-title">Settings</div><div class="page-sub">Manage categories and recurring transactions</div></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
       <!-- Categories -->
       <div class="card">
         <div class="card-header">
@@ -648,13 +657,25 @@ tbody tr:hover td{background:var(--surface2)}
         </div>
         <div id="settings-cats"></div>
       </div>
-      <!-- Recurrences -->
+      <!-- Recurrences list -->
       <div class="card">
         <div class="card-header">
           <div class="card-title">Recurring transactions</div>
         </div>
         <div id="settings-recurrences"></div>
       </div>
+    </div>
+    <!-- Recurrences calendar — full width -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recurrences calendar</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-sm" onclick="recurCalPrev()"><i class="ti ti-chevron-left"></i></button>
+          <span id="recur-cal-label" style="font-size:13px;font-weight:600;min-width:120px;text-align:center"></span>
+          <button class="btn btn-sm" onclick="recurCalNext()"><i class="ti ti-chevron-right"></i></button>
+        </div>
+      </div>
+      <div id="recur-calendar"></div>
     </div>
   </div>
 
@@ -752,7 +773,7 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="form-group"><label>Selected icon</label>
         <div style="display:flex;align-items:center;gap:8px">
           <div id="cat-icon-preview" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:18px"><i class="ti ti-tag"></i></div>
-          <input type="text" id="cat-icon" value="ti-tag" placeholder="ti-tag" style="flex:1" oninput="updateIconPreview(this.value)">
+          <input type="hidden" id="cat-icon" value="ti-tag">
         </div>
       </div>
     </div>
@@ -888,7 +909,7 @@ function showPage(name,btn){
   if(name==='insights'){ renderAllocation(); renderInsights(); }
   // prices only refresh manually via the Refresh button
   if(name==='cashflow'){ renderCashflow(); const fab=document.getElementById('cf-fab'); if(fab) fab.style.display=''; }
-  if(name==='settings') renderSettings();
+  if(name==='settings'){ renderSettings(); renderRecurCalendar(); }
   if(name==='reports') renderReports();
   // Hide FAB when not on cashflow
   if(name!=='cashflow'){ const fab=document.getElementById('cf-fab'); if(fab) fab.style.display='none'; }
@@ -2601,11 +2622,112 @@ async function deleteCfTx(id,holdingId,holdingToId,type,amount){
 }
 
 // ── Settings ──
+let recurCalYear = new Date().getFullYear();
+let recurCalMonth = new Date().getMonth();
+
+function recurCalPrev(){ recurCalMonth--; if(recurCalMonth<0){recurCalMonth=11;recurCalYear--;} renderRecurCalendar(); }
+function recurCalNext(){ recurCalMonth++; if(recurCalMonth>11){recurCalMonth=0;recurCalYear++;} renderRecurCalendar(); }
+
+function getRecurrenceDaysInMonth(year, month){
+  // For each active recurrence, find all occurrences within this month
+  const results = []; // {day, recurrence}
+  const monthStart = new Date(year, month, 1);
+  const monthEnd   = new Date(year, month+1, 0, 23, 59, 59);
+  cfRecurrences.forEach(r=>{
+    if(!r.active) return;
+    // Walk from recurrence start (or next_due going backwards) through the month
+    // Simulate occurrences: start from next_due and walk backwards/forwards
+    let d = new Date(r.next_due);
+    // Walk back to find first occurrence in or before this month
+    while(d > monthStart){
+      const prev = new Date(d);
+      if(r.frequency==='daily')   prev.setDate(prev.getDate()-1);
+      else if(r.frequency==='weekly')  prev.setDate(prev.getDate()-7);
+      else if(r.frequency==='monthly') prev.setMonth(prev.getMonth()-1);
+      else if(r.frequency==='yearly')  prev.setFullYear(prev.getFullYear()-1);
+      if(prev < monthStart) break;
+      d = prev;
+    }
+    // Now walk forward collecting occurrences in this month
+    let cur = new Date(d);
+    let safety = 0;
+    while(cur <= monthEnd && safety++ < 400){
+      if(cur >= monthStart && cur <= monthEnd){
+        results.push({day: cur.getDate(), recurrence: r});
+      }
+      // Advance
+      if(r.frequency==='daily')        cur.setDate(cur.getDate()+1);
+      else if(r.frequency==='weekly')  cur.setDate(cur.getDate()+7);
+      else if(r.frequency==='monthly') cur.setMonth(cur.getMonth()+1);
+      else if(r.frequency==='yearly')  { cur.setFullYear(cur.getFullYear()+1); break; }
+    }
+  });
+  return results;
+}
+
+function renderRecurCalendar(){
+  const label = document.getElementById('recur-cal-label');
+  const calEl = document.getElementById('recur-calendar');
+  if(!label||!calEl) return;
+  label.textContent = new Date(recurCalYear, recurCalMonth, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+
+  const today = new Date();
+  const firstDay = new Date(recurCalYear, recurCalMonth, 1).getDay(); // 0=Sun
+  const startOffset = (firstDay+6)%7; // Monday-first
+  const daysInMonth = new Date(recurCalYear, recurCalMonth+1, 0).getDate();
+  const daysInPrev  = new Date(recurCalYear, recurCalMonth, 0).getDate();
+
+  const events = getRecurrenceDaysInMonth(recurCalYear, recurCalMonth);
+  // Group by day
+  const byDay = {};
+  events.forEach(e=>{ if(!byDay[e.day]) byDay[e.day]=[]; byDay[e.day].push(e.recurrence); });
+
+  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  let html = `<table class="recur-cal"><thead><tr>${DAYS.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody><tr>`;
+
+  let cellCount = 0;
+  // Leading days from prev month
+  for(let i=startOffset-1;i>=0;i--){
+    html+=`<td class="other-month"><div class="cal-day-num">${daysInPrev-i}</div></td>`;
+    cellCount++;
+  }
+  // Days of current month
+  for(let d=1;d<=daysInMonth;d++){
+    if(cellCount>0 && cellCount%7===0) html+='</tr><tr>';
+    const isToday = today.getFullYear()===recurCalYear && today.getMonth()===recurCalMonth && today.getDate()===d;
+    const dayEvents = byDay[d]||[];
+    const evHtml = dayEvents.slice(0,3).map(r=>{
+      const cat = cfCategories.find(c=>c.id===r.category_id);
+      const color = cat?.color||'var(--accent)';
+      const icon  = cat?.icon||'ti-repeat';
+      const label = r.description||cat?.name||'Recurring';
+      return `<div class="recur-event" style="background:${color}22;color:${color}" title="${label} — ${fmt(r.amount)}">
+        <i class="ti ${icon}" style="font-size:9px;flex-shrink:0"></i>
+        <span style="overflow:hidden;text-overflow:ellipsis">${label}</span>
+      </div>`;
+    }).join('');
+    const moreHtml = dayEvents.length>3 ? `<div style="font-size:9px;color:var(--text3);padding:1px 4px">+${dayEvents.length-3} more</div>` : '';
+    html+=`<td${isToday?' class="today"':''}><div class="cal-day-num">${d}</div>${evHtml}${moreHtml}</td>`;
+    cellCount++;
+  }
+  // Trailing days
+  let trail = 1;
+  while(cellCount%7!==0){ html+=`<td class="other-month"><div class="cal-day-num">${trail++}</div></td>`; cellCount++; }
+  html+='</tr></tbody></table>';
+  calEl.innerHTML = html;
+}
+
 function renderSettings(){
   const catEl=document.getElementById('settings-cats');
   if(catEl) catEl.innerHTML=cfCategories.length
-    ?cfCategories.map(c=>`<div class="settings-cat-row"><i class="ti ${c.icon}" style="color:${c.color};font-size:18px;width:24px;text-align:center"></i><span style="flex:1;font-size:13px">${c.name}</span><button class="btn btn-sm btn-danger" onclick="deleteCat('${c.id}')"><i class="ti ti-trash"></i></button></div>`).join('')
+    ?cfCategories.map(c=>`<div class="settings-cat-row">
+        <i class="ti ${c.icon}" style="color:${c.color};font-size:18px;width:24px;text-align:center"></i>
+        <span style="flex:1;font-size:13px">${c.name}</span>
+        <button class="btn btn-sm" onclick="openCatModal('${c.id}')" style="margin-right:4px"><i class="ti ti-pencil"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="deleteCat('${c.id}')"><i class="ti ti-trash"></i></button>
+      </div>`).join('')
     :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No categories yet</div>';
+
   const recEl=document.getElementById('settings-recurrences');
   if(recEl) recEl.innerHTML=cfRecurrences.length
     ?cfRecurrences.map(r=>{
@@ -2613,75 +2735,20 @@ function renderSettings(){
         const h=holdings.find(x=>x.id===r.holding_id);
         const hName=h?(h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)):'—';
         const due=new Date(r.next_due).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'});
+        const color=cat?.color||'var(--accent)';
         return `<div class="settings-recur-row">
-          <i class="ti ti-repeat" style="color:var(--accent);font-size:18px;flex-shrink:0;margin-top:2px"></i>
-          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${r.description||'—'}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px">${fmt(r.amount)} · ${r.frequency} · ${hName} · Next: ${due}${cat?` · <span style="color:${cat.color}">${cat.name}</span>`:''}${!r.active?' · <span style="color:var(--text3)">Paused</span>':''}</div></div>
-          <button class="btn btn-sm" onclick="toggleRecurActive('${r.id}',${!r.active})"><i class="ti ti-${r.active?'player-pause':'player-play'}"></i></button>
+          <i class="ti ${cat?.icon||'ti-repeat'}" style="color:${color};font-size:18px;flex-shrink:0;margin-top:2px"></i>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500">${r.description||'—'}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">${fmt(r.amount)} · <span style="text-transform:capitalize">${r.frequency}</span> · ${hName} · Next: ${due}${cat?` · <span style="color:${color}">${cat.name}</span>`:''}${!r.active?' · <span style="color:var(--text3)">Paused</span>':''}</div>
+          </div>
+          <button class="btn btn-sm" onclick="toggleRecurActive('${r.id}',${!r.active})" title="${r.active?'Pause':'Resume'}"><i class="ti ti-${r.active?'player-pause':'player-play'}"></i></button>
           <button class="btn btn-sm btn-danger" onclick="deleteRecur('${r.id}')"><i class="ti ti-trash"></i></button>
         </div>`;
       }).join('')
     :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No recurring transactions set up</div>';
-}
 
-// ── Icon library ──
-const ICON_LIBRARY = [
-  'ti-tag','ti-home-2','ti-briefcase','ti-car','ti-plane','ti-shopping-bag','ti-shopping-cart',
-  'ti-tools-kitchen-2','ti-device-tv','ti-device-laptop','ti-device-gamepad-2','ti-ball-football',
-  'ti-heart-rate-monitor','ti-pill','ti-stethoscope','ti-file-invoice','ti-receipt','ti-cash',
-  'ti-coin','ti-trending-up','ti-chart-bar','ti-building-bank','ti-credit-card','ti-wallet',
-  'ti-confetti','ti-music','ti-camera','ti-book','ti-bus','ti-train','ti-bike',
-  'ti-droplet','ti-sun','ti-moon','ti-star','ti-gift','ti-coffee','ti-pizza',
-  'ti-shirt','ti-hanger','ti-scissors','ti-brush','ti-paw','ti-plant','ti-bottle',
-  'ti-dumbbell','ti-swimming','ti-yoga','ti-school','ti-microscope','ti-flask',
-  'ti-hammer','ti-tool','ti-plug','ti-wifi','ti-phone','ti-mail','ti-package',
-  'ti-truck','ti-gas-station','ti-parking','ti-map-pin','ti-globe','ti-baby-carriage',
-  'ti-cat','ti-dog','ti-trees','ti-beach','ti-mountain','ti-building',
-];
-
-function buildIconGrid(){
-  const grid = document.getElementById('cat-icon-grid'); if(!grid) return;
-  const color = document.getElementById('cat-color')?.value||'#6366f1';
-  grid.innerHTML = ICON_LIBRARY.map(icon=>`
-    <button type="button" onclick="selectIcon('${icon}')" title="${icon}"
-      style="width:100%;aspect-ratio:1;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);transition:all 0.12s"
-      onmouseover="this.style.background='var(--surface3)';this.style.color='${color}'"
-      onmouseout="this.style.background='none';this.style.color='var(--text2)'">
-      <i class="ti ${icon}"></i>
-    </button>`).join('');
-}
-
-function selectIcon(icon){
-  document.getElementById('cat-icon').value = icon;
-  updateIconPreview(icon);
-}
-
-function updateIconPreview(icon){
-  const prev = document.getElementById('cat-icon-preview'); if(!prev) return;
-  const color = document.getElementById('cat-color')?.value||'#6366f1';
-  prev.style.color = color;
-  prev.innerHTML = `<i class="ti ${icon||'ti-tag'}"></i>`;
-}
-
-function openCatModal(id=null){
-  document.getElementById('cat-edit-id').value = id||'';
-  document.getElementById('cat-modal-title').textContent = id ? 'Edit category' : 'Add category';
-  if(!id){
-    document.getElementById('cat-name').value='';
-    document.getElementById('cat-icon').value='ti-tag';
-    document.getElementById('cat-color').value='#6366f1';
-    updateIconPreview('ti-tag');
-  } else {
-    const cat = cfCategories.find(c=>c.id===id);
-    if(cat){
-      document.getElementById('cat-name').value=cat.name;
-      document.getElementById('cat-icon').value=cat.icon||'ti-tag';
-      document.getElementById('cat-color').value=cat.color||'#6366f1';
-      updateIconPreview(cat.icon||'ti-tag');
-    }
-  }
-  buildIconGrid();
-  openModal('modal-cat');
+  renderRecurCalendar();
 }
 
 async function saveCat(){
