@@ -1774,20 +1774,23 @@ async function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   });
 
   // SVG arc path helper
-  function arcPath(r,sA,eA){
-    const x1=cx+Math.cos(sA)*r,y1=cy+Math.sin(sA)*r;
-    const x2=cx+Math.cos(eA)*r,y2=cy+Math.sin(eA)*r;
+  // SVG donut slice: outer arc CW → line to inner end → inner arc CCW → close
+  function slicePath(sA,eA){
+    const f=v=>v.toFixed(2);
+    const ox1=cx+Math.cos(sA)*outerR, oy1=cy+Math.sin(sA)*outerR;
+    const ox2=cx+Math.cos(eA)*outerR, oy2=cy+Math.sin(eA)*outerR;
+    const ix1=cx+Math.cos(eA)*innerR, iy1=cy+Math.sin(eA)*innerR;
+    const ix2=cx+Math.cos(sA)*innerR, iy2=cy+Math.sin(sA)*innerR;
     const large=eA-sA>Math.PI?1:0;
-    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+    // M outer-start, arc CW to outer-end, L inner-end, arc CCW to inner-start, Z
+    return `M ${f(ox1)} ${f(oy1)} A ${outerR} ${outerR} 0 ${large} 1 ${f(ox2)} ${f(oy2)} L ${f(ix1)} ${f(iy1)} A ${innerR} ${innerR} 0 ${large} 0 ${f(ix2)} ${f(iy2)} Z`;
   }
 
   // Draw slices (always immediate)
   let sliceSVG=`<svg id="${containerId}-svg" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">`;
   arcs.forEach(a=>{
     if(a.sweep<0.001) return;
-    const op=arcPath(outerR,a.startAngle,a.endAngle);
-    const ip=arcPath(innerR,a.endAngle,a.startAngle);
-    sliceSVG+=`<path d="${op} L ${(cx+Math.cos(a.endAngle)*innerR).toFixed(1)} ${(cy+Math.sin(a.endAngle)*innerR).toFixed(1)} ${ip} Z" fill="${a.color}" opacity="0.92"><title>${a.label}: ${a.pct}%</title></path>`;
+    sliceSVG+=`<path d="${slicePath(a.startAngle,a.endAngle)}" fill="${a.color}" opacity="0.92"><title>${a.label}: ${a.pct}%</title></path>`;
   });
   sliceSVG+=`<g id="${containerId}-labels"></g></svg>`;
   container.innerHTML=sliceSVG;
