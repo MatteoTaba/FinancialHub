@@ -648,7 +648,7 @@ tbody tr:hover td{background:var(--surface2)}
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
     <div class="page-header"><div><div class="page-title">Settings</div><div class="page-sub">Manage categories and recurring transactions</div></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+    <div style="margin-bottom:1rem">
       <!-- Categories -->
       <div class="card">
         <div class="card-header">
@@ -657,13 +657,8 @@ tbody tr:hover td{background:var(--surface2)}
         </div>
         <div id="settings-cats"></div>
       </div>
-      <!-- Recurrences list -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Recurring transactions</div>
-        </div>
-        <div id="settings-recurrences"></div>
-      </div>
+      <!-- Hidden recurrences list (still needed for logic) -->
+      <div id="settings-recurrences" style="display:none"></div>
     </div>
     <!-- Recurrences calendar — full width -->
     <div class="card">
@@ -2703,7 +2698,8 @@ function renderRecurCalendar(){
       const label = r.description||cat?.name||'Recurring';
       return `<div class="recur-event" style="background:${color}22;color:${color}" title="${label} — ${fmt(r.amount)}">
         <i class="ti ${icon}" style="font-size:9px;flex-shrink:0"></i>
-        <span style="overflow:hidden;text-overflow:ellipsis">${label}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;flex:1">${label}</span>
+        <span style="font-size:9px;opacity:0.85;flex-shrink:0;margin-left:2px">${fmt(r.amount)}</span>
       </div>`;
     }).join('');
     const moreHtml = dayEvents.length>3 ? `<div style="font-size:9px;color:var(--text3);padding:1px 4px">+${dayEvents.length-3} more</div>` : '';
