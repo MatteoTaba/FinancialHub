@@ -644,7 +644,7 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="card">
         <div class="card-header">
           <div class="card-title">Transaction categories</div>
-          <button class="btn btn-sm btn-primary" onclick="openModal('modal-cat')"><i class="ti ti-plus"></i> Add</button>
+          <button class="btn btn-sm btn-primary" onclick="openCatModal()"><i class="ti ti-plus"></i> Add</button>
         </div>
         <div id="settings-cats"></div>
       </div>
@@ -743,13 +743,21 @@ tbody tr:hover td{background:var(--surface2)}
 
 <!-- CATEGORY MODAL -->
 <div class="overlay" id="modal-cat">
-  <div class="modal">
-    <div class="modal-title">Add category</div>
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title" id="cat-modal-title">Add category</div>
+    <input type="hidden" id="cat-edit-id">
     <div class="form-grid">
       <div class="form-group form-full"><label>Name</label><input type="text" id="cat-name" placeholder="e.g. Groceries"></div>
-      <div class="form-group"><label>Icon (Tabler icon name)</label><input type="text" id="cat-icon" placeholder="ti-shopping-cart" value="ti-tag"></div>
-      <div class="form-group"><label>Color</label><input type="color" id="cat-color" value="#6366f1" style="height:42px;padding:4px"></div>
+      <div class="form-group"><label>Color</label><input type="color" id="cat-color" value="#6366f1" style="height:42px;padding:4px;width:100%"></div>
+      <div class="form-group"><label>Selected icon</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="cat-icon-preview" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:18px"><i class="ti ti-tag"></i></div>
+          <input type="text" id="cat-icon" value="ti-tag" placeholder="ti-tag" style="flex:1" oninput="updateIconPreview(this.value)">
+        </div>
+      </div>
     </div>
+    <div style="margin-bottom:8px;font-size:12px;color:var(--text2);font-weight:500">Quick pick</div>
+    <div id="cat-icon-grid" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;max-height:200px;overflow-y:auto;background:var(--surface2);border-radius:var(--radius-sm);padding:8px"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-cat')">Cancel</button>
       <button class="btn btn-primary" onclick="saveCat()">Save</button>
@@ -2107,6 +2115,8 @@ async function loadCashflow(){
       if(Array.isArray(r)&&r[0]) cfCategories.push(r[0]);
     }
   }
+  // Ensure extra categories from Excel exist
+  await ensureExtraCategories();
   await processRecurrences();
   renderCashflow();
   renderSettings();
@@ -2236,7 +2246,10 @@ function cfTxRow(t,h){
       <div class="cf-tx-amount" style="color:${amtColor}">${amtSign}${fmt(t.amount)}</div>
       <div class="cf-tx-date">${date}</div>
     </div>
-    <button class="btn btn-sm btn-danger" style="margin-left:8px" onclick="deleteCfTx('${t.id}','${t.holding_id||''}','${t.holding_to_id||''}','${t.type}',${t.amount})"><i class="ti ti-trash"></i></button>
+    <div style="display:flex;gap:4px;margin-left:8px">
+      <button class="btn btn-sm" onclick="editCfTx('${t.id}')"><i class="ti ti-pencil"></i></button>
+      <button class="btn btn-sm btn-danger" onclick="deleteCfTx('${t.id}','${t.holding_id||''}','${t.holding_to_id||''}','${t.type}',${t.amount})"><i class="ti ti-trash"></i></button>
+    </div>
   </div>`;
 }
 
@@ -2313,9 +2326,14 @@ function showCfForm(){
   populateCfForm();
 }
 function showCfMain(){
+  editTxId=null;
   document.getElementById('cf-main').style.display='';
   document.getElementById('cf-form').style.display='none';
   document.getElementById('cf-fab').style.display='';
+  // Restore form title and recurring option
+  const t=document.getElementById('cf-form-title'); if(t) t.textContent='Add Transaction';
+  const recurWrap=document.getElementById('cf-recurring')?.closest('.form-group'); if(recurWrap) recurWrap.style.display='';
+  document.getElementById('edit-recur-note')?.remove();
 }
 
 function setCfCtx(ctx,btn){
@@ -2436,6 +2454,29 @@ function populateCfForm(){
 }
 
 async function saveCfTransaction(){
+  // If in edit mode, PATCH instead of POST
+  if(editTxId){
+    const amount=parseFloat(document.getElementById('cf-amount').value)||0;
+    const desc=document.getElementById('cf-desc').value.trim();
+    const catId=document.getElementById('cf-cat').value||null;
+    const date=document.getElementById('cf-date').value;
+    const fromId=document.getElementById('cf-from').value||null;
+    const toId=document.getElementById('cf-to').value||null;
+    if(amount<=0){alert('Please enter an amount.');return;}
+    await api(`cashflow_transactions?id=eq.${editTxId}`,{method:'PATCH',body:JSON.stringify({
+      amount, description:desc||null, category_id:cfType==='transfer'?null:catId,
+      holding_id:fromId, holding_to_id:cfType==='transfer'?toId:null,
+      date:new Date(date).toISOString()
+    })});
+    editTxId=null;
+    [cfTransactions,holdings]=await Promise.all([api('cashflow_transactions?order=date.desc'),api('holdings?order=created_at.asc')]);
+    renderCashflow(); renderOverview(); showCfMain(); toast('Transaction updated ✓');
+    // Restore form title and recurring option
+    const recurWrap=document.querySelector('[id="cf-recurring"]')?.closest('.form-group');
+    if(recurWrap) recurWrap.style.display='';
+    document.getElementById('edit-recur-note')?.remove();
+    return;
+  }
   const amount=parseFloat(document.getElementById('cf-amount').value)||0;
   const desc=document.getElementById('cf-desc').value.trim();
   const catId=document.getElementById('cf-cat').value||null;
@@ -2507,6 +2548,49 @@ async function saveInvTransaction(){
   showCfMain(); toast('Transaction saved ✓');
 }
 
+// ── Edit transaction ──
+let editTxId = null;
+
+function editCfTx(txId){
+  const t = cfTransactions.find(x=>x.id===txId); if(!t) return;
+  editTxId = txId;
+  // Use the existing add-transaction form, pre-filled
+  showCfForm();
+  // Restore values after form is populated
+  setTimeout(()=>{
+    const isInv = ['purchase','sale'].includes(t.type);
+    // Set ctx
+    const ctx = isInv ? 'investment' : 'account';
+    setCfCtx(ctx, document.querySelector(`.cf-type-btn[data-ctx="${ctx}"]`));
+    if(!isInv){
+      setCfType(t.type, document.querySelector(`.cf-type-btn[data-type="${t.type}"]`));
+      if(t.amount) document.getElementById('cf-amount').value = t.amount;
+      if(t.description) document.getElementById('cf-desc').value = t.description;
+      if(t.category_id){ const s=document.getElementById('cf-cat'); if(s) s.value=t.category_id; }
+      if(t.date) document.getElementById('cf-date').value = new Date(t.date).toISOString().slice(0,16);
+      if(t.holding_id){ const s=document.getElementById('cf-from'); if(s) s.value=t.holding_id; }
+      if(t.holding_to_id){ const s=document.getElementById('cf-to'); if(s) s.value=t.holding_to_id; }
+    } else {
+      setCfIType(t.type, document.querySelector(`.cf-type-btn[data-itype="${t.type}"]`));
+      if(t.holding_id){ const s=document.getElementById('inv-asset'); if(s) s.value=t.holding_id; }
+      if(t.description) document.getElementById('inv-desc-'+t.type) && (document.getElementById('cf-desc').value=t.description);
+    }
+    // Mark as edit mode
+    document.getElementById('cf-form-title') && (document.getElementById('cf-form-title').textContent='Edit Transaction');
+    // Hide recurring option when editing (don't modify series)
+    const recurWrap = document.querySelector('[id="cf-recurring"]')?.closest('.form-group');
+    if(recurWrap) recurWrap.style.display='none';
+    if(t.recurring_id){
+      const note = document.createElement('div');
+      note.id='edit-recur-note';
+      note.style.cssText='font-size:12px;color:var(--text2);padding:8px 0;display:flex;align-items:center;gap:6px';
+      note.innerHTML='<i class="ti ti-info-circle" style="color:var(--accent)"></i> This is a recurring transaction. Only this occurrence will be modified.';
+      const footer = document.querySelector('.modal-footer, #cf-form .modal-footer');
+      recurWrap?.parentElement?.insertBefore(note, recurWrap);
+    }
+  }, 50);
+}
+
 async function deleteCfTx(id,holdingId,holdingToId,type,amount){
   if(!confirm('Delete this transaction? The holding balance will be reversed.')) return;
   const reverseType=type==='expense'?'income':type==='income'?'expense':type;
@@ -2540,16 +2624,80 @@ function renderSettings(){
     :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No recurring transactions set up</div>';
 }
 
+// ── Icon library ──
+const ICON_LIBRARY = [
+  'ti-tag','ti-home-2','ti-briefcase','ti-car','ti-plane','ti-shopping-bag','ti-shopping-cart',
+  'ti-tools-kitchen-2','ti-device-tv','ti-device-laptop','ti-device-gamepad-2','ti-ball-football',
+  'ti-heart-rate-monitor','ti-pill','ti-stethoscope','ti-file-invoice','ti-receipt','ti-cash',
+  'ti-coin','ti-trending-up','ti-chart-bar','ti-building-bank','ti-credit-card','ti-wallet',
+  'ti-confetti','ti-music','ti-camera','ti-book','ti-bus','ti-train','ti-bike',
+  'ti-droplet','ti-sun','ti-moon','ti-star','ti-gift','ti-coffee','ti-pizza',
+  'ti-shirt','ti-hanger','ti-scissors','ti-brush','ti-paw','ti-plant','ti-bottle',
+  'ti-dumbbell','ti-swimming','ti-yoga','ti-school','ti-microscope','ti-flask',
+  'ti-hammer','ti-tool','ti-plug','ti-wifi','ti-phone','ti-mail','ti-package',
+  'ti-truck','ti-gas-station','ti-parking','ti-map-pin','ti-globe','ti-baby-carriage',
+  'ti-cat','ti-dog','ti-trees','ti-beach','ti-mountain','ti-building',
+];
+
+function buildIconGrid(){
+  const grid = document.getElementById('cat-icon-grid'); if(!grid) return;
+  const color = document.getElementById('cat-color')?.value||'#6366f1';
+  grid.innerHTML = ICON_LIBRARY.map(icon=>`
+    <button type="button" onclick="selectIcon('${icon}')" title="${icon}"
+      style="width:100%;aspect-ratio:1;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);transition:all 0.12s"
+      onmouseover="this.style.background='var(--surface3)';this.style.color='${color}'"
+      onmouseout="this.style.background='none';this.style.color='var(--text2)'">
+      <i class="ti ${icon}"></i>
+    </button>`).join('');
+}
+
+function selectIcon(icon){
+  document.getElementById('cat-icon').value = icon;
+  updateIconPreview(icon);
+}
+
+function updateIconPreview(icon){
+  const prev = document.getElementById('cat-icon-preview'); if(!prev) return;
+  const color = document.getElementById('cat-color')?.value||'#6366f1';
+  prev.style.color = color;
+  prev.innerHTML = `<i class="ti ${icon||'ti-tag'}"></i>`;
+}
+
+function openCatModal(id=null){
+  document.getElementById('cat-edit-id').value = id||'';
+  document.getElementById('cat-modal-title').textContent = id ? 'Edit category' : 'Add category';
+  if(!id){
+    document.getElementById('cat-name').value='';
+    document.getElementById('cat-icon').value='ti-tag';
+    document.getElementById('cat-color').value='#6366f1';
+    updateIconPreview('ti-tag');
+  } else {
+    const cat = cfCategories.find(c=>c.id===id);
+    if(cat){
+      document.getElementById('cat-name').value=cat.name;
+      document.getElementById('cat-icon').value=cat.icon||'ti-tag';
+      document.getElementById('cat-color').value=cat.color||'#6366f1';
+      updateIconPreview(cat.icon||'ti-tag');
+    }
+  }
+  buildIconGrid();
+  openModal('modal-cat');
+}
+
 async function saveCat(){
   const name=document.getElementById('cat-name').value.trim();
   const icon=document.getElementById('cat-icon').value.trim()||'ti-tag';
   const color=document.getElementById('cat-color').value||'#6366f1';
+  const editId=document.getElementById('cat-edit-id').value;
   if(!name){alert('Please enter a name.');return;}
-  await api('cashflow_categories',{method:'POST',body:JSON.stringify({name,icon,color})});
+  if(editId){
+    await api(`cashflow_categories?id=eq.${editId}`,{method:'PATCH',body:JSON.stringify({name,icon,color})});
+  } else {
+    await api('cashflow_categories',{method:'POST',body:JSON.stringify({name,icon,color})});
+  }
   cfCategories=await api('cashflow_categories?order=name.asc');
   closeModal('modal-cat'); renderSettings();
-  document.getElementById('cat-name').value='';
-  toast('Category saved ✓');
+  toast(editId?'Category updated ✓':'Category saved ✓');
 }
 
 async function deleteCat(id){
@@ -2740,7 +2888,8 @@ function renderOutcomesReport(){
     if(!total) return null;
     const byCat = {};
     cats.forEach(c=>{ byCat[c.id]=pTxs.filter(t=>t.category_id===c.id).reduce((s,t)=>s+t.amount,0); });
-    return {period:p.label, byCat, total};
+    const fixed = pTxs.filter(t=>t.recurring_id).reduce((s,t)=>s+t.amount,0);
+    return {period:p.label, byCat, total, fixed};
   }).filter(Boolean);
 
   const grandTotal = rows.reduce((s,r)=>s+r.total,0);
@@ -2756,14 +2905,16 @@ function renderOutcomesReport(){
     (biggestCat ? mkStat('Biggest category', biggestCat.name) : '');
 
   const catHeaders = cats.map(c=>`<th>${c.name}</th>`).join('');
-  const thead = `<thead><tr><th>Period</th>${catHeaders}<th>Total</th></tr></thead>`;
+  const thead = `<thead><tr><th>Period</th><th>🔁 Fixed</th>${catHeaders}<th>Total</th></tr></thead>`;
+  const totalFixed = rows.reduce((s,r)=>s+(r.fixed||0),0);
   const tbody = rows.map(r=>`<tr>
     <td>${r.period}</td>
+    <td style="color:var(--accent)">${r.fixed>0?rptFmt(r.fixed):'—'}</td>
     ${cats.map(c=>`<td>${r.byCat[c.id]>0?rptFmt(r.byCat[c.id]):'—'}</td>`).join('')}
     <td style="color:var(--red);font-weight:600">${rptFmt(r.total)}</td>
   </tr>`).join('');
   const catTotalCells = cats.map(c=>`<td>${catTotals[c.id]>0?rptFmt(catTotals[c.id]):'—'}</td>`).join('');
-  const tfoot = `<tfoot><tr class="total-row"><td>TOTAL</td>${catTotalCells}<td>${rptFmt(grandTotal)}</td></tr></tfoot>`;
+  const tfoot = `<tfoot><tr class="total-row"><td>TOTAL</td><td style="color:var(--accent)">${rptFmt(totalFixed)}</td>${catTotalCells}<td>${rptFmt(grandTotal)}</td></tr></tfoot>`;
   document.getElementById('rpt-out-table').innerHTML = thead+`<tbody>${tbody}</tbody>`+tfoot;
 }
 
