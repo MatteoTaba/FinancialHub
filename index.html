@@ -369,8 +369,9 @@ tbody tr:hover td{background:var(--surface2)}
           <div class="card-sub" id="chart-range-label"></div>
         </div>
         <div class="period-tabs">
-          <button class="period-btn" onclick="setPeriod(1,this)">1D</button>
+          <button class="period-btn" onclick="setPeriod(7,this)">1W</button>
           <button class="period-btn active" onclick="setPeriod(30,this)">1M</button>
+          <button class="period-btn" onclick="setPeriod(90,this)">3M</button>
           <button class="period-btn" onclick="setPeriod(180,this)">6M</button>
           <button class="period-btn" onclick="setPeriod(365,this)">1Y</button>
         </div>
@@ -2743,6 +2744,65 @@ function renderSettings(){
     :'<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No recurring transactions set up</div>';
 
   renderRecurCalendar();
+}
+
+// ── Icon library ──
+const ICON_LIBRARY = [
+  'ti-tag','ti-home-2','ti-briefcase','ti-car','ti-plane','ti-shopping-bag','ti-shopping-cart',
+  'ti-tools-kitchen-2','ti-device-tv','ti-device-laptop','ti-device-gamepad-2','ti-ball-football',
+  'ti-heart-rate-monitor','ti-pill','ti-file-invoice','ti-receipt','ti-cash','ti-coin',
+  'ti-trending-up','ti-chart-bar','ti-building-bank','ti-credit-card','ti-wallet',
+  'ti-confetti','ti-music','ti-camera','ti-book','ti-bus','ti-train','ti-bike',
+  'ti-droplet','ti-star','ti-gift','ti-coffee','ti-pizza','ti-shirt','ti-scissors',
+  'ti-dumbbell','ti-swimming','ti-school','ti-hammer','ti-tool','ti-plug','ti-wifi',
+  'ti-phone','ti-mail','ti-package','ti-truck','ti-gas-station','ti-map-pin','ti-globe',
+  'ti-trees','ti-beach','ti-mountain','ti-building','ti-paw','ti-plant','ti-bottle',
+  'ti-stethoscope','ti-microscope','ti-flask','ti-brush','ti-hanger','ti-baby-carriage',
+];
+
+function buildIconGrid(){
+  const grid=document.getElementById('cat-icon-grid'); if(!grid) return;
+  const color=document.getElementById('cat-color')?.value||'#6366f1';
+  grid.innerHTML=ICON_LIBRARY.map(icon=>`
+    <button type="button" onclick="selectIcon('${icon}')" title="${icon}"
+      style="width:100%;aspect-ratio:1;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);transition:all 0.12s"
+      onmouseover="this.style.background='var(--surface2)';this.style.color='${color}'"
+      onmouseout="this.style.background='none';this.style.color='var(--text2)'">
+      <i class="ti ${icon}"></i>
+    </button>`).join('');
+}
+
+function selectIcon(icon){
+  document.getElementById('cat-icon').value=icon;
+  updateIconPreview(icon);
+}
+
+function updateIconPreview(icon){
+  const prev=document.getElementById('cat-icon-preview'); if(!prev) return;
+  const color=document.getElementById('cat-color')?.value||'#6366f1';
+  prev.style.color=color;
+  prev.innerHTML=`<i class="ti ${icon||'ti-tag'}"></i>`;
+}
+
+function openCatModal(id=null){
+  document.getElementById('cat-edit-id').value=id||'';
+  document.getElementById('cat-modal-title').textContent=id?'Edit category':'Add category';
+  if(!id){
+    document.getElementById('cat-name').value='';
+    document.getElementById('cat-icon').value='ti-tag';
+    document.getElementById('cat-color').value='#6366f1';
+    updateIconPreview('ti-tag');
+  } else {
+    const cat=cfCategories.find(c=>c.id===id);
+    if(cat){
+      document.getElementById('cat-name').value=cat.name;
+      document.getElementById('cat-icon').value=cat.icon||'ti-tag';
+      document.getElementById('cat-color').value=cat.color||'#6366f1';
+      updateIconPreview(cat.icon||'ti-tag');
+    }
+  }
+  buildIconGrid();
+  openModal('modal-cat');
 }
 
 async function saveCat(){
