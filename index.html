@@ -181,6 +181,9 @@ tbody tr:hover td{background:var(--surface2)}
 #h-search-results .sr-name { color: var(--text2); font-size: 12px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #h-search-results .sr-exch { font-size: 11px; color: var(--text3); }
 #h-search-results .sr-loading { color: var(--text3); font-style: italic; justify-content: center; }
+.ins-section-block{background:var(--surface2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem;border:1px solid var(--border)}
+.ins-section-header{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:1.25rem;display:flex;align-items:center;gap:8px}
+.ins-section-header i{font-size:15px;color:var(--accent)}
 .ins-section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.875rem;margin-top:2rem;padding-bottom:0.5rem;border-bottom:1.5px solid var(--border2);display:flex;align-items:center;gap:8px}.ins-section-title:first-child{margin-top:0}
 /* ── Category accordion ── */
 .cat-block { margin-bottom: 12px; }
@@ -594,69 +597,75 @@ tbody tr:hover td{background:var(--surface2)}
     </div>
 
     <!-- ── Section 1: Portfolio allocation ── -->
-    <div class="ins-section-title">Portfolio allocation</div>
-    <div class="alloc-grid" style="margin-bottom:0.75rem">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:0.5rem">By asset type</div>
-        <div id="alloc-type-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
-          <div class="spin" style="width:24px;height:24px"></div>
+    <div class="ins-section-block">
+      <div class="ins-section-header"><i class="ti ti-chart-pie"></i> Portfolio allocation</div>
+      <div class="alloc-grid" style="margin-bottom:0.75rem">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:0.5rem">By asset type</div>
+          <div id="alloc-type-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
+            <div class="spin" style="width:24px;height:24px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:0.5rem">Investment portfolio breakdown</div>
+          <div id="alloc-hold-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
+            <div class="spin" style="width:24px;height:24px"></div>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title" style="margin-bottom:0.5rem">Investment portfolio breakdown</div>
-        <div id="alloc-hold-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
-          <div class="spin" style="width:24px;height:24px"></div>
-        </div>
-      </div>
+      <div id="alloc-type-breakdowns"></div>
     </div>
-
-    <!-- Per-type breakdown charts (rendered dynamically) -->
-    <div id="alloc-type-breakdowns" style="margin-bottom:1.5rem"></div>
 
     <!-- ── Section 2: Cashflow ── -->
-    <div class="ins-section-title">Cashflow <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:8px">Salary period: 27th → 26th</span></div>
-    <div class="card" style="margin-bottom:0.75rem">
-      <div class="card-header">
-        <div><div class="card-title">Monthly income &amp; outcomes</div></div>
-        <div class="period-tabs" id="insights-year-sel-wrap">
-          <select id="insights-year-sel" style="border:1px solid var(--border2);border-radius:var(--radius-xs);padding:4px 10px;font-size:12px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer"></select>
+    <div class="ins-section-block">
+      <div class="ins-section-header"><i class="ti ti-arrows-exchange"></i> Cashflow <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:6px;text-transform:none;letter-spacing:0">Salary period: 27th → 26th</span></div>
+      <div class="card" style="margin-bottom:0.75rem">
+        <div class="card-header">
+          <div><div class="card-title">Monthly income &amp; outcomes</div></div>
+          <div class="period-tabs" id="insights-year-sel-wrap">
+            <select id="insights-year-sel" style="border:1px solid var(--border2);border-radius:var(--radius-xs);padding:4px 10px;font-size:12px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer"></select>
+          </div>
         </div>
+        <div class="chart-wrap" style="height:260px"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
       </div>
-      <div class="chart-wrap" style="height:260px"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
-    </div>
-    <div class="alloc-grid" style="margin-bottom:1.5rem">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:1rem">Total income per year</div>
-        <div class="chart-wrap" style="height:220px"><canvas id="yearly-income-chart">Yearly income.</canvas></div>
-      </div>
-      <div class="card">
-        <div class="card-title" style="margin-bottom:1rem">Total outcomes per year</div>
-        <div class="chart-wrap" style="height:220px"><canvas id="yearly-outcome-chart">Yearly outcomes.</canvas></div>
+      <div class="alloc-grid">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1rem">Total income per year</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="yearly-income-chart">Yearly income.</canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1rem">Total outcomes per year</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="yearly-outcome-chart">Yearly outcomes.</canvas></div>
+        </div>
       </div>
     </div>
 
     <!-- ── Section 3: Wealth ── -->
-    <div class="ins-section-title">Wealth</div>
-    <div class="alloc-grid" style="margin-bottom:1.5rem">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:1rem">Savings per year</div>
-        <div class="chart-wrap" style="height:220px"><canvas id="savings-chart">Savings per year.</canvas></div>
-      </div>
-      <div class="card">
-        <div class="card-title" style="margin-bottom:0.5rem">Invested capital over time</div>
-        <div class="card-sub" style="font-size:11px;color:var(--text3);margin-bottom:0.75rem">Cumulative money spent on investment purchases</div>
-        <div class="chart-wrap" style="height:200px"><canvas id="invested-chart">Invested capital over time.</canvas></div>
+    <div class="ins-section-block">
+      <div class="ins-section-header"><i class="ti ti-trending-up"></i> Wealth</div>
+      <div class="alloc-grid">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1rem">Savings per year</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="savings-chart">Savings per year.</canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:0.5rem">Invested capital over time</div>
+          <div class="card-sub" style="font-size:11px;color:var(--text3);margin-bottom:0.75rem">Cumulative money spent on investment purchases</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="invested-chart">Invested capital over time.</canvas></div>
+        </div>
       </div>
     </div>
 
     <!-- ── Section 4: Liquidity ── -->
-    <div class="ins-section-title">Liquidity</div>
-    <div class="card" style="margin-bottom:1.5rem">
-      <div class="card-header">
-        <div class="card-title">Bank &amp; cash balance over time</div>
+    <div class="ins-section-block">
+      <div class="ins-section-header"><i class="ti ti-droplet"></i> Liquidity</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Bank &amp; cash balance over time</div>
+        </div>
+        <div id="liquidity-empty" style="display:none;text-align:center;padding:2rem;color:var(--text3)"><i class="ti ti-droplet" style="font-size:28px;display:block;margin-bottom:8px"></i><p>No bank or cash holdings yet</p></div>
+        <div class="chart-wrap" id="liquidity-wrap" style="height:220px"><canvas id="liquidity-chart">Liquidity over time.</canvas></div>
       </div>
-      <div id="liquidity-empty" style="display:none;text-align:center;padding:2rem;color:var(--text3)"><i class="ti ti-droplet" style="font-size:28px;display:block;margin-bottom:8px"></i><p>No bank or cash holdings yet</p></div>
-      <div class="chart-wrap" id="liquidity-wrap" style="height:220px"><canvas id="liquidity-chart">Liquidity over time.</canvas></div>
     </div>
 
   </div>
@@ -1169,7 +1178,7 @@ async function saveHolding(){
       await api('holdings',{method:'POST',body:JSON.stringify({ticker,name:namePart||ticker,type,qty,avg_cost})});
     }
   }
-  closeModal('modal-holding'); await loadAll(); toast('Holding saved ✓');
+  closeModal('modal-holding'); await loadAll(); toast('Holding saved ✓'); refreshPrices(true);
 }
 
 async function deleteHolding(id){
@@ -1279,29 +1288,44 @@ async function fetchAllCryptoPrices(tickers){
 // Yahoo Finance via CORS proxy for stocks/ETFs/bonds
 async function fetchYahooPrice(ticker){
   const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
-  const proxies = [
+  const proxyFns = [
     u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
     u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
     u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
   ];
-  for(const proxy of proxies){
-    try{
-      const r = await fetch(proxy(yhUrl), {signal: AbortSignal.timeout(6000)});
-      if(!r.ok) continue;
-      const text = await r.text();
-      if(!text.startsWith('{')) continue;
-      const d = JSON.parse(text);
-      const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
-      if(price != null) return price;
-    }catch{ continue; }
+  // Race all proxies simultaneously — use whichever responds first with valid data
+  const tryProxy = async (proxyFn) => {
+    const r = await fetch(proxyFn(yhUrl), {signal: AbortSignal.timeout(3000)});
+    if(!r.ok) throw new Error('not ok');
+    const text = await r.text();
+    if(!text.startsWith('{')) throw new Error('not json');
+    const d = JSON.parse(text);
+    const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if(price == null) throw new Error('no price');
+    return price;
+  };
+  try{
+    return await Promise.any(proxyFns.map(fn => tryProxy(fn)));
+  }catch{
+    console.warn(`Yahoo: could not fetch price for ${ticker}`);
+    return null;
   }
-  console.warn(`Yahoo: could not fetch price for ${ticker}`);
-  return null;
 }
 
-async function refreshPrices(){
+const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let lastPriceFetch = 0;
+
+async function refreshPrices(force=false){
   const investable = holdings.filter(h=>!['bank','cash'].includes(h.type));
   if(!investable.length){ renderHoldings(); return; }
+
+  // Use cached prices if fresh enough and not forced
+  const now = Date.now();
+  if(!force && now - lastPriceFetch < PRICE_CACHE_TTL && Object.keys(prices).length > 0){
+    renderHoldings(); renderOverview(); renderAllocation();
+    return;
+  }
+
   const hBtn = document.getElementById('h-refresh-btn');
   const loadHTML = '<span class="spin"></span> Loading…';
   if(hBtn){ hBtn.innerHTML = loadHTML; hBtn.disabled = true; }
@@ -1309,8 +1333,7 @@ async function refreshPrices(){
   const cryptoTickers    = [...new Set(investable.filter(h=>h.type==='crypto').map(h=>h.ticker))];
   const nonCryptoTickers = [...new Set(investable.filter(h=>h.type!=='crypto').map(h=>h.ticker))];
 
-  // CoinGecko: one batch call for all cryptos
-  // Yahoo: parallel calls for stocks/ETFs/bonds
+  // Fire crypto (1 batch) and all Yahoo requests simultaneously
   const [cryptoPrices] = await Promise.all([
     fetchAllCryptoPrices(cryptoTickers),
     Promise.all(nonCryptoTickers.map(async t=>{
@@ -1319,6 +1342,7 @@ async function refreshPrices(){
     }))
   ]);
   Object.assign(prices, cryptoPrices);
+  lastPriceFetch = Date.now();
 
   const timeStr = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   if(hBtn){ hBtn.innerHTML = '<i class="ti ti-refresh"></i> Refresh prices'; hBtn.disabled = false; }
@@ -2363,7 +2387,8 @@ async function saveCfTransaction(){
   await api('cashflow_transactions',{method:'POST',body:JSON.stringify(txData)});
   await applyBalanceChange(cfType,amount,fromId,cfType==='transfer'?toId:null);
   [cfTransactions,cfRecurrences,holdings]=await Promise.all([api('cashflow_transactions?order=date.desc'),api('recurrences?order=next_due.asc'),api('holdings?order=created_at.asc')]);
-  renderCashflow(); renderSettings(); renderOverview();
+  holdings = await api('holdings?order=created_at.asc');
+  renderCashflow(); renderSettings(); renderHoldings(); renderOverview();
   showCfMain(); toast('Transaction saved ✓');
 }
 
@@ -2409,6 +2434,7 @@ async function saveInvTransaction(){
   }
   [cfTransactions,holdings]=await Promise.all([api('cashflow_transactions?order=date.desc'),api('holdings?order=created_at.asc')]);
   renderCashflow(); renderHoldings(); renderOverview();
+  await refreshPrices(true);
   showCfMain(); toast('Transaction saved ✓');
 }
 
@@ -2480,7 +2506,11 @@ async function deleteRecur(id){
 // ─────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────
-const lastPage=localStorage.getItem('fh_page')||'overview';
+// New session (new tab) → always start on Overview
+// Page reload (F5) → stay on current page
+const isReload = sessionStorage.getItem('fh_loaded');
+sessionStorage.setItem('fh_loaded', '1');
+const lastPage = isReload ? (localStorage.getItem('fh_page')||'overview') : 'overview';
 const matchingBtn=[...document.querySelectorAll('.nav-item')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+lastPage+"'"));
 showPage(lastPage,matchingBtn);
 loadAll().then(()=>{ refreshPrices(); loadCashflow(); });
