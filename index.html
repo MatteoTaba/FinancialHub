@@ -181,7 +181,7 @@ tbody tr:hover td{background:var(--surface2)}
 #h-search-results .sr-name { color: var(--text2); font-size: 12px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #h-search-results .sr-exch { font-size: 11px; color: var(--text3); }
 #h-search-results .sr-loading { color: var(--text3); font-style: italic; justify-content: center; }
-.ins-section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.75rem;margin-top:0.25rem}
+.ins-section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.875rem;margin-top:2rem;padding-bottom:0.5rem;border-bottom:1.5px solid var(--border2);display:flex;align-items:center;gap:8px}.ins-section-title:first-child{margin-top:0}
 /* ── Category accordion ── */
 .cat-block { margin-bottom: 12px; }
 .cat-header {
@@ -655,7 +655,8 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="card-header">
         <div class="card-title">Bank &amp; cash balance over time</div>
       </div>
-      <div class="chart-wrap" style="height:220px"><canvas id="liquidity-chart">Liquidity over time.</canvas></div>
+      <div id="liquidity-empty" style="display:none;text-align:center;padding:2rem;color:var(--text3)"><i class="ti ti-droplet" style="font-size:28px;display:block;margin-bottom:8px"></i><p>No bank or cash holdings yet</p></div>
+      <div class="chart-wrap" id="liquidity-wrap" style="height:220px"><canvas id="liquidity-chart">Liquidity over time.</canvas></div>
     </div>
 
   </div>
@@ -1537,18 +1538,24 @@ function fmtShort(n){
 // ── Liquidity over time ──
 function renderLiquidityChart(){
   const el=document.getElementById('liquidity-chart'); if(!el) return;
+  const emptyEl=document.getElementById('liquidity-empty');
+  const wrapEl=document.getElementById('liquidity-wrap');
   const liqHoldings=holdings.filter(h=>h.type==='bank'||h.type==='cash');
   if(!liqHoldings.length){
     if(liquidityChart){liquidityChart.destroy();liquidityChart=null;}
-    el.closest('.chart-wrap').innerHTML='<div class="empty" style="padding:2rem"><i class="ti ti-droplet"></i><p>No bank or cash holdings yet</p></div>'; return;
+    if(emptyEl) emptyEl.style.display='';
+    if(wrapEl) wrapEl.style.display='none';
+    return;
   }
+  if(emptyEl) emptyEl.style.display='none';
+  if(wrapEl) wrapEl.style.display='';
 
   // buildSalaryPeriods needs cfTransactions — if empty, fall back to a
   // single data point using the current balance
   const liqIds=new Set(liqHoldings.map(h=>h.id));
   const liqTx=[...cfTransactions].filter(t=>liqIds.has(t.holding_id)||liqIds.has(t.holding_to_id));
 
-  if(!liqTx.length){
+  if(!liqTx.length || !buildSalaryPeriods().length){
     // No transactions yet — show current balance as single point
     const currentBal=liqHoldings.reduce((s,h)=>s+h.avg_cost,0);
     const c=getChartColors();
@@ -1797,6 +1804,7 @@ function renderAllocation(){
     const typeGroups={};
     invHoldings.forEach(h=>{ if(!typeGroups[h.type]) typeGroups[h.type]=[]; typeGroups[h.type].push(h); });
     const typesWithMultiple=Object.keys(typeGroups).filter(t=>typeGroups[t].length>1);
+    const typesSingle=Object.keys(typeGroups).filter(t=>typeGroups[t].length===1);
 
     if(!typesWithMultiple.length){
       breakdownContainer.innerHTML='';
