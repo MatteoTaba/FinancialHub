@@ -3201,7 +3201,7 @@ async function loadSnapshots(){
           <i class="ti ti-history"></i> Restore
         </button>
       </div>`;
-    }).join('') + '<div style="font-size:11px;color:var(--text3);padding:8px 0 0">Showing last ${snaps.length} snapshots (max 30 kept)</div>';
+    }).join('');
   }catch(e){
     el.innerHTML=`<div style="color:var(--red);font-size:13px">Failed to load snapshots: ${e.message}</div>`;
   }
