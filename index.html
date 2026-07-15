@@ -1155,13 +1155,17 @@ function renderHoldings(){
       ? `<tr><th>Account</th><th>Balance</th><th></th></tr>`
       : `<tr><th>Asset</th><th>Qty</th><th>Avg cost</th><th>Live price</th><th>Current value</th><th>Gain / loss</th><th></th></tr>`;
 
-    return `<div class="cat-block" data-type="${type}" draggable="true"
-        ondragstart="onHoldingDragStart(event,'${type}')"
+    return `<div class="cat-block" data-type="${type}"
         ondragover="onHoldingDragOver(event)"
         ondragleave="onHoldingDragLeave(event)"
         ondrop="onHoldingDrop(event,'${type}')">
       <div class="cat-header${isOpen?' open':''}" onclick="toggleCat(this)" role="button" aria-expanded="${isOpen}">
-        <i class="ti ti-grip-vertical drag-handle" onclick="event.stopPropagation()" title="Drag to reorder"></i>
+        <i class="ti ti-grip-vertical drag-handle"
+          draggable="true"
+          ondragstart="event.stopPropagation();onHoldingDragStart(event,'${type}')"
+          ondragend="event.stopPropagation()"
+          onclick="event.stopPropagation()"
+          title="Drag to reorder"></i>
         <div class="cat-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
         <div class="cat-info">
           <div class="cat-name">${TYPE_LABELS[type]||type}</div>
@@ -2351,9 +2355,14 @@ function cfTxRow(t,h){
   const typeLabel=txType==='purchase'?'Purchase':txType==='sale'?'Sale':'';
   const recurLabel=t.recurring_id?`<span style="color:var(--accent);display:inline-flex;align-items:center;gap:3px"><i class="ti ti-repeat" style="font-size:10px"></i>Recurring</span>`:'';
   const subLabel=[catLabel,typeLabel,recurLabel].filter(x=>x&&x.trim()).join(' · ');
-  return `<div class="cf-tx-row${bulkSelectMode?' selectable':''}" id="cf-row-${t.id}" onclick="${bulkSelectMode?`toggleTxSelect('${t.id}')`:''}" style="${bulkSelectMode?'cursor:pointer':''}">
-    ${bulkSelectMode?`<input type="checkbox" class="cf-tx-checkbox" id="chk-${t.id}" onclick="event.stopPropagation();toggleTxSelect('${t.id}')">`:''}
-    <div class="cf-tx-icon" style="background:${bgColor};color:${amtColor}"><i class="ti ${icon}"></i></div>
+  // Build row HTML without nested template literals
+  const txId = t.id;
+  let rowHtml = '<div class="cf-tx-row' + (bulkSelectMode ? ' selectable' : '') + '" id="cf-row-' + txId + '"'
+    + (bulkSelectMode ? ' onclick="toggleTxSelect(\'' + txId + '\')" style="cursor:pointer"' : '') + '>';
+  if(bulkSelectMode){
+    rowHtml += '<input type="checkbox" class="cf-tx-checkbox" id="chk-' + txId + '" onclick="event.stopPropagation();toggleTxSelect(\'' + txId + '\')">';
+  }
+  rowHtml += `<div class="cf-tx-icon" style="background:${bgColor};color:${amtColor}"><i class="ti ${icon}"></i></div>
     <div class="cf-tx-desc"><div class="cf-tx-name">${t.description||'—'}</div><div class="cf-tx-cat">${subLabel||''}</div></div>
     <div style="text-align:right">
       <div class="cf-tx-amount" style="color:${amtColor}">${amtSign}${fmt(t.amount)}</div>
@@ -2364,6 +2373,7 @@ function cfTxRow(t,h){
       <button class="btn btn-sm btn-danger" onclick="deleteCfTx('${t.id}','${t.holding_id||''}','${t.holding_to_id||''}','${t.type}',${t.amount})"><i class="ti ti-trash"></i></button>
     </div>
   </div>`;
+  return rowHtml;
 }
 
 function toggleCfAccount(header){
