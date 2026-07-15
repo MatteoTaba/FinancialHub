@@ -1024,7 +1024,7 @@ document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{
 // ── LOAD ──
 async function loadAll(){
   [holdings, transactions, snapshots] = await Promise.all([
-    api('holdings?order=sort_order.asc,created_at.asc'),
+    api('holdings?order=sort_order.asc,created_at.asc').catch(()=>api('holdings?order=created_at.asc')).catch(()=>api('holdings?order=created_at.asc')),
     api('transactions?order=created_at.desc'),
     api('net_worth_snapshots?order=snapshot_date.asc')
   ]);
