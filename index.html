@@ -184,6 +184,14 @@ tbody tr:hover td{background:var(--surface2)}
 .ins-section-block{background:var(--surface2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem;border:1px solid var(--border)}
 .ins-section-header{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.2px;margin-bottom:1.25rem;display:flex;align-items:center;gap:10px;padding-bottom:0.875rem;border-bottom:2px solid var(--accent)}
 .ins-section-header i{font-size:18px;color:var(--accent)}
+/* Bulk select checkboxes */
+.cf-tx-checkbox{width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:var(--accent)}
+.cf-tx-row.selected{background:rgba(99,102,241,0.08)}
+/* Drag handle for holdings */
+.drag-handle{cursor:grab;color:var(--text3);font-size:16px;padding:0 4px;flex-shrink:0}
+.drag-handle:active{cursor:grabbing}
+.cat-header[draggable=true]{cursor:default}
+.drag-over{border-top:2px solid var(--accent)!important}
 /* Recurrences calendar */
 .recur-cal{width:100%;border-collapse:collapse}
 .recur-cal th{text-align:center;font-size:11px;font-weight:600;color:var(--text3);padding:4px 0;text-transform:uppercase;letter-spacing:0.05em}
@@ -408,8 +416,24 @@ tbody tr:hover td{background:var(--surface2)}
     <div id="cf-main">
       <div class="page-header">
         <div><div class="page-title">Cashflow</div><div class="page-sub">All your accounts and recent activity</div></div>
+        <button class="btn btn-sm" onclick="toggleBulkSelect()" id="cf-bulk-toggle">
+          <i class="ti ti-checkbox"></i> Select
+        </button>
+      </div>
+      <!-- Search + bulk delete bar -->
+      <div style="display:flex;gap:8px;margin-bottom:1rem;align-items:center">
+        <div style="position:relative;flex:1">
+          <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px"></i>
+          <input type="text" id="cf-search" placeholder="Search transactions across all accounts…"
+            oninput="onCfSearch(this.value)"
+            style="width:100%;padding:8px 10px 8px 32px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px">
+        </div>
+        <button class="btn btn-sm btn-danger" id="cf-bulk-delete-btn" onclick="bulkDeleteTx()" style="display:none">
+          <i class="ti ti-trash"></i> Delete selected (<span id="cf-selected-count">0</span>)
+        </button>
       </div>
       <div id="cf-accounts"></div>
+      <div id="cf-search-results" style="display:none"></div>
     </div>
     <!-- Add transaction full-page form -->
     <div id="cf-form" style="display:none">
@@ -602,28 +626,40 @@ tbody tr:hover td{background:var(--surface2)}
 
     <!-- Cashflow -->
     <div class="rpt-section">
-      <div class="ins-section-header"><i class="ti ti-cash"></i> Cashflow</div>
+      <div class="ins-section-header" style="justify-content:space-between">
+        <span><i class="ti ti-cash"></i> Cashflow</span>
+        <button class="btn btn-sm" onclick="exportCSV('rpt-cf-table','cashflow')"><i class="ti ti-download"></i> CSV</button>
+      </div>
       <div class="rpt-summary" id="rpt-cf-summary"></div>
       <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-cf-table"></table></div>
     </div>
 
     <!-- Incomes -->
     <div class="rpt-section">
-      <div class="ins-section-header"><i class="ti ti-arrow-down-circle"></i> Incomes</div>
+      <div class="ins-section-header" style="justify-content:space-between">
+        <span><i class="ti ti-arrow-down-circle"></i> Incomes</span>
+        <button class="btn btn-sm" onclick="exportCSV('rpt-inc-table','incomes')"><i class="ti ti-download"></i> CSV</button>
+      </div>
       <div class="rpt-summary" id="rpt-inc-summary"></div>
       <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-inc-table"></table></div>
     </div>
 
     <!-- Outcomes by category -->
     <div class="rpt-section">
-      <div class="ins-section-header"><i class="ti ti-arrow-up-circle"></i> Outcomes by category</div>
+      <div class="ins-section-header" style="justify-content:space-between">
+        <span><i class="ti ti-arrow-up-circle"></i> Outcomes by category</span>
+        <button class="btn btn-sm" onclick="exportCSV('rpt-out-table','outcomes')"><i class="ti ti-download"></i> CSV</button>
+      </div>
       <div class="rpt-summary" id="rpt-out-summary"></div>
       <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-out-table"></table></div>
     </div>
 
     <!-- Investments over time -->
     <div class="rpt-section">
-      <div class="ins-section-header"><i class="ti ti-trending-up"></i> Investments over time</div>
+      <div class="ins-section-header" style="justify-content:space-between">
+        <span><i class="ti ti-trending-up"></i> Investments over time</span>
+        <button class="btn btn-sm" onclick="exportCSV('rpt-inv-table','investments')"><i class="ti ti-download"></i> CSV</button>
+      </div>
       <div class="rpt-summary" id="rpt-inv-summary"></div>
       <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-inv-table"></table></div>
     </div>
@@ -635,7 +671,10 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-crypto-table"></table></div>
     </div>
     <div class="rpt-section">
-      <div class="ins-section-header"><i class="ti ti-trending-up"></i> ETFs</div>
+      <div class="ins-section-header" style="justify-content:space-between">
+        <span><i class="ti ti-trending-up"></i> ETFs</span>
+        <button class="btn btn-sm" onclick="exportCSV('rpt-etf-table','etf')"><i class="ti ti-download"></i> CSV</button>
+      </div>
       <div class="rpt-summary" id="rpt-etf-summary"></div>
       <div class="rpt-table-wrap"><table class="rpt-table" id="rpt-etf-table"></table></div>
     </div>
@@ -766,6 +805,7 @@ tbody tr:hover td{background:var(--surface2)}
       <div class="card">
         <div class="card-header">
           <div class="card-title">Bank &amp; cash balance over time</div>
+          <div class="card-sub" style="font-size:11px;color:var(--text3)">Reconstructed from transaction history · Most accurate with complete cashflow data</div>
         </div>
         <div id="liquidity-empty" style="display:none;text-align:center;padding:2rem;color:var(--text3)"><i class="ti ti-droplet" style="font-size:28px;display:block;margin-bottom:8px"></i><p>No bank or cash holdings yet</p></div>
         <div class="chart-wrap" id="liquidity-wrap" style="height:220px"><canvas id="liquidity-chart">Liquidity over time.</canvas></div>
@@ -984,7 +1024,7 @@ document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{
 // ── LOAD ──
 async function loadAll(){
   [holdings, transactions, snapshots] = await Promise.all([
-    api('holdings?order=created_at.asc'),
+    api('holdings?order=sort_order.asc,created_at.asc'),
     api('transactions?order=created_at.desc'),
     api('net_worth_snapshots?order=snapshot_date.asc')
   ]);
@@ -1094,7 +1134,10 @@ function renderHoldings(){
         ${priceCell}
         ${valCell}
         ${gainCell}
-        <td><button class="btn btn-sm btn-danger" onclick="deleteHolding('${h.id}')"><i class="ti ti-trash"></i></button></td>
+        <td style="display:flex;gap:4px">
+          ${isSimple?`<button class="btn btn-sm" onclick="editBalance('${h.id}','${dispName}',${h.avg_cost})" title="Edit balance"><i class="ti ti-pencil"></i></button>`:''}
+          <button class="btn btn-sm btn-danger" onclick="deleteHolding('${h.id}')"><i class="ti ti-trash"></i></button>
+        </td>
       </tr>`;
     }).join('');
 
@@ -1112,8 +1155,13 @@ function renderHoldings(){
       ? `<tr><th>Account</th><th>Balance</th><th></th></tr>`
       : `<tr><th>Asset</th><th>Qty</th><th>Avg cost</th><th>Live price</th><th>Current value</th><th>Gain / loss</th><th></th></tr>`;
 
-    return `<div class="cat-block" data-type="${type}">
+    return `<div class="cat-block" data-type="${type}" draggable="true"
+        ondragstart="onHoldingDragStart(event,'${type}')"
+        ondragover="onHoldingDragOver(event)"
+        ondragleave="onHoldingDragLeave(event)"
+        ondrop="onHoldingDrop(event,'${type}')">
       <div class="cat-header${isOpen?' open':''}" onclick="toggleCat(this)" role="button" aria-expanded="${isOpen}">
+        <i class="ti ti-grip-vertical drag-handle" onclick="event.stopPropagation()" title="Drag to reorder"></i>
         <div class="cat-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
         <div class="cat-info">
           <div class="cat-name">${TYPE_LABELS[type]||type}</div>
@@ -1290,6 +1338,9 @@ async function saveHolding(){
     if(!ticker){ alert('Please search and select an asset first.'); return; }
     if(qty<=0){ alert('Please enter a quantity.'); return; }
     const existing=holdings.find(h=>h.ticker===ticker);
+    // Duplicate check: warn if ticker already exists as a different type
+    const existingDiff=holdings.find(h=>h.ticker===ticker&&h.type!==type);
+    if(existingDiff&&!existing){ if(!confirm(`Ticker ${ticker} already exists as ${TYPE_LABELS[existingDiff.type]}. Add anyway?`)) return; }
     if(existing){
       const totalCost=existing.qty*existing.avg_cost+qty*avg_cost;
       const newQty=existing.qty+qty;
@@ -1301,8 +1352,23 @@ async function saveHolding(){
   closeModal('modal-holding'); await loadAll(); toast('Holding saved ✓'); refreshPrices(true);
 }
 
+async function editBalance(id, name, currentBalance){
+  const input = prompt(`Edit balance for ${name}:`, currentBalance.toFixed(2));
+  if(input===null) return;
+  const newBalance = parseFloat(input);
+  if(isNaN(newBalance)||newBalance<0){ alert('Please enter a valid positive amount.'); return; }
+  await api(`holdings?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({avg_cost:newBalance})});
+  await loadAll(); toast('Balance updated ✓');
+}
+
 async function deleteHolding(id){
-  if(!confirm('Remove this holding?')) return;
+  const linkedTxCount = cfTransactions.filter(t=>t.holding_id===id||t.holding_to_id===id).length;
+  const msg = linkedTxCount>0
+    ? `This holding has ${linkedTxCount} transaction${linkedTxCount>1?'s':''} linked to it. Deleting it will orphan those transactions (they will remain but with no account).
+
+Delete anyway?`
+    : 'Remove this holding?';
+  if(!confirm(msg)) return;
   await api(`holdings?id=eq.${id}`,{method:'DELETE'}); await loadAll(); toast('Holding removed');
 }
 
@@ -2285,7 +2351,8 @@ function cfTxRow(t,h){
   const typeLabel=txType==='purchase'?'Purchase':txType==='sale'?'Sale':'';
   const recurLabel=t.recurring_id?`<span style="color:var(--accent);display:inline-flex;align-items:center;gap:3px"><i class="ti ti-repeat" style="font-size:10px"></i>Recurring</span>`:'';
   const subLabel=[catLabel,typeLabel,recurLabel].filter(x=>x&&x.trim()).join(' · ');
-  return `<div class="cf-tx-row">
+  return `<div class="cf-tx-row${bulkSelectMode?' selectable':''}" id="cf-row-${t.id}" onclick="${bulkSelectMode?`toggleTxSelect('${t.id}')`:''}" style="${bulkSelectMode?'cursor:pointer':''}">
+    ${bulkSelectMode?`<input type="checkbox" class="cf-tx-checkbox" id="chk-${t.id}" onclick="event.stopPropagation();toggleTxSelect('${t.id}')">`:''}
     <div class="cf-tx-icon" style="background:${bgColor};color:${amtColor}"><i class="ti ${icon}"></i></div>
     <div class="cf-tx-desc"><div class="cf-tx-name">${t.description||'—'}</div><div class="cf-tx-cat">${subLabel||''}</div></div>
     <div style="text-align:right">
@@ -2537,6 +2604,14 @@ async function saveCfTransaction(){
   if(amount<=0){alert('Please enter an amount.');return;}
   if(!fromId){alert('Please select an account.');return;}
   if(cfType==='transfer'&&fromId===toId){alert('Source and destination account must be different.');return;}
+  if(cfType==='transfer'||cfType==='expense'){
+    const fromH=holdings.find(h=>h.id===fromId);
+    if(fromH&&fromH.avg_cost<amount){
+      if(!confirm(`This will bring ${fromH.name||fromH.ticker} to a negative balance (current: ${fmt(fromH.avg_cost)}, amount: ${fmt(amount)}).
+
+Proceed anyway?`)) return;
+    }
+  }
   const txData={type:cfType,amount,description:desc||null,category_id:cfType==='transfer'?null:catId,holding_id:fromId,holding_to_id:cfType==='transfer'?toId:null,date:new Date(date).toISOString()};
   if(isRecur){
     const freq=document.getElementById('cf-freq').value;
@@ -2866,7 +2941,14 @@ async function saveCat(){
 }
 
 async function deleteCat(id){
-  if(!confirm('Delete this category?')) return;
+  const usedCount = cfTransactions.filter(t=>t.category_id===id).length;
+  const recurCount = cfRecurrences.filter(r=>r.category_id===id).length;
+  if(usedCount>0||recurCount>0){
+    const msg = `This category is used in ${usedCount} transaction${usedCount!==1?'s':''}${recurCount>0?` and ${recurCount} recurrence${recurCount!==1?'s':''}`:''}.\n\nDeleting it will remove the category from those transactions.\n\nProceed?`;
+    if(!confirm(msg)) return;
+  } else {
+    if(!confirm('Delete this category?')) return;
+  }
   await api(`cashflow_categories?id=eq.${id}`,{method:'DELETE'});
   cfCategories=await api('cashflow_categories?order=name.asc');
   renderSettings(); toast('Category removed');
@@ -2883,6 +2965,31 @@ async function deleteRecur(id){
   await api(`recurrences?id=eq.${id}`,{method:'DELETE'});
   cfRecurrences=await api('recurrences?order=next_due.asc');
   renderSettings(); toast('Recurrence removed');
+}
+
+// ─────────────────────────────────────────
+// CSV EXPORT
+// ─────────────────────────────────────────
+function exportCSV(tableId, filename){
+  const table = document.getElementById(tableId);
+  if(!table){ toast('No data to export'); return; }
+  const rows = [...table.querySelectorAll('tr')];
+  const csv = rows.map(row=>{
+    const cells = [...row.querySelectorAll('th,td')];
+    return cells.map(c=>{
+      const txt = c.innerText.replace(/€\s?/g,'').replace(/
+/g,' ').trim();
+      return `"${txt.replace(/"/g,'""')}"`;
+    }).join(',');
+  }).join('
+');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast(`${filename}.csv downloaded`);
 }
 
 // ─────────────────────────────────────────
@@ -2967,7 +3074,7 @@ function renderCashflowReport(){
   }
 
   // Build rows
-  const salCatIds = new Set(cfCategories.filter(c=>c.name.toLowerCase().includes('salary')||c.name.toLowerCase().includes('salario')).map(c=>c.id));
+  const salCatIds = new Set(cfCategories.filter(c=>{ const n=c.name.toLowerCase(); return n.includes('salary')||n.includes('salario')||n.includes('stipendio')||n.includes('wage')||n==='salary'; }).map(c=>c.id));
   const rows = periods.map((p,i)=>{
     const pTxs = cfTransactions.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end;});
     const salary = pTxs.filter(t=>isIncomeTx(t)&&salCatIds.has(t.category_id)).reduce((s,t)=>s+t.amount,0);
@@ -3009,7 +3116,7 @@ function renderCashflowReport(){
 // ── Incomes table ──
 function renderIncomesReport(){
   const periods = buildSalaryPeriods();
-  const salCatIds = new Set(cfCategories.filter(c=>c.name.toLowerCase().includes('salary')||c.name.toLowerCase().includes('salario')).map(c=>c.id));
+  const salCatIds = new Set(cfCategories.filter(c=>{ const n=c.name.toLowerCase(); return n.includes('salary')||n.includes('salario')||n.includes('stipendio')||n.includes('wage')||n==='salary'; }).map(c=>c.id));
   const rows = periods.map(p=>{
     const pTxs = cfTransactions.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end&&isIncomeTx(t);});
     const salary = pTxs.filter(t=>salCatIds.has(t.category_id)).reduce((s,t)=>s+t.amount,0);
