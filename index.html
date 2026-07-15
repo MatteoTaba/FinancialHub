@@ -651,7 +651,7 @@ tbody tr:hover td{background:var(--surface2)}
     <div class="page-header"><div><div class="page-title">Settings</div><div class="page-sub">Manage categories and recurring transactions</div></div></div>
     <!-- Hidden recurrences list (still needed for logic) -->
     <div id="settings-recurrences" style="display:none"></div>
-    <!-- Recurrences calendar — full width -->
+    <!-- Recurrences calendar -->
     <div class="card" style="margin-bottom:1rem">
       <div class="card-header">
         <div class="card-title">Recurrences calendar</div>
@@ -664,12 +664,33 @@ tbody tr:hover td{background:var(--surface2)}
       <div id="recur-calendar"></div>
     </div>
     <!-- Categories -->
-    <div class="card">
+    <div class="card" style="margin-bottom:1rem">
       <div class="card-header">
         <div class="card-title">Transaction categories</div>
         <button class="btn btn-sm btn-primary" onclick="openCatModal()"><i class="ti ti-plus"></i> Add</button>
       </div>
       <div id="settings-cats"></div>
+    </div>
+    <!-- Snapshots & Restore -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Daily snapshots &amp; restore</div>
+          <div class="card-sub" style="margin-top:2px">Automatic nightly snapshots stored in Supabase — up to 30 days</div>
+        </div>
+        <button class="btn btn-sm" onclick="loadSnapshots()"><i class="ti ti-refresh"></i> Refresh</button>
+      </div>
+      <div id="snapshots-list">
+        <div style="color:var(--text3);font-size:13px;padding:0.5rem 0">Loading snapshots…</div>
+      </div>
+      <div id="snapshot-status" style="display:none;font-size:13px;padding:10px 14px;border-radius:var(--radius-sm);margin-top:8px"></div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
+        <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">
+          <i class="ti ti-info-circle" style="font-size:14px"></i>
+          Snapshots are created automatically every day at 2:00 AM by a Supabase Edge Function.
+          Restoring will replace all current data with the snapshot — this cannot be undone.
+        </div>
+      </div>
     </div>
   </div>
 
@@ -910,7 +931,7 @@ function showPage(name,btn){
   if(name==='insights'){ renderAllocation(); renderInsights(); }
   // prices only refresh manually via the Refresh button
   if(name==='cashflow'){ renderCashflow(); const fab=document.getElementById('cf-fab'); if(fab) fab.style.display=''; }
-  if(name==='settings'){ renderSettings(); renderRecurCalendar(); }
+  if(name==='settings'){ renderSettings(); renderRecurCalendar(); loadSnapshots(); }
   if(name==='reports') renderReports();
   // Hide FAB when not on cashflow
   if(name!=='cashflow'){ const fab=document.getElementById('cf-fab'); if(fab) fab.style.display='none'; }
@@ -3154,6 +3175,99 @@ function renderAssetReport(type){
     <td style="color:${totalPnlPct>=0?'var(--green)':'var(--red)'}">${rptPct(totalPnlPct)}</td>
   </tr></tfoot>`;
   tableEl.innerHTML = thead+`<tbody>${tbody}</tbody>`+tfoot;
+}
+
+// ─────────────────────────────────────────
+// SNAPSHOTS & RESTORE
+// ─────────────────────────────────────────
+async function loadSnapshots(){
+  const el = document.getElementById('snapshots-list'); if(!el) return;
+  el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:0.5rem 0"><span class="spin" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:6px"></span>Loading…</div>';
+  try{
+    const snaps = await api('data_snapshots?order=created_at.desc&limit=30&select=id,snapshot_date,net_worth,created_at');
+    if(!snaps||!snaps.length){
+      el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:0.5rem 0">No snapshots yet — the Edge Function will create one tonight at 23:59.</div>';
+      return;
+    }
+    el.innerHTML = snaps.map(s=>{
+      const date = new Date(s.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'});
+      return `<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <i class="ti ti-database" style="color:var(--accent);font-size:16px;flex-shrink:0"></i>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500">${s.snapshot_date}</div>
+          <div style="font-size:11px;color:var(--text2);">${date} · Net worth: ${fmt(s.net_worth)}</div>
+        </div>
+        <button class="btn btn-sm" onclick="restoreSnapshot('${s.id}','${s.snapshot_date}')">
+          <i class="ti ti-history"></i> Restore
+        </button>
+      </div>`;
+    }).join('') + '<div style="font-size:11px;color:var(--text3);padding:8px 0 0">Showing last ${snaps.length} snapshots (max 30 kept)</div>';
+  }catch(e){
+    el.innerHTML=`<div style="color:var(--red);font-size:13px">Failed to load snapshots: ${e.message}</div>`;
+  }
+}
+
+async function restoreSnapshot(id, date){
+  if(!confirm(`Restore to snapshot from ${date}?
+
+This will REPLACE all current data with the snapshot. This cannot be undone.
+
+Proceed?`)) return;
+  showSnapshotStatus('<span class="spin" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px"></span> Restoring from '+date+'…', 'info');
+  try{
+    // Fetch the full snapshot JSON from Supabase
+    const rows = await api(`data_snapshots?id=eq.${id}&select=snapshot_json`);
+    if(!rows||!rows[0]) throw new Error('Snapshot not found');
+    const snap = JSON.parse(rows[0].snapshot_json);
+    if(!snap.data) throw new Error('Invalid snapshot format');
+
+    // Delete all current data (order matters for FK constraints)
+    await api('cashflow_transactions',{method:'DELETE',headers:{'Prefer':'return=minimal'},...{ }});
+    // PostgREST requires a filter to delete — use neq on a uuid that won't match
+    const tables = [
+      'cashflow_transactions',
+      'recurrences',
+      'net_worth_snapshots',
+      'holdings',
+      'cashflow_categories',
+    ];
+    for(const t of tables){
+      // Delete all rows: filter by created_at is not null (all rows have it)
+      await fetch(`${SUPABASE_URL}/rest/v1/${t}?created_at=not.is.null`,{
+        method:'DELETE',
+        headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'}
+      });
+    }
+
+    // Re-insert from snapshot (order: categories first for FK)
+    const insertOrder = [
+      {table:'cashflow_categories',  data: snap.data.cashflow_categories  ||[]},
+      {table:'holdings',             data: snap.data.holdings              ||[]},
+      {table:'recurrences',          data: snap.data.recurrences           ||[]},
+      {table:'cashflow_transactions',data: snap.data.cashflow_transactions ||[]},
+      {table:'net_worth_snapshots',  data: snap.data.net_worth_snapshots   ||[]},
+    ];
+    for(const {table,data} of insertOrder){
+      if(!data.length) continue;
+      for(let i=0;i<data.length;i+=50){
+        await api(table,{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(data.slice(i,i+50))});
+      }
+    }
+
+    showSnapshotStatus(`✓ Restored to ${date} successfully — reloading app…`, 'success');
+    setTimeout(()=>location.reload(), 1500);
+  }catch(e){
+    showSnapshotStatus('✗ Restore failed: '+e.message, 'error');
+  }
+}
+
+function showSnapshotStatus(msg, type){
+  const el=document.getElementById('snapshot-status'); if(!el) return;
+  el.style.display='';
+  el.style.background = type==='success'?'var(--green-bg)':type==='error'?'var(--red-bg)':'var(--surface2)';
+  el.style.color = type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--text2)';
+  el.innerHTML = msg;
+  if(type!=='info') setTimeout(()=>{el.style.display='none';},6000);
 }
 
 // ─────────────────────────────────────────
