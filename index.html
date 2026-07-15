@@ -2204,6 +2204,7 @@ ${JSON.stringify(labelInfo,null,2)}`;
 // ─────────────────────────────────────────
 let cfCategories=[], cfTransactions=[], cfRecurrences=[];
 let cfType='expense', cfIType='purchase', cfCtx='account';
+let cfSearchQuery='', bulkSelectMode=false, selectedTxIds=new Set(), dragSrcType=null;
 
 const DEFAULT_CATS=[
   {name:'Food & Dining',icon:'ti-tools-kitchen-2',color:'#f59e0b'},
