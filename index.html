@@ -2366,6 +2366,10 @@ function showAllTx(holdingId){
 }
 
 function showCfForm(){
+  if(!holdings.length){
+    toast('Add at least one holding before logging a transaction');
+    return;
+  }
   document.getElementById('cf-main').style.display='none';
   document.getElementById('cf-form').style.display='';
   document.getElementById('cf-fab').style.display='none';
