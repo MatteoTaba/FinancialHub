@@ -2979,6 +2979,139 @@ async function deleteRecur(id){
 }
 
 // ─────────────────────────────────────────
+// ─────────────────────────────────────────
+// CASHFLOW SEARCH & BULK DELETE
+// ─────────────────────────────────────────
+function onCfSearch(q){
+  cfSearchQuery = q.trim().toLowerCase();
+  const accountsEl = document.getElementById('cf-accounts');
+  const searchEl   = document.getElementById('cf-search-results');
+  if(cfSearchQuery.length < 2){
+    if(searchEl) searchEl.style.display = 'none';
+    if(accountsEl) accountsEl.style.display = '';
+    return;
+  }
+  const results = cfTransactions.filter(t=>{
+    const desc    = (t.description||'').toLowerCase();
+    const cat     = cfCategories.find(c=>c.id===t.category_id);
+    const catName = (cat?.name||'').toLowerCase();
+    const h       = holdings.find(x=>x.id===t.holding_id);
+    const hName   = (h?.name||h?.ticker||'').toLowerCase();
+    return desc.includes(cfSearchQuery)||catName.includes(cfSearchQuery)||hName.includes(cfSearchQuery);
+  });
+  if(accountsEl) accountsEl.style.display = 'none';
+  if(searchEl){
+    searchEl.style.display = '';
+    if(!results.length){
+      searchEl.innerHTML = '<div class="empty" style="padding:2rem"><i class="ti ti-search"></i><p>No transactions match "'+cfSearchQuery+'"</p></div>';
+      return;
+    }
+    searchEl.innerHTML = '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'+results.length+' result'+(results.length!==1?'s':'')+' for "'+cfSearchQuery+'"</div>'
+      + '<div class="card" style="padding:0;overflow:hidden">'+results.map(t=>cfTxRow(t,holdings.find(h=>h.id===t.holding_id))).join('')+'</div>';
+  }
+}
+
+function toggleBulkSelect(){
+  bulkSelectMode = !bulkSelectMode;
+  selectedTxIds.clear();
+  updateBulkDeleteBtn();
+  renderCashflow();
+  const btn = document.getElementById('cf-bulk-toggle');
+  if(btn) btn.style.background = bulkSelectMode ? 'var(--surface2)' : '';
+}
+
+function toggleTxSelect(id){
+  if(selectedTxIds.has(id)) selectedTxIds.delete(id);
+  else selectedTxIds.add(id);
+  const row = document.getElementById('cf-row-'+id);
+  const chk = document.getElementById('chk-'+id);
+  if(row) row.classList.toggle('selected', selectedTxIds.has(id));
+  if(chk) chk.checked = selectedTxIds.has(id);
+  updateBulkDeleteBtn();
+}
+
+function updateBulkDeleteBtn(){
+  const btn = document.getElementById('cf-bulk-delete-btn');
+  const cnt = document.getElementById('cf-selected-count');
+  if(btn) btn.style.display = (bulkSelectMode && selectedTxIds.size>0) ? '' : 'none';
+  if(cnt) cnt.textContent = selectedTxIds.size;
+}
+
+async function bulkDeleteTx(){
+  if(!selectedTxIds.size) return;
+  if(!confirm('Delete '+selectedTxIds.size+' selected transaction'+(selectedTxIds.size!==1?'s':'')+' with balance reversal? This cannot be undone.')) return;
+  for(const id of selectedTxIds){
+    const t = cfTransactions.find(x=>x.id===id);
+    if(t){
+      const reverseType = t.type==='expense'?'income':t.type==='income'?'expense':t.type;
+      await applyBalanceChange(reverseType, Number(t.amount), t.holding_id||null, t.holding_to_id||null);
+      await api('cashflow_transactions?id=eq.'+id,{method:'DELETE'});
+    }
+  }
+  selectedTxIds.clear();
+  bulkSelectMode = false;
+  [cfTransactions, holdings] = await Promise.all([
+    api('cashflow_transactions?order=date.desc'),
+    api('holdings?order=sort_order.asc,created_at.asc').catch(()=>api('holdings?order=created_at.asc'))
+  ]);
+  const btn = document.getElementById('cf-bulk-delete-btn');
+  if(btn) btn.style.display = 'none';
+  renderCashflow(); renderOverview();
+  toast('Transactions deleted');
+}
+
+// ─────────────────────────────────────────
+// DRAG & DROP (HOLDINGS REORDER)
+// ─────────────────────────────────────────
+function onHoldingDragStart(e, type){
+  dragSrcType = type;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.closest('.cat-block').style.opacity = '0.5';
+}
+
+function onHoldingDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onHoldingDragLeave(e){
+  e.currentTarget.classList.remove('drag-over');
+}
+
+async function onHoldingDrop(e, targetType){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  document.querySelectorAll('.cat-block').forEach(b=>b.style.opacity='');
+  if(!dragSrcType || dragSrcType === targetType){ dragSrcType=null; return; }
+  const container = document.getElementById('h-categories');
+  if(!container){ dragSrcType=null; return; }
+  const blocks = [...container.querySelectorAll('.cat-block')];
+  const srcBlock = blocks.find(b=>b.dataset.type===dragSrcType);
+  const tgtBlock = blocks.find(b=>b.dataset.type===targetType);
+  if(!srcBlock||!tgtBlock){ dragSrcType=null; return; }
+  const srcIdx = blocks.indexOf(srcBlock);
+  const tgtIdx = blocks.indexOf(tgtBlock);
+  if(srcIdx < tgtIdx) tgtBlock.after(srcBlock);
+  else tgtBlock.before(srcBlock);
+  const newOrder = [...container.querySelectorAll('.cat-block')].map(b=>b.dataset.type);
+  const updates = holdings.map(h=>{
+    const typeIdx = newOrder.indexOf(h.type);
+    const withinType = holdings.filter(x=>x.type===h.type).indexOf(h);
+    return {id:h.id, sort_order: typeIdx*1000 + withinType};
+  });
+  await Promise.all(updates.map(u=>api('holdings?id=eq.'+u.id,{method:'PATCH',body:JSON.stringify({sort_order:u.sort_order})})));
+  holdings = await api('holdings?order=sort_order.asc,created_at.asc').catch(()=>api('holdings?order=created_at.asc'));
+  dragSrcType = null;
+  toast('Order saved');
+}
+
+document.addEventListener('dragend', ()=>{
+  document.querySelectorAll('.cat-block').forEach(b=>b.style.opacity='');
+  dragSrcType=null;
+});
+
+// ─────────────────────────────────────────
 // CSV EXPORT
 // ─────────────────────────────────────────
 function exportCSV(tableId, filename){
