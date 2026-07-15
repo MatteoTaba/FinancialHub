@@ -2977,12 +2977,10 @@ function exportCSV(tableId, filename){
   const csv = rows.map(row=>{
     const cells = [...row.querySelectorAll('th,td')];
     return cells.map(c=>{
-      const txt = c.innerText.replace(/€\s?/g,'').replace(/
-/g,' ').trim();
-      return `"${txt.replace(/"/g,'""')}"`;
+      const txt = c.innerText.replace(/€/g,'').replace(/\s+/g,' ').trim();
+      return '"'+txt.replace(/"/g,'""')+'"';
     }).join(',');
-  }).join('
-');
+  }).join('\n');
   const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
