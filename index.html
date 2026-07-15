@@ -428,8 +428,8 @@ tbody tr:hover td{background:var(--surface2)}
       <!-- ACCOUNT FORM (bank/cash) -->
       <div id="cf-account-form">
         <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
-          <button class="cf-type-btn active" data-type="expense" onclick="setCfType('expense',this)"><i class="ti ti-minus-circle"></i> Expense</button>
-          <button class="cf-type-btn" data-type="income" onclick="setCfType('income',this)"><i class="ti ti-plus-circle"></i> Income</button>
+          <button class="cf-type-btn active" data-type="expense" onclick="setCfType('expense',this)"><i class="ti ti-circle-minus"></i> Expense</button>
+          <button class="cf-type-btn" data-type="income" onclick="setCfType('income',this)"><i class="ti ti-circle-plus"></i> Income</button>
           <button class="cf-type-btn" data-type="transfer" onclick="setCfType('transfer',this)"><i class="ti ti-arrows-exchange"></i> Transfer</button>
         </div>
         <div class="card" style="max-width:620px">
@@ -496,8 +496,8 @@ tbody tr:hover td{background:var(--surface2)}
         <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
           <button class="cf-type-btn active" data-itype="purchase" onclick="setCfIType('purchase',this)"><i class="ti ti-shopping-cart"></i> Purchase</button>
           <button class="cf-type-btn" data-itype="sale" onclick="setCfIType('sale',this)"><i class="ti ti-tag"></i> Sale</button>
-          <button class="cf-type-btn" data-itype="expense" onclick="setCfIType('expense',this)"><i class="ti ti-minus-circle"></i> Expense</button>
-          <button class="cf-type-btn" data-itype="income" onclick="setCfIType('income',this)"><i class="ti ti-plus-circle"></i> Income</button>
+          <button class="cf-type-btn" data-itype="expense" onclick="setCfIType('expense',this)"><i class="ti ti-circle-minus"></i> Expense</button>
+          <button class="cf-type-btn" data-itype="income" onclick="setCfIType('income',this)"><i class="ti ti-circle-plus"></i> Income</button>
         </div>
         <div class="card" style="max-width:620px">
           <div class="form-grid">
@@ -758,21 +758,24 @@ tbody tr:hover td{background:var(--surface2)}
 
 <!-- CATEGORY MODAL -->
 <div class="overlay" id="modal-cat">
-  <div class="modal" style="max-width:520px">
+  <div class="modal" style="max-width:480px">
     <div class="modal-title" id="cat-modal-title">Add category</div>
     <input type="hidden" id="cat-edit-id">
-    <div class="form-grid">
-      <div class="form-group form-full"><label>Name</label><input type="text" id="cat-name" placeholder="e.g. Groceries"></div>
-      <div class="form-group"><label>Color</label><input type="color" id="cat-color" value="#6366f1" style="height:42px;padding:4px;width:100%"></div>
-      <div class="form-group"><label>Selected icon</label>
+    <input type="hidden" id="cat-icon" value="ti-tag">
+    <!-- Preview + Name row -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.25rem">
+      <div id="cat-icon-preview" style="width:64px;height:64px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;transition:background 0.2s,color 0.2s;background:rgba(99,102,241,0.15);color:#6366f1"><i class="ti ti-tag"></i></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <input type="text" id="cat-name" placeholder="Category name" style="border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 11px;font-size:15px;font-weight:600;background:var(--surface2);color:var(--text);font-family:inherit">
         <div style="display:flex;align-items:center;gap:8px">
-          <div id="cat-icon-preview" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:18px"><i class="ti ti-tag"></i></div>
-          <input type="hidden" id="cat-icon" value="ti-tag">
+          <label style="font-size:12px;color:var(--text2);flex-shrink:0">Colour</label>
+          <input type="color" id="cat-color" value="#6366f1" oninput="updateIconPreview(document.getElementById('cat-icon').value)" style="width:100%;height:32px;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:2px 4px;cursor:pointer;background:none">
         </div>
       </div>
     </div>
-    <div style="margin-bottom:8px;font-size:12px;color:var(--text2);font-weight:500">Quick pick</div>
-    <div id="cat-icon-grid" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;max-height:200px;overflow-y:auto;background:var(--surface2);border-radius:var(--radius-sm);padding:8px"></div>
+    <!-- Icon grid -->
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Pick an icon</div>
+    <div id="cat-icon-grid" style="display:grid;grid-template-columns:repeat(10,1fr);gap:3px;max-height:180px;overflow-y:auto;background:var(--surface2);border-radius:var(--radius-sm);padding:6px"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-cat')">Cancel</button>
       <button class="btn btn-primary" onclick="saveCat()">Save</button>
@@ -1976,8 +1979,8 @@ async function renderDonutSVG(containerId, slices, total, textColor, dimColor){
     const endAngle=startAngle+sweep;
     const midAngle=startAngle+sweep/2;
     const a={...s,pct:+(pct*100).toFixed(1),startAngle,endAngle,midAngle,sweep,
-      tipX:+(cx+Math.cos(midAngle)*(outerR+8)).toFixed(1),
-      tipY:+(cy+Math.sin(midAngle)*(outerR+8)).toFixed(1),
+      tipX:+(cx+Math.cos(midAngle)*(outerR+2)).toFixed(1),
+      tipY:+(cy+Math.sin(midAngle)*(outerR+2)).toFixed(1),
       side:Math.cos(midAngle)<0?'left':'right'};
     startAngle=endAngle;
     return a;
@@ -2056,13 +2059,12 @@ ${JSON.stringify(labelInfo,null,2)}`;
     let labelSVG='';
     placed.forEach(item=>{
       const isLeft=item.side==='left';
-      const elbowX=isLeft?Math.round(cx-outerR-20):Math.round(cx+outerR+20);
+      const elbowX=isLeft?Math.round(cx-outerR-10):Math.round(cx+outerR+10);
       const endX=isLeft?12:W-12;
       const textX=isLeft?14:W-14;
       const anchor=isLeft?'start':'end';
       const ly=item.labelY;
-      labelSVG+=`<circle cx="${item.tipX}" cy="${item.tipY}" r="2.5" fill="${item.color}"/>`;
-      labelSVG+=`<polyline points="${item.tipX},${item.tipY} ${elbowX},${ly} ${endX},${ly}" stroke="${item.color}" stroke-width="1.2" fill="none" opacity="0.85"/>`;
+      labelSVG+=`<polyline points="${item.tipX},${item.tipY} ${elbowX},${ly} ${endX},${ly}" stroke="${item.color}" stroke-width="1.2" fill="none" opacity="0.7"/>`;
       labelSVG+=`<text x="${textX}" y="${ly-2}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="11" font-weight="600" fill="${item.color}">${item.label}</text>`;
       labelSVG+=`<text x="${textX}" y="${ly+11}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="10" fill="${dimColor}">${item.pct.toFixed(1)}%</text>`;
     });
@@ -2081,12 +2083,11 @@ ${JSON.stringify(labelInfo,null,2)}`;
       const startY=cy-step*(group.length-1)/2;
       group.forEach((a,i)=>{
         const ly=Math.max(14,Math.min(H-14,startY+i*step));
-        const elbowX=isLeft?cx-outerR-16:cx+outerR+16;
+        const elbowX=isLeft?cx-outerR-10:cx+outerR+10;
         const endX=isLeft?10:W-10;
         const textX=isLeft?12:W-12;
         const anchor=isLeft?'start':'end';
-        lSVG+=`<circle cx="${a.tipX}" cy="${a.tipY}" r="2" fill="${a.color}"/>`;
-        lSVG+=`<polyline points="${a.tipX},${a.tipY} ${elbowX},${ly} ${endX},${ly}" stroke="${a.color}" stroke-width="1" fill="none" opacity="0.7"/>`;
+        lSVG+=`<polyline points="${a.tipX},${a.tipY} ${elbowX},${ly} ${endX},${ly}" stroke="${a.color}" stroke-width="1" fill="none" opacity="0.6"/>`;
         lSVG+=`<text x="${textX}" y="${ly-2}" text-anchor="${anchor}" font-family="sans-serif" font-size="10" font-weight="600" fill="${a.color}">${a.label}</text>`;
         lSVG+=`<text x="${textX}" y="${ly+10}" text-anchor="${anchor}" font-family="sans-serif" font-size="9" fill="${dimColor}">${a.pct.toFixed(1)}%</text>`;
       });
@@ -2762,14 +2763,17 @@ const ICON_LIBRARY = [
 
 function buildIconGrid(){
   const grid=document.getElementById('cat-icon-grid'); if(!grid) return;
-  const color=document.getElementById('cat-color')?.value||'#6366f1';
-  grid.innerHTML=ICON_LIBRARY.map(icon=>`
-    <button type="button" onclick="selectIcon('${icon}')" title="${icon}"
-      style="width:100%;aspect-ratio:1;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);transition:all 0.12s"
-      onmouseover="this.style.background='var(--surface2)';this.style.color='${color}'"
-      onmouseout="this.style.background='none';this.style.color='var(--text2)'">
+  const selectedIcon=document.getElementById('cat-icon')?.value||'ti-tag';
+  grid.innerHTML=ICON_LIBRARY.map(icon=>{
+    const isSelected=icon===selectedIcon;
+    return `<button type="button" onclick="selectIcon('${icon}')" title="${icon}"
+      id="icongrid-${icon.replace(/[^a-z0-9]/g,'_')}"
+      style="width:100%;aspect-ratio:1;border:1px solid ${isSelected?'var(--accent)':'var(--border)'};border-radius:6px;background:${isSelected?'rgba(99,102,241,0.15)':'none'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;color:${isSelected?'var(--accent)':'var(--text3)'};transition:all 0.1s"
+      onmouseover="this.style.background='rgba(99,102,241,0.1)';this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
+      onmouseout="const s='${icon}'===document.getElementById('cat-icon').value;this.style.background=s?'rgba(99,102,241,0.15)':'none';this.style.color=s?'var(--accent)':'var(--text3)';this.style.borderColor=s?'var(--accent)':'var(--border)'">
       <i class="ti ${icon}"></i>
-    </button>`).join('');
+    </button>`;
+  }).join('');
 }
 
 function selectIcon(icon){
