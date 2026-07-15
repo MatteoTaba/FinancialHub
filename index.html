@@ -3000,24 +3000,66 @@ function onCfSearch(q){
     return desc.includes(cfSearchQuery)||catName.includes(cfSearchQuery)||hName.includes(cfSearchQuery);
   });
   if(accountsEl) accountsEl.style.display = 'none';
-  if(searchEl){
-    searchEl.style.display = '';
-    if(!results.length){
-      searchEl.innerHTML = '<div class="empty" style="padding:2rem"><i class="ti ti-search"></i><p>No transactions match "'+cfSearchQuery+'"</p></div>';
-      return;
-    }
-    searchEl.innerHTML = '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'+results.length+' result'+(results.length!==1?'s':'')+' for "'+cfSearchQuery+'"</div>'
-      + '<div class="card" style="padding:0;overflow:hidden">'+results.map(t=>cfTxRow(t,holdings.find(h=>h.id===t.holding_id))).join('')+'</div>';
+  if(!searchEl) return;
+  searchEl.style.display = '';
+  if(!results.length){
+    searchEl.innerHTML = '<div class="empty" style="padding:2rem"><i class="ti ti-search"></i><p>No transactions match "'+cfSearchQuery+'"</p></div>';
+    return;
   }
+  // Group by holding
+  const typeColorMap = {bank:'#0ea5e9',bond:'#ec4899',cash:'#84cc16',crypto:'#f59e0b',etf:'#10b981',stock:'#6366f1'};
+  const grouped = {};
+  results.forEach(t=>{
+    const hId = t.holding_id || '__none__';
+    if(!grouped[hId]) grouped[hId] = [];
+    grouped[hId].push(t);
+  });
+  let html = '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'+results.length+' result'+(results.length!==1?'s':'')+' for "'+cfSearchQuery+'"</div>';
+  Object.entries(grouped).forEach(([hId, txs])=>{
+    const h = holdings.find(x=>x.id===hId);
+    const dispName = h ? (h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker)) : 'Unknown account';
+    const color = h ? (typeColorMap[h.type]||'#888') : 'var(--text3)';
+    const icon  = h ? (TYPE_ICONS[h.type]||'ti-wallet') : 'ti-wallet';
+    html += '<div class="cf-account-block" style="margin-bottom:8px">'
+      + '<div style="display:flex;align-items:center;gap:10px;padding:10px 1.25rem;background:var(--surface2);border-bottom:1px solid var(--border)">'
+      + '<div class="cf-account-icon" style="background:'+color+'1a;color:'+color+'"><i class="ti '+icon+'"></i></div>'
+      + '<div><div class="cf-account-name">'+dispName+'</div>'
+      + '<div class="cf-account-sub">'+txs.length+' matching transaction'+(txs.length!==1?'s':'')+'</div></div>'
+      + '</div>'
+      + txs.map(t=>cfTxRow(t,h)).join('')
+      + '</div>';
+  });
+  searchEl.innerHTML = html;
 }
 
 function toggleBulkSelect(){
   bulkSelectMode = !bulkSelectMode;
   selectedTxIds.clear();
   updateBulkDeleteBtn();
-  renderCashflow();
   const btn = document.getElementById('cf-bulk-toggle');
-  if(btn) btn.style.background = bulkSelectMode ? 'var(--surface2)' : '';
+  if(btn){
+    btn.style.background = bulkSelectMode ? 'var(--surface2)' : '';
+    btn.innerHTML = bulkSelectMode
+      ? '<i class="ti ti-x"></i> Cancel'
+      : '<i class="ti ti-checkbox"></i> Select';
+  }
+  // Re-render cashflow (renderCashflow preserves open state via openTypes set)
+  renderCashflow();
+  // If entering select mode: expand ALL category blocks
+  if(bulkSelectMode){
+    document.querySelectorAll('.cat-block').forEach(block=>{
+      const header = block.querySelector('.cat-header');
+      const body   = block.querySelector('.cat-body');
+      if(header && body){
+        header.classList.add('open');
+        body.classList.add('open');
+        header.setAttribute('aria-expanded','true');
+      }
+    });
+  }
+  // Also refresh allTx view if it's currently showing
+  const allTxBody = document.getElementById('alltx-body');
+  if(allTxBody) renderAllTxBody();
 }
 
 function toggleTxSelect(id){
