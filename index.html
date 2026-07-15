@@ -3036,6 +3036,7 @@ function toggleBulkSelect(){
   bulkSelectMode = !bulkSelectMode;
   selectedTxIds.clear();
   updateBulkDeleteBtn();
+
   const btn = document.getElementById('cf-bulk-toggle');
   if(btn){
     btn.style.background = bulkSelectMode ? 'var(--surface2)' : '';
@@ -3043,23 +3044,29 @@ function toggleBulkSelect(){
       ? '<i class="ti ti-x"></i> Cancel'
       : '<i class="ti ti-checkbox"></i> Select';
   }
-  // Re-render cashflow (renderCashflow preserves open state via openTypes set)
-  renderCashflow();
-  // If entering select mode: expand ALL category blocks
-  if(bulkSelectMode){
-    document.querySelectorAll('.cat-block').forEach(block=>{
-      const header = block.querySelector('.cat-header');
-      const body   = block.querySelector('.cat-body');
-      if(header && body){
-        header.classList.add('open');
-        body.classList.add('open');
-        header.setAttribute('aria-expanded','true');
-      }
-    });
-  }
-  // Also refresh allTx view if it's currently showing
+
+  // Check if we are in the "all transactions" sub-view or the main cashflow view
   const allTxBody = document.getElementById('alltx-body');
-  if(allTxBody) renderAllTxBody();
+  const isAllTxView = allTxBody && allTxBody.innerHTML.trim() !== '';
+
+  if(isAllTxView){
+    // Re-render the all-transactions body with/without checkboxes
+    renderAllTxBody();
+  } else {
+    // Re-render cashflow (preserves open state)
+    renderCashflow();
+    // Expand ALL cf-account-blocks so transactions are visible for selection
+    if(bulkSelectMode){
+      document.querySelectorAll('.cf-account-block').forEach(block=>{
+        const header = block.querySelector('.cf-account-header');
+        const body   = block.querySelector('.cf-account-body');
+        if(header && body && !body.classList.contains('open')){
+          body.classList.add('open');
+          header.classList.add('open');
+        }
+      });
+    }
+  }
 }
 
 function toggleTxSelect(id){
