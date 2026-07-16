@@ -2148,11 +2148,11 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   const container=document.getElementById(containerId);
   if(!container) return;
 
-  const W=Math.max(container.clientWidth||400,400), H=300;
+  const W=Math.max(container.clientWidth||400,400), H=320;
   const cx=W/2, cy=H/2;
-  const outerR=Math.min(W,H)*0.26;
+  const outerR=Math.min(W,H)*0.27;
   const innerR=outerR*0.52;
-  const PAD=14; // padding from edge for text
+  const labelR=outerR+46;
 
   // Build arc geometry
   let startAngle=-Math.PI/2;
@@ -2162,9 +2162,9 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
     const endAngle=startAngle+sweep;
     const midAngle=startAngle+sweep/2;
     const a={...s,pct:+(pct*100).toFixed(1),startAngle,endAngle,midAngle,sweep,
-      tipX:+(cx+Math.cos(midAngle)*(outerR+4)).toFixed(1),
-      tipY:+(cy+Math.sin(midAngle)*(outerR+4)).toFixed(1),
-      naturalY:+(cy+Math.sin(midAngle)*(outerR+50)).toFixed(1),
+      tipX:cx+Math.cos(midAngle)*(outerR+5),
+      tipY:cy+Math.sin(midAngle)*(outerR+5),
+      displayAngle:midAngle,
       side:Math.cos(midAngle)<0?'left':'right'};
     startAngle=endAngle;
     return a;
@@ -2173,85 +2173,74 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   // Donut slice path
   function slicePath(sA,eA){
     const f=v=>v.toFixed(2);
+    const large=eA-sA>Math.PI?1:0;
     const ox1=cx+Math.cos(sA)*outerR, oy1=cy+Math.sin(sA)*outerR;
     const ox2=cx+Math.cos(eA)*outerR, oy2=cy+Math.sin(eA)*outerR;
     const ix1=cx+Math.cos(eA)*innerR, iy1=cy+Math.sin(eA)*innerR;
     const ix2=cx+Math.cos(sA)*innerR, iy2=cy+Math.sin(sA)*innerR;
-    const large=eA-sA>Math.PI?1:0;
     return `M ${f(ox1)} ${f(oy1)} A ${outerR} ${outerR} 0 ${large} 1 ${f(ox2)} ${f(oy2)} L ${f(ix1)} ${f(iy1)} A ${innerR} ${innerR} 0 ${large} 0 ${f(ix2)} ${f(iy2)} Z`;
   }
 
-  // Spread labels on each side with no overlap, starting from natural Y positions
-  function spreadLabels(group){
+  // Angular spread: push labels apart along the circumference so connectors stay short
+  function spreadAngular(group, minA, maxA){
     if(!group.length) return;
-    const minGap=26, margin=16;
-    // Sort by natural Y
-    group.sort((a,b)=>a.naturalY-b.naturalY);
-    // Assign starting positions
-    group.forEach(a=>{ a.labelY=Math.max(margin, Math.min(H-margin, a.naturalY)); });
-    // Push apart — 30 passes
-    for(let pass=0;pass<30;pass++){
+    group.sort((a,b)=>a.displayAngle-b.displayAngle);
+    const minGap=28/labelR; // angular gap for ~28px label separation at labelR
+    for(let pass=0;pass<60;pass++){
       let moved=false;
       for(let i=1;i<group.length;i++){
-        const gap=group[i].labelY-group[i-1].labelY;
+        const gap=group[i].displayAngle-group[i-1].displayAngle;
         if(gap<minGap){
           const shift=(minGap-gap)/2;
-          group[i-1].labelY=Math.max(margin, group[i-1].labelY-shift);
-          group[i].labelY=Math.min(H-margin, group[i].labelY+shift);
+          group[i-1].displayAngle=Math.max(minA,group[i-1].displayAngle-shift);
+          group[i].displayAngle=Math.min(maxA,group[i].displayAngle+shift);
           moved=true;
         }
       }
       if(!moved) break;
     }
+    group.forEach(a=>{
+      a.lx=cx+Math.cos(a.displayAngle)*labelR;
+      a.ly=cy+Math.sin(a.displayAngle)*labelR;
+    });
   }
 
-  const left=arcs.filter(a=>a.side==='left');
+  // Split and spread each half
   const right=arcs.filter(a=>a.side==='right');
-  spreadLabels(left);
-  spreadLabels(right);
+  const left=arcs.filter(a=>a.side==='left');
+  spreadAngular(right, -Math.PI/2+0.05, Math.PI/2-0.05);
+  // Normalize left angles to [π/2, 3π/2] for spreading, then convert back
+  left.forEach(a=>{ if(a.displayAngle<0) a.displayAngle+=2*Math.PI; });
+  spreadAngular(left, Math.PI/2+0.05, 3*Math.PI/2-0.05);
+  left.forEach(a=>{ if(a.displayAngle>Math.PI) a.displayAngle-=2*Math.PI; });
 
-  // Draw SVG
+  // Build SVG
   let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">`;
 
-  // Slices
+  // Draw slices
   arcs.forEach(a=>{
     if(a.sweep<0.001) return;
     svg+=`<path d="${slicePath(a.startAngle,a.endAngle)}" fill="${a.color}" opacity="0.92"><title>${a.label}: ${a.pct}%</title></path>`;
   });
 
-  // Labels + connectors
-  [...left,...right].forEach(a=>{
+  // Draw connectors + labels
+  arcs.forEach(a=>{
+    if(a.sweep<0.001||!a.lx) return;
     const isLeft=a.side==='left';
-    const textX=isLeft?PAD:W-PAD;
-    const anchor=isLeft?'start':'end';
-    const ly=a.labelY;
+    const anchor=isLeft?'end':'start';
+    const tx=+(a.lx+(isLeft?-5:5)).toFixed(1);
+    const ty=a.ly.toFixed(1);
 
-    // Connector: tip → radial exit → bend to label column → horizontal to text gap
-    const angle=Math.atan2(a.tipY-cy, a.tipX-cx);
-    const exitX=+(cx+Math.cos(angle)*(outerR+16)).toFixed(1);
-    const exitY=+(cy+Math.sin(angle)*(outerR+16)).toFixed(1);
-    // Column x: just outside ring on the correct side, used as bend point
-    const colX=isLeft ? +(cx-outerR-28).toFixed(1) : +(cx+outerR+28).toFixed(1);
-    // Only add column bend if exit is on wrong side of column (prevents backtracking)
-    const lineEndX=isLeft ? textX+PAD+2 : textX-PAD-2;
-
-    // Choose connector shape based on how far label Y is from exit Y
-    const yDiff=Math.abs(ly-exitY);
-    let pts;
-    if(yDiff < 20){
-      // Label is roughly at same height — simple radial + horizontal
-      pts=`${a.tipX},${a.tipY} ${exitX},${exitY} ${lineEndX},${ly}`;
-    } else {
-      // Label is far — go radial exit, then to column at exit height, then down column, then horizontal
-      pts=`${a.tipX},${a.tipY} ${exitX},${exitY} ${colX},${exitY} ${colX},${ly} ${lineEndX},${ly}`;
-    }
-
-    svg+=`<polyline points="${pts}" stroke="${a.color}" stroke-width="1.2" fill="none" opacity="0.75"/>`;
-    svg+=`<text x="${textX}" y="${ly-1}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="11" font-weight="600" fill="${a.color}">${a.label}</text>`;
-    svg+=`<text x="${textX}" y="${ly+12}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="10" fill="${dimColor}">${a.pct.toFixed(1)}%</text>`;
+    // Short straight connector from slice tip to label anchor point
+    svg+=`<line x1="${a.tipX.toFixed(1)}" y1="${a.tipY.toFixed(1)}" x2="${a.lx.toFixed(1)}" y2="${ty}" stroke="${a.color}" stroke-width="1.2" opacity="0.75" fill="none"/>`;
+    // Dot at tip
+    svg+=`<circle cx="${a.tipX.toFixed(1)}" cy="${a.tipY.toFixed(1)}" r="2" fill="${a.color}" opacity="0.85"/>`;
+    // Label
+    svg+=`<text x="${tx}" y="${ty}" dy="-2" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="11" font-weight="600" fill="${a.color}">${a.label}</text>`;
+    svg+=`<text x="${tx}" y="${ty}" dy="12" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="10" fill="${dimColor}">${a.pct}%</text>`;
   });
 
-  svg+='</svg>';
+  svg+=`</svg>`;
   container.innerHTML=svg;
 }
 
