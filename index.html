@@ -2247,9 +2247,13 @@ ${JSON.stringify(labelInfo,null,2)}`;
       const ly=item.labelY;
       // Radial mid-point: go outward from ring before bending horizontal
       const tipAngle=Math.atan2(item.tipY-cy, item.tipX-cx);
-      const midX=+(cx+Math.cos(tipAngle)*(outerR+22)).toFixed(1);
-      const midY=+(cy+Math.sin(tipAngle)*(outerR+22)).toFixed(1);
-      labelSVG+=`<polyline points="${item.tipX},${item.tipY} ${midX},${midY} ${endX},${ly}" stroke="${item.color}" stroke-width="1.2" fill="none" opacity="0.7"/>`;
+      // Exit point: just outside the ring, radially
+      const exitX=+(cx+Math.cos(tipAngle)*(outerR+10)).toFixed(1);
+      const exitY=+(cy+Math.sin(tipAngle)*(outerR+10)).toFixed(1);
+      // Vertical column: always outside the ring on the correct side
+      const colX=isLeft ? +(cx-outerR-24).toFixed(1) : +(cx+outerR+24).toFixed(1);
+      // 4-point L-shape: tip → exit (radial) → column top (horizontal) → column bottom (vertical) → label (horizontal)
+      labelSVG+=`<polyline points="${item.tipX},${item.tipY} ${exitX},${exitY} ${colX},${exitY} ${colX},${ly} ${endX},${ly}" stroke="${item.color}" stroke-width="1.2" fill="none" opacity="0.7"/>`;
       labelSVG+=`<text x="${textX}" y="${ly-2}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="11" font-weight="600" fill="${item.color}">${item.label}</text>`;
       labelSVG+=`<text x="${textX}" y="${ly+11}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="10" fill="${dimColor}">${item.pct.toFixed(1)}%</text>`;
     });
@@ -2272,9 +2276,10 @@ ${JSON.stringify(labelInfo,null,2)}`;
         const textX=isLeft?12:W-12;
         const anchor=isLeft?'start':'end';
         const fAngle=Math.atan2(a.tipY-cy,a.tipX-cx);
-        const fMidX=+(cx+Math.cos(fAngle)*(outerR+18)).toFixed(1);
-        const fMidY=+(cy+Math.sin(fAngle)*(outerR+18)).toFixed(1);
-        lSVG+=`<polyline points="${a.tipX},${a.tipY} ${fMidX},${fMidY} ${endX},${ly}" stroke="${a.color}" stroke-width="1" fill="none" opacity="0.6"/>`;
+        const fExitX=+(cx+Math.cos(fAngle)*(outerR+10)).toFixed(1);
+        const fExitY=+(cy+Math.sin(fAngle)*(outerR+10)).toFixed(1);
+        const fColX=isLeft ? +(cx-outerR-20).toFixed(1) : +(cx+outerR+20).toFixed(1);
+        lSVG+=`<polyline points="${a.tipX},${a.tipY} ${fExitX},${fExitY} ${fColX},${fExitY} ${fColX},${ly} ${endX},${ly}" stroke="${a.color}" stroke-width="1" fill="none" opacity="0.6"/>`;
         lSVG+=`<text x="${textX}" y="${ly-2}" text-anchor="${anchor}" font-family="sans-serif" font-size="10" font-weight="600" fill="${a.color}">${a.label}</text>`;
         lSVG+=`<text x="${textX}" y="${ly+10}" text-anchor="${anchor}" font-family="sans-serif" font-size="9" fill="${dimColor}">${a.pct.toFixed(1)}%</text>`;
       });
