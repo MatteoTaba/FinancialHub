@@ -630,7 +630,6 @@ tbody tr:hover td{background:var(--surface2)}
       <select id="rpt-year-sel" onchange="onRptYearChange()" style="border:1px solid var(--border2);border-radius:var(--radius-xs);padding:4px 10px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer">
         <option value="all">All time</option>
       </select>
-      <span id="rpt-filter-label" style="font-size:12px;color:var(--text3);margin-left:4px"></span>
     </div>
 
     <!-- Cashflow -->
@@ -3328,15 +3327,13 @@ function populateRptYearSel(){
   if(rptFilterYear !== 'all' && !years.includes(Number(rptFilterYear))) rptFilterYear = 'all';
   sel.innerHTML = '<option value="all">All time</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
   sel.value = rptFilterYear;
-  const lbl = document.getElementById('rpt-filter-label');
-  if(lbl) lbl.textContent = rptFilterYear==='all' ? '' : `Showing ${rptFilterYear} only`;
+
 }
 
 function onRptYearChange(){
   const sel = document.getElementById('rpt-year-sel'); if(!sel) return;
   rptFilterYear = sel.value;
-  const lbl = document.getElementById('rpt-filter-label');
-  if(lbl) lbl.textContent = rptFilterYear==='all' ? '' : `Showing ${rptFilterYear} only`;
+
   renderReports();
 }
 
