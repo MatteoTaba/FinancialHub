@@ -2328,6 +2328,8 @@ async function loadCashflow(){
   renderCashflow();
   renderSettings();
   renderInsights();
+  // Refresh reports page if currently visible
+  if(document.getElementById('page-reports')?.classList.contains('active')) renderReports();
 }
 
 async function processRecurrences(){
@@ -3324,7 +3326,7 @@ function populateRptYearSel(){
   const sel = document.getElementById('rpt-year-sel'); if(!sel) return;
   const years = [...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort((a,b)=>b-a);
   // Ensure current year default is valid (fall back to 'all' if no transactions this year)
-  if(rptFilterYear !== 'all' && !years.includes(Number(rptFilterYear))) rptFilterYear = 'all';
+  if(years.length && rptFilterYear !== 'all' && !years.includes(Number(rptFilterYear))) rptFilterYear = 'all';
   sel.innerHTML = '<option value="all">All time</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
   sel.value = rptFilterYear;
 
