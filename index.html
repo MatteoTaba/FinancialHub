@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><polyline points='4,24 10,16 16,20 22,10 28,14' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='28' cy='14' r='2.5' fill='white'/></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Financial Hub</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -464,7 +465,7 @@ tbody tr:hover td{background:var(--surface2)}
             </div>
             <div class="form-group form-full">
               <label>Description</label>
-              <input type="text" id="cf-desc" placeholder="What was this for?">
+              <textarea id="cf-desc" placeholder="What was this for?" rows="2" style="resize:vertical;min-height:40px;font-family:inherit;font-size:14px"></textarea>
             </div>
             <div class="form-group" id="cf-cat-wrap">
               <label>Category</label>
@@ -596,7 +597,7 @@ tbody tr:hover td{background:var(--surface2)}
             <!-- Shared fields -->
             <div class="form-group form-full">
               <label>Description</label>
-              <input type="text" id="inv-desc" placeholder="e.g. Monthly DCA, Dividend reinvestment…">
+              <textarea id="inv-desc" placeholder="e.g. Monthly DCA, Dividend reinvestment…" rows="2" style="resize:vertical;min-height:40px;font-family:inherit;font-size:14px"></textarea>
             </div>
             <div class="form-group">
               <label>Category</label>
@@ -622,6 +623,14 @@ tbody tr:hover td{background:var(--surface2)}
   <div class="page" id="page-reports">
     <div class="page-header">
       <div><div class="page-title">Reports</div><div class="page-sub">Financial data across all salary periods</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px">
+      <i class="ti ti-filter" style="color:var(--accent)"></i>
+      <span style="font-size:13px;font-weight:500;color:var(--text2)">Filter by year</span>
+      <select id="rpt-year-sel" onchange="onRptYearChange()" style="border:1px solid var(--border2);border-radius:var(--radius-xs);padding:4px 10px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer">
+        <option value="all">All time</option>
+      </select>
+      <span id="rpt-filter-label" style="font-size:12px;color:var(--text3);margin-left:4px"></span>
     </div>
 
     <!-- Cashflow -->
@@ -1181,8 +1190,8 @@ function renderHoldings(){
         ${priceCell}
         ${valCell}
         ${gainCell}
-        <td style="display:flex;gap:4px">
-          ${isSimple?`<button class="btn btn-sm" onclick="editBalance('${h.id}','${dispName}',${h.avg_cost})" title="Edit balance"><i class="ti ti-pencil"></i></button>`:''}
+        <td class="holding-actions" style="display:none;gap:4px">
+          ${isSimple?`<button class="btn btn-sm" onclick="editBalance('${h.id}','${dispName}',${h.avg_cost})" title="Edit balance"><i class="ti ti-pencil"></i></button>`:`<button class="btn btn-sm" onclick="renameHolding('${h.id}','${dispName}')" title="Rename"><i class="ti ti-pencil"></i></button>`}
           <button class="btn btn-sm btn-danger" onclick="deleteHolding('${h.id}')"><i class="ti ti-trash"></i></button>
         </td>
       </tr>`;
@@ -1243,8 +1252,13 @@ function toggleCat(header){
   body.classList.toggle('open', !isOpen);
   header.classList.toggle('open', !isOpen);
   header.setAttribute('aria-expanded', String(!isOpen));
+  // Show/hide category delete button
   const delBtn = header.querySelector('.cat-delete-btn');
   if(delBtn) delBtn.style.display = !isOpen ? '' : 'none';
+  // Show/hide holding action buttons (rename + delete per row)
+  body.querySelectorAll('.holding-actions').forEach(td=>{
+    td.style.display = !isOpen ? 'flex' : 'none';
+  });
 }
 
 // ── Ticker search ──
@@ -1408,6 +1422,37 @@ async function saveHolding(){
     }
   }
   closeModal('modal-holding'); await loadAll(); toast('Holding saved ✓'); refreshPrices(true);
+}
+
+async function renameHolding(id, currentName){
+  // Use a custom inline modal for text input
+  const newName = await showInputDialog('Rename holding', 'Enter new name:', currentName);
+  if(newName===null||!newName.trim()) return;
+  await api(`holdings?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({name:newName.trim()})});
+  await loadAll(); toast('Holding renamed ✓');
+}
+
+function showInputDialog(title, label, defaultVal=''){
+  return new Promise(resolve=>{
+    // Temporarily add input to dialog
+    document.getElementById('dialog-title').textContent = title;
+    document.getElementById('dialog-title').style.display = '';
+    document.getElementById('dialog-message').innerHTML =
+      `<div style="margin-bottom:8px;font-size:13px;color:var(--text2)">${label}</div>
+       <input type="text" id="dialog-input" value="${defaultVal.replace(/"/g,'&quot;')}"
+         style="width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;box-sizing:border-box">`;
+    const footer = document.getElementById('dialog-footer');
+    footer.innerHTML = '';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn'; cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = ()=>{ closeModal('modal-dialog'); resolve(null); };
+    const okBtn = document.createElement('button');
+    okBtn.className = 'btn btn-primary'; okBtn.textContent = 'Save';
+    okBtn.onclick = ()=>{ const v=document.getElementById('dialog-input')?.value; closeModal('modal-dialog'); resolve(v||null); };
+    footer.appendChild(cancelBtn); footer.appendChild(okBtn);
+    openModal('modal-dialog');
+    setTimeout(()=>document.getElementById('dialog-input')?.select(), 50);
+  });
 }
 
 async function editBalance(id, name, currentBalance){
@@ -3274,7 +3319,30 @@ function mkStat(label, val, cls=''){
   return `<div class="rpt-stat"><div class="rpt-stat-label">${label}</div><div class="rpt-stat-val ${cls}">${val}</div></div>`;
 }
 
+let rptFilterYear = 'all';
+
+function populateRptYearSel(){
+  const sel = document.getElementById('rpt-year-sel'); if(!sel) return;
+  const years = [...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort((a,b)=>b-a);
+  sel.innerHTML = '<option value="all">All time</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  sel.value = rptFilterYear;
+}
+
+function onRptYearChange(){
+  const sel = document.getElementById('rpt-year-sel'); if(!sel) return;
+  rptFilterYear = sel.value;
+  const lbl = document.getElementById('rpt-filter-label');
+  if(lbl) lbl.textContent = rptFilterYear==='all' ? '' : `Showing ${rptFilterYear} only`;
+  renderReports();
+}
+
+function getRptTransactions(){
+  if(rptFilterYear==='all') return cfTransactions;
+  return cfTransactions.filter(t=>new Date(t.date).getFullYear()===Number(rptFilterYear));
+}
+
 function renderReports(){
+  populateRptYearSel();
   renderCashflowReport();
   renderIncomesReport();
   renderOutcomesReport();
@@ -3286,12 +3354,16 @@ function renderReports(){
 
 // ── Cashflow table ──
 function renderCashflowReport(){
-  const periods = buildSalaryPeriods();
+  const allTx = getRptTransactions();
+  const periods = buildSalaryPeriods().filter(p=>{
+    if(rptFilterYear==='all') return true;
+    const y=Number(rptFilterYear); return p.start.getFullYear()===y||p.end.getFullYear()===y;
+  });
   const liqHoldings = holdings.filter(h=>h.type==='bank'||h.type==='cash');
   const liqIds = new Set(liqHoldings.map(h=>h.id));
 
   // Reconstruct liquidity per period (same logic as liquidity chart)
-  const sortedTxDesc = [...cfTransactions]
+  const sortedTxDesc = [...allTx]
     .filter(t=>liqIds.has(t.holding_id)||liqIds.has(t.holding_to_id))
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
   let bal = liqHoldings.reduce((s,h)=>s+h.avg_cost,0);
@@ -3315,7 +3387,7 @@ function renderCashflowReport(){
   // Build rows
   const salCatIds = new Set(cfCategories.filter(c=>{ const n=c.name.toLowerCase(); return n.includes('salary')||n.includes('salario')||n.includes('stipendio')||n.includes('wage')||n==='salary'; }).map(c=>c.id));
   const rows = periods.map((p,i)=>{
-    const pTxs = cfTransactions.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end;});
+    const pTxs = allTx.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end;});
     const salary = pTxs.filter(t=>isIncomeTx(t)&&salCatIds.has(t.category_id)).reduce((s,t)=>s+t.amount,0);
     const variables = pTxs.filter(t=>isIncomeTx(t)&&!salCatIds.has(t.category_id)).reduce((s,t)=>s+t.amount,0);
     const totalInc = pTxs.filter(t=>isIncomeTx(t)).reduce((s,t)=>s+t.amount,0);
@@ -3354,10 +3426,14 @@ function renderCashflowReport(){
 
 // ── Incomes table ──
 function renderIncomesReport(){
-  const periods = buildSalaryPeriods();
+  const allTx = getRptTransactions();
+  const periods = buildSalaryPeriods().filter(p=>{
+    if(rptFilterYear==='all') return true;
+    const y=Number(rptFilterYear); return p.start.getFullYear()===y||p.end.getFullYear()===y;
+  });
   const salCatIds = new Set(cfCategories.filter(c=>{ const n=c.name.toLowerCase(); return n.includes('salary')||n.includes('salario')||n.includes('stipendio')||n.includes('wage')||n==='salary'; }).map(c=>c.id));
   const rows = periods.map(p=>{
-    const pTxs = cfTransactions.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end&&isIncomeTx(t);});
+    const pTxs = allTx.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end&&isIncomeTx(t);});
     const salary = pTxs.filter(t=>salCatIds.has(t.category_id)).reduce((s,t)=>s+t.amount,0);
     const variables = pTxs.filter(t=>!salCatIds.has(t.category_id)).reduce((s,t)=>s+t.amount,0);
     const total = salary+variables;
@@ -3388,13 +3464,17 @@ function renderIncomesReport(){
 
 // ── Outcomes by category ──
 function renderOutcomesReport(){
-  const periods = buildSalaryPeriods();
+  const allTx = getRptTransactions();
+  const periods = buildSalaryPeriods().filter(p=>{
+    if(rptFilterYear==='all') return true;
+    const y=Number(rptFilterYear); return p.start.getFullYear()===y||p.end.getFullYear()===y;
+  });
   // Get all expense categories that have been used
-  const usedCatIds = new Set(cfTransactions.filter(t=>isOutcomeTx(t)&&t.category_id).map(t=>t.category_id));
+  const usedCatIds = new Set(allTx.filter(t=>isOutcomeTx(t)&&t.category_id).map(t=>t.category_id));
   const cats = cfCategories.filter(c=>usedCatIds.has(c.id)).sort((a,b)=>a.name.localeCompare(b.name));
 
   const rows = periods.map(p=>{
-    const pTxs = cfTransactions.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end&&isOutcomeTx(t);});
+    const pTxs = allTx.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end&&isOutcomeTx(t);});
     const total = pTxs.reduce((s,t)=>s+t.amount,0);
     if(!total) return null;
     const byCat = {};
@@ -3431,10 +3511,14 @@ function renderOutcomesReport(){
 
 // ── Investments over time ──
 function renderInvestmentsReport(){
-  const periods = buildSalaryPeriods();
+  const allTx = getRptTransactions();
+  const periods = buildSalaryPeriods().filter(p=>{
+    if(rptFilterYear==='all') return true;
+    const y=Number(rptFilterYear); return p.start.getFullYear()===y||p.end.getFullYear()===y;
+  });
   const invTypes = ['crypto','etf','stock','bond'];
   const rows = periods.map(p=>{
-    const pTxs = cfTransactions.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end&&t.type==='purchase';});
+    const pTxs = allTx.filter(t=>{const d=new Date(t.date);return d>=p.start&&d<=p.end&&t.type==='purchase';});
     if(!pTxs.length) return null;
     const byType = {};
     invTypes.forEach(type=>{
