@@ -1011,6 +1011,13 @@ function showPage(name,btn){
   if(name==='insights'){ renderAllocation(); renderInsights(); }
   // prices only refresh manually via the Refresh button
   if(name==='cashflow'){ renderCashflow(); const fab=document.getElementById('cf-fab'); if(fab) fab.style.display=''; }
+  if(name!=='cashflow' && bulkSelectMode){
+    bulkSelectMode=false; selectedTxIds.clear();
+    const bt=document.getElementById('cf-bulk-toggle');
+    if(bt){ bt.style.background=''; bt.innerHTML='<i class="ti ti-checkbox"></i> Select'; }
+    const bd=document.getElementById('cf-bulk-delete-btn');
+    if(bd) bd.style.display='none';
+  }
   if(name==='settings'){ renderSettings(); renderRecurCalendar(); loadSnapshots(); }
   if(name==='reports') renderReports();
   // Hide FAB when not on cashflow
@@ -2958,7 +2965,8 @@ const ICON_LIBRARY = [
   'ti-dumbbell','ti-swimming','ti-school','ti-hammer','ti-tool','ti-plug','ti-wifi',
   'ti-phone','ti-mail','ti-package','ti-truck','ti-gas-station','ti-map-pin','ti-globe',
   'ti-trees','ti-beach','ti-mountain','ti-building','ti-paw','ti-plant','ti-bottle',
-  'ti-stethoscope','ti-microscope','ti-flask','ti-brush','ti-hanger','ti-baby-carriage',
+  'ti-stethoscope','ti-microscope','ti-flask','ti-brush','ti-hanger',
+  'ti-heart','ti-mood-smile','ti-walk','ti-run','ti-needle','ti-first-aid-kit',
 ];
 
 function buildIconGrid(){
@@ -2979,6 +2987,7 @@ function buildIconGrid(){
 function selectIcon(icon){
   document.getElementById('cat-icon').value=icon;
   updateIconPreview(icon);
+  buildIconGrid(); // rebuild so only selected icon is highlighted
 }
 
 function updateIconPreview(icon){
