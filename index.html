@@ -2144,7 +2144,7 @@ function renderAllocation(){
 }
 
 // AI-powered donut SVG renderer — calls Anthropic API to place labels perfectly
-async function renderDonutSVG(containerId, slices, total, textColor, dimColor){
+function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   const container=document.getElementById(containerId);
   if(!container) return;
 
@@ -2152,6 +2152,7 @@ async function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   const cx=W/2, cy=H/2;
   const outerR=Math.min(W,H)*0.26;
   const innerR=outerR*0.52;
+  const PAD=14; // padding from edge for text
 
   // Build arc geometry
   let startAngle=-Math.PI/2;
@@ -2161,15 +2162,15 @@ async function renderDonutSVG(containerId, slices, total, textColor, dimColor){
     const endAngle=startAngle+sweep;
     const midAngle=startAngle+sweep/2;
     const a={...s,pct:+(pct*100).toFixed(1),startAngle,endAngle,midAngle,sweep,
-      tipX:+(cx+Math.cos(midAngle)*(outerR+2)).toFixed(1),
-      tipY:+(cy+Math.sin(midAngle)*(outerR+2)).toFixed(1),
+      tipX:+(cx+Math.cos(midAngle)*(outerR+4)).toFixed(1),
+      tipY:+(cy+Math.sin(midAngle)*(outerR+4)).toFixed(1),
+      naturalY:+(cy+Math.sin(midAngle)*(outerR+50)).toFixed(1),
       side:Math.cos(midAngle)<0?'left':'right'};
     startAngle=endAngle;
     return a;
   });
 
-  // SVG arc path helper
-  // SVG donut slice: outer arc CW → line to inner end → inner arc CCW → close
+  // Donut slice path
   function slicePath(sA,eA){
     const f=v=>v.toFixed(2);
     const ox1=cx+Math.cos(sA)*outerR, oy1=cy+Math.sin(sA)*outerR;
@@ -2177,115 +2178,81 @@ async function renderDonutSVG(containerId, slices, total, textColor, dimColor){
     const ix1=cx+Math.cos(eA)*innerR, iy1=cy+Math.sin(eA)*innerR;
     const ix2=cx+Math.cos(sA)*innerR, iy2=cy+Math.sin(sA)*innerR;
     const large=eA-sA>Math.PI?1:0;
-    // M outer-start, arc CW to outer-end, L inner-end, arc CCW to inner-start, Z
     return `M ${f(ox1)} ${f(oy1)} A ${outerR} ${outerR} 0 ${large} 1 ${f(ox2)} ${f(oy2)} L ${f(ix1)} ${f(iy1)} A ${innerR} ${innerR} 0 ${large} 0 ${f(ix2)} ${f(iy2)} Z`;
   }
 
-  // Draw slices (always immediate)
-  let sliceSVG=`<svg id="${containerId}-svg" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">`;
+  // Spread labels on each side with no overlap, starting from natural Y positions
+  function spreadLabels(group){
+    if(!group.length) return;
+    const minGap=26, margin=16;
+    // Sort by natural Y
+    group.sort((a,b)=>a.naturalY-b.naturalY);
+    // Assign starting positions
+    group.forEach(a=>{ a.labelY=Math.max(margin, Math.min(H-margin, a.naturalY)); });
+    // Push apart — 30 passes
+    for(let pass=0;pass<30;pass++){
+      let moved=false;
+      for(let i=1;i<group.length;i++){
+        const gap=group[i].labelY-group[i-1].labelY;
+        if(gap<minGap){
+          const shift=(minGap-gap)/2;
+          group[i-1].labelY=Math.max(margin, group[i-1].labelY-shift);
+          group[i].labelY=Math.min(H-margin, group[i].labelY+shift);
+          moved=true;
+        }
+      }
+      if(!moved) break;
+    }
+  }
+
+  const left=arcs.filter(a=>a.side==='left');
+  const right=arcs.filter(a=>a.side==='right');
+  spreadLabels(left);
+  spreadLabels(right);
+
+  // Draw SVG
+  let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">`;
+
+  // Slices
   arcs.forEach(a=>{
     if(a.sweep<0.001) return;
-    sliceSVG+=`<path d="${slicePath(a.startAngle,a.endAngle)}" fill="${a.color}" opacity="0.92"><title>${a.label}: ${a.pct}%</title></path>`;
+    svg+=`<path d="${slicePath(a.startAngle,a.endAngle)}" fill="${a.color}" opacity="0.92"><title>${a.label}: ${a.pct}%</title></path>`;
   });
-  sliceSVG+=`<g id="${containerId}-labels"></g></svg>`;
-  container.innerHTML=sliceSVG;
 
-  // Ask Claude to place labels optimally
-  const labelInfo=arcs.map(a=>({label:a.label,pct:a.pct,tipX:a.tipX,tipY:a.tipY,side:a.side,color:a.color}));
-  const prompt=`You are an SVG layout engine. Place labels for a donut chart with NO overlaps.
+  // Labels + connectors
+  [...left,...right].forEach(a=>{
+    const isLeft=a.side==='left';
+    const textX=isLeft?PAD:W-PAD;
+    const anchor=isLeft?'start':'end';
+    const ly=a.labelY;
 
-Chart: width=${W}, height=${H}, center=(${cx},${cy}), outerRadius=${outerR}
+    // Connector: tip → radial exit → bend to label column → horizontal to text gap
+    const angle=Math.atan2(a.tipY-cy, a.tipX-cx);
+    const exitX=+(cx+Math.cos(angle)*(outerR+16)).toFixed(1);
+    const exitY=+(cy+Math.sin(angle)*(outerR+16)).toFixed(1);
+    // Column x: just outside ring on the correct side, used as bend point
+    const colX=isLeft ? +(cx-outerR-28).toFixed(1) : +(cx+outerR+28).toFixed(1);
+    // Only add column bend if exit is on wrong side of column (prevents backtracking)
+    const lineEndX=isLeft ? textX+PAD+2 : textX-PAD-2;
 
-Each label has a "tip" point on the chart edge and belongs to a side (left or right).
-Left-side labels must have their text anchored to the LEFT edge (x near 4).
-Right-side labels must have their text anchored to the RIGHT edge (x near ${W-4}).
-Labels on the same side must be spread vertically with at least 26px between them.
-Labels must stay within y=10 and y=${H-10}.
-
-For each label, output a connector line from tipX,tipY to an elbow point, then horizontal to near the text.
-Left labels: text-anchor="start", elbow at x=${Math.round(cx-outerR-20)}, then line to x=12
-Right labels: text-anchor="end", elbow at x=${Math.round(cx+outerR+20)}, then line to x=${W-12}
-
-Respond ONLY with a JSON array. No markdown, no explanation. Each item:
-{
-  "label": "string",
-  "color": "#hex",
-  "pct": number,
-  "tipX": number,
-  "tipY": number,
-  "labelY": number,  // final Y position for this label (you choose, no overlaps)
-  "side": "left"|"right"
-}
-
-Labels to place:
-${JSON.stringify(labelInfo,null,2)}`;
-
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const data=await resp.json();
-    const raw=data.content?.[0]?.text||'[]';
-    const clean=raw.replace(/```json|```/g,'').trim();
-    const placed=JSON.parse(clean);
-
-    // Draw labels onto the SVG
-    const labelGroup=document.getElementById(`${containerId}-labels`);
-    if(!labelGroup) return;
-    let labelSVG='';
-    placed.forEach(item=>{
-      const isLeft=item.side==='left';
-      const endX=isLeft?12:W-12;
-      const textX=isLeft?14:W-14;
-      const anchor=isLeft?'start':'end';
-      const ly=item.labelY;
-      // Radial mid-point: go outward from ring before bending horizontal
-      const tipAngle=Math.atan2(item.tipY-cy, item.tipX-cx);
-      const midX=+(cx+Math.cos(tipAngle)*(outerR+22)).toFixed(1);
-      const midY=+(cy+Math.sin(tipAngle)*(outerR+22)).toFixed(1);
-      // Line stops 6px before the text to avoid overlapping the label
-      const lineEndX=isLeft ? endX+6 : endX-6;
-      labelSVG+=`<polyline points="${item.tipX},${item.tipY} ${midX},${midY} ${lineEndX},${ly}" stroke="${item.color}" stroke-width="1.2" fill="none" opacity="0.7"/>`;
-      labelSVG+=`<text x="${textX}" y="${ly-2}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="11" font-weight="600" fill="${item.color}">${item.label}</text>`;
-      labelSVG+=`<text x="${textX}" y="${ly+11}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="10" fill="${dimColor}">${item.pct.toFixed(1)}%</text>`;
-    });
-    labelGroup.innerHTML=labelSVG;
-  }catch(e){
-    // Fallback: simple evenly-spaced labels if API fails
-    console.warn('Label API failed, using fallback:',e);
-    const labelGroup=document.getElementById(`${containerId}-labels`);
-    if(!labelGroup) return;
-    const left=arcs.filter(a=>a.side==='left').sort((a,b)=>a.tipY-b.tipY);
-    const right=arcs.filter(a=>a.side==='right').sort((a,b)=>a.tipY-b.tipY);
-    let lSVG='';
-    function drawFallback(group,isLeft){
-      if(!group.length) return;
-      const step=Math.max(24,(H-40)/group.length);
-      const startY=cy-step*(group.length-1)/2;
-      group.forEach((a,i)=>{
-        const ly=Math.max(14,Math.min(H-14,startY+i*step));
-        const endX=isLeft?10:W-10;
-        const textX=isLeft?12:W-12;
-        const anchor=isLeft?'start':'end';
-        const fAngle=Math.atan2(a.tipY-cy,a.tipX-cx);
-        const fMidX=+(cx+Math.cos(fAngle)*(outerR+18)).toFixed(1);
-        const fMidY=+(cy+Math.sin(fAngle)*(outerR+18)).toFixed(1);
-        const fLineEndX=isLeft ? endX+6 : endX-6;
-        lSVG+=`<polyline points="${a.tipX},${a.tipY} ${fMidX},${fMidY} ${fLineEndX},${ly}" stroke="${a.color}" stroke-width="1" fill="none" opacity="0.6"/>`;
-        lSVG+=`<text x="${textX}" y="${ly-2}" text-anchor="${anchor}" font-family="sans-serif" font-size="10" font-weight="600" fill="${a.color}">${a.label}</text>`;
-        lSVG+=`<text x="${textX}" y="${ly+10}" text-anchor="${anchor}" font-family="sans-serif" font-size="9" fill="${dimColor}">${a.pct.toFixed(1)}%</text>`;
-      });
+    // Choose connector shape based on how far label Y is from exit Y
+    const yDiff=Math.abs(ly-exitY);
+    let pts;
+    if(yDiff < 20){
+      // Label is roughly at same height — simple radial + horizontal
+      pts=`${a.tipX},${a.tipY} ${exitX},${exitY} ${lineEndX},${ly}`;
+    } else {
+      // Label is far — go radial exit, then to column at exit height, then down column, then horizontal
+      pts=`${a.tipX},${a.tipY} ${exitX},${exitY} ${colX},${exitY} ${colX},${ly} ${lineEndX},${ly}`;
     }
-    drawFallback(left,true);
-    drawFallback(right,false);
-    labelGroup.innerHTML=lSVG;
-  }
+
+    svg+=`<polyline points="${pts}" stroke="${a.color}" stroke-width="1.2" fill="none" opacity="0.75"/>`;
+    svg+=`<text x="${textX}" y="${ly-1}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="11" font-weight="600" fill="${a.color}">${a.label}</text>`;
+    svg+=`<text x="${textX}" y="${ly+12}" text-anchor="${anchor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="10" fill="${dimColor}">${a.pct.toFixed(1)}%</text>`;
+  });
+
+  svg+='</svg>';
+  container.innerHTML=svg;
 }
 
 
