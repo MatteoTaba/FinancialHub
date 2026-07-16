@@ -924,6 +924,15 @@ tbody tr:hover td{background:var(--surface2)}
 
 <div class="toast" id="toast"></div>
 
+<!-- Custom confirm/alert modal -->
+<div class="overlay" id="modal-dialog" style="z-index:300">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="dialog-title" style="font-size:16px">Confirm</div>
+    <div id="dialog-message" style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:0.5rem"></div>
+    <div class="modal-footer" id="dialog-footer"></div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://qyikbifqxoufiplacwpn.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWtiaWZxeG91ZmlwbGFjd3BuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4OTU5NDYsImV4cCI6MjA5NzQ3MTk0Nn0.crIoYfcqGYpSa9hqCAL25kG9phRYYVLFj_iTA7V7HwQ';
@@ -946,6 +955,37 @@ function fmt(n){
   return '€\u00a0'+num.toLocaleString('it-IT',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
 }
 function fmtN(n,d=6){ return Number(n).toLocaleString('it-IT',{maximumFractionDigits:d}); }
+
+// ── Custom dialog (replaces browser confirm/alert) ──
+function showDialog(message, {title='', confirmText='OK', cancelText=null, danger=false}={}){
+  return new Promise(resolve=>{
+    document.getElementById('dialog-title').textContent = title||'';
+    document.getElementById('dialog-title').style.display = title ? '' : 'none';
+    document.getElementById('dialog-message').innerHTML = message.replace(/\n/g,'<br>');
+    const footer = document.getElementById('dialog-footer');
+    footer.innerHTML = '';
+    if(cancelText!==null){
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn';
+      cancelBtn.textContent = cancelText;
+      cancelBtn.onclick = ()=>{ closeModal('modal-dialog'); resolve(false); };
+      footer.appendChild(cancelBtn);
+    }
+    const okBtn = document.createElement('button');
+    okBtn.className = 'btn btn-primary' + (danger?' btn-danger':'');
+    okBtn.style.cssText = danger ? 'background:var(--red);border-color:var(--red)' : '';
+    okBtn.textContent = confirmText;
+    okBtn.onclick = ()=>{ closeModal('modal-dialog'); resolve(true); };
+    footer.appendChild(okBtn);
+    openModal('modal-dialog');
+  });
+}
+function showAlert(msg, title=''){
+  return showDialog(msg,{title, confirmText:'OK', cancelText:null});
+}
+function showConfirm(msg, title='', danger=false){
+  return showDialog(msg,{title, confirmText:'OK', cancelText:'Cancel', danger});
+}
 function fmtPct(n){ return (n>=0?'+':'')+Number(n).toFixed(2)+'%'; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
@@ -1176,6 +1216,11 @@ function renderHoldings(){
           <div class="cat-total-pct">${catPct}% of portfolio</div>
           ${!isSimple && catHasPrices ? `<div style="font-size:12px;font-weight:600;margin-top:3px;color:${catGain>=0?'var(--green)':'var(--red)'}">${fmt(catGain)} (${fmtPct(catGainPct)})</div>` : ''}
         </div>
+        <button class="btn btn-sm btn-danger" style="margin-left:8px;flex-shrink:0"
+          onclick="event.stopPropagation();deleteCategoryHoldings('${type}')"
+          title="Delete all ${TYPE_LABELS[type]||type} holdings">
+          <i class="ti ti-trash"></i>
+        </button>
         <i class="ti ti-chevron-down cat-chevron"></i>
       </div>
       <div class="cat-body${isOpen?' open':''}">
@@ -1324,8 +1369,8 @@ async function saveHolding(){
 
   if(isSimple){
     const name=document.getElementById('h-name').value.trim();
-    if(!name){ alert('Please enter an account name.'); return; }
-    if(avg_cost<=0){ alert('Please enter the current balance.'); return; }
+    if(!name){ await showAlert('Please enter an account name.'); return; }
+    if(avg_cost<=0){ await showAlert('Please enter the current balance.'); return; }
     const ticker = name.toUpperCase().replace(/\s+/g,'_').slice(0,30);
     const existing = holdings.find(h=>h.ticker===ticker);
     if(existing){
@@ -1339,12 +1384,12 @@ async function saveHolding(){
     const selectedLabel=document.getElementById('h-selected-label').textContent;
     // extract name from selected label (format: "TICKER — Name (Exch)")
     const namePart = selectedLabel.includes(' — ') ? selectedLabel.split(' — ')[1].replace(/\s*\(.*\)$/,'').trim() : ticker;
-    if(!ticker){ alert('Please search and select an asset first.'); return; }
-    if(qty<=0){ alert('Please enter a quantity.'); return; }
+    if(!ticker){ await showAlert('Please search and select an asset first.'); return; }
+    if(qty<=0){ await showAlert('Please enter a quantity.'); return; }
     const existing=holdings.find(h=>h.ticker===ticker);
     // Duplicate check: warn if ticker already exists as a different type
     const existingDiff=holdings.find(h=>h.ticker===ticker&&h.type!==type);
-    if(existingDiff&&!existing){ if(!confirm(`Ticker ${ticker} already exists as ${TYPE_LABELS[existingDiff.type]}. Add anyway?`)) return; }
+    if(existingDiff&&!existing){ if(!await showConfirm(`Ticker ${ticker} already exists as ${TYPE_LABELS[existingDiff.type]}. Add anyway?`)) return; }
     if(existing){
       const totalCost=existing.qty*existing.avg_cost+qty*avg_cost;
       const newQty=existing.qty+qty;
@@ -1360,7 +1405,7 @@ async function editBalance(id, name, currentBalance){
   const input = prompt(`Edit balance for ${name}:`, currentBalance.toFixed(2));
   if(input===null) return;
   const newBalance = parseFloat(input);
-  if(isNaN(newBalance)||newBalance<0){ alert('Please enter a valid positive amount.'); return; }
+  if(isNaN(newBalance)||newBalance<0){ await showAlert('Please enter a valid positive amount.'); return; }
   await api(`holdings?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({avg_cost:newBalance})});
   await loadAll(); toast('Balance updated ✓');
 }
@@ -1368,12 +1413,45 @@ async function editBalance(id, name, currentBalance){
 async function deleteHolding(id){
   const linkedTxCount = cfTransactions.filter(t=>t.holding_id===id||t.holding_to_id===id).length;
   const msg = linkedTxCount>0
-    ? `This holding has ${linkedTxCount} transaction${linkedTxCount>1?'s':''} linked to it. Deleting it will orphan those transactions (they will remain but with no account).
-
-Delete anyway?`
+    ? `This holding has ${linkedTxCount} linked transaction${linkedTxCount>1?'s':''}.\n\nDeleting it will also delete all those transactions and reverse their balance changes.\n\nProceed?`
     : 'Remove this holding?';
-  if(!confirm(msg)) return;
-  await api(`holdings?id=eq.${id}`,{method:'DELETE'}); await loadAll(); toast('Holding removed');
+  if(!await showConfirm(msg,'Delete holding', true)) return;
+  // Cascade: reverse balance + delete all linked transactions first
+  const linkedTxs = cfTransactions.filter(t=>t.holding_id===id||t.holding_to_id===id);
+  for(const t of linkedTxs){
+    const reverseType = t.type==='expense'?'income':t.type==='income'?'expense':t.type;
+    await applyBalanceChange(reverseType, Number(t.amount), t.holding_id||null, t.holding_to_id||null);
+    await api(`cashflow_transactions?id=eq.${t.id}`,{method:'DELETE'});
+  }
+  await api(`holdings?id=eq.${id}`,{method:'DELETE'});
+  await loadAll();
+  cfTransactions = await api('cashflow_transactions?order=date.desc');
+  renderCashflow();
+  toast('Holding and transactions deleted');
+}
+
+async function deleteCategoryHoldings(type){
+  const catHoldings = holdings.filter(h=>h.type===type);
+  if(!catHoldings.length) return;
+  const totalTxCount = cfTransactions.filter(t=>catHoldings.some(h=>h.id===t.holding_id||h.id===t.holding_to_id)).length;
+  const msg = `Delete all ${TYPE_LABELS[type]||type} holdings (${catHoldings.length})?`
+    + (totalTxCount>0 ? `\n\nThis will also delete ${totalTxCount} linked transaction${totalTxCount>1?'s':''} and reverse their balance changes.` : '')
+    + '\n\nThis cannot be undone.';
+  if(!await showConfirm(msg, 'Delete category', true)) return;
+  // Cascade delete: transactions first, then holdings
+  for(const h of catHoldings){
+    const linkedTxs = cfTransactions.filter(t=>t.holding_id===h.id||t.holding_to_id===h.id);
+    for(const t of linkedTxs){
+      const reverseType = t.type==='expense'?'income':t.type==='income'?'expense':t.type;
+      await applyBalanceChange(reverseType, Number(t.amount), t.holding_id||null, t.holding_to_id||null);
+      await api(`cashflow_transactions?id=eq.${t.id}`,{method:'DELETE'});
+    }
+    await api(`holdings?id=eq.${h.id}`,{method:'DELETE'});
+  }
+  await loadAll();
+  cfTransactions = await api('cashflow_transactions?order=date.desc');
+  renderCashflow();
+  toast(`${TYPE_LABELS[type]||type} holdings deleted`);
 }
 
 // ── TRANSACTIONS ──
@@ -1398,7 +1476,7 @@ function renderTx(){
 
 async function saveTx(){
   const ticker=document.getElementById('tx-ticker').value.trim().toUpperCase();
-  if(!ticker){alert('Please enter a ticker.');return;}
+  if(!ticker){await showAlert('Please enter a ticker.');return;}
   const row={
     date:document.getElementById('tx-date').value,
     type:document.getElementById('tx-type').value,
@@ -1413,7 +1491,7 @@ async function saveTx(){
 }
 
 async function deleteTx(id){
-  if(!confirm('Remove this transaction?')) return;
+  if(!await showConfirm('Remove this transaction?')) return;
   await api(`transactions?id=eq.${id}`,{method:'DELETE'}); await loadAll(); toast('Transaction removed');
 }
 
@@ -2590,7 +2668,7 @@ async function saveCfTransaction(){
     const date=document.getElementById('cf-date').value;
     const fromId=document.getElementById('cf-from').value||null;
     const toId=document.getElementById('cf-to').value||null;
-    if(amount<=0){alert('Please enter an amount.');return;}
+    if(amount<=0){await showAlert('Please enter an amount.');return;}
     await api(`cashflow_transactions?id=eq.${editTxId}`,{method:'PATCH',body:JSON.stringify({
       amount, description:desc||null, category_id:cfType==='transfer'?null:catId,
       holding_id:fromId, holding_to_id:cfType==='transfer'?toId:null,
@@ -2612,13 +2690,13 @@ async function saveCfTransaction(){
   const fromId=document.getElementById('cf-from').value||null;
   const toId=document.getElementById('cf-to').value||null;
   const isRecur=document.getElementById('cf-recurring').checked;
-  if(amount<=0){alert('Please enter an amount.');return;}
-  if(!fromId){alert('Please select an account.');return;}
-  if(cfType==='transfer'&&fromId===toId){alert('Source and destination account must be different.');return;}
+  if(amount<=0){await showAlert('Please enter an amount.');return;}
+  if(!fromId){await showAlert('Please select an account.');return;}
+  if(cfType==='transfer'&&fromId===toId){await showAlert('Source and destination account must be different.');return;}
   if(cfType==='transfer'||cfType==='expense'){
     const fromH=holdings.find(h=>h.id===fromId);
     if(fromH&&fromH.avg_cost<amount){
-      if(!confirm(`This will bring ${fromH.name||fromH.ticker} to a negative balance (current: ${fmt(fromH.avg_cost)}, amount: ${fmt(amount)}).
+      if(!await showConfirm(`This will bring ${fromH.name||fromH.ticker} to a negative balance (current: ${fmt(fromH.avg_cost)}, amount: ${fmt(amount)}).
 
 Proceed anyway?`)) return;
     }
@@ -2641,7 +2719,7 @@ Proceed anyway?`)) return;
 async function saveInvTransaction(){
   const assetId=document.getElementById('inv-asset').value;
   const h=holdings.find(x=>x.id===assetId);
-  if(!h){alert('Please select an asset.');return;}
+  if(!h){await showAlert('Please select an asset.');return;}
   const desc=document.getElementById('inv-cat').value;
   const dateIso=new Date(document.getElementById('inv-date').value||document.getElementById('inv-sale-date').value||document.getElementById('inv-expinc-date').value).toISOString();
   if(cfIType==='purchase'){
@@ -2649,8 +2727,8 @@ async function saveInvTransaction(){
     const price=parseFloat(document.getElementById('inv-price').value)||0;
     const total=parseFloat(document.getElementById('inv-total').value)||(qty*price);
     const paidFromId=document.getElementById('inv-paid-from').value||null;
-    if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
-    if(paidFromId&&paidFromId===assetId){alert('The asset purchased and the account used to pay cannot be the same.');return;}
+    if(qty<=0||price<=0){await showAlert('Please enter quantity and price.');return;}
+    if(paidFromId&&paidFromId===assetId){await showAlert('The asset purchased and the account used to pay cannot be the same.');return;}
     // Update holding qty and avg cost
     const newAvgCost=(h.qty*h.avg_cost+qty*price)/(h.qty+qty);
     const newQty=h.qty+qty;
@@ -2662,9 +2740,9 @@ async function saveInvTransaction(){
     const price=parseFloat(document.getElementById('inv-sale-price').value)||0;
     const total=parseFloat(document.getElementById('inv-sale-total').value)||(qty*price);
     const saleToId=document.getElementById('inv-sale-to').value||null;
-    if(qty<=0||price<=0){alert('Please enter quantity and price.');return;}
-    if(qty>h.qty){alert(`You only have ${h.qty} units of ${h.ticker}.`);return;}
-    if(saleToId&&saleToId===assetId){alert('The asset sold and the destination account cannot be the same.');return;}
+    if(qty<=0||price<=0){await showAlert('Please enter quantity and price.');return;}
+    if(qty>h.qty){await showAlert(`You only have ${h.qty} units of ${h.ticker}.`);return;}
+    if(saleToId&&saleToId===assetId){await showAlert('The asset sold and the destination account cannot be the same.');return;}
     const newQty=h.qty-qty;
     await api(`holdings?id=eq.${assetId}`,{method:'PATCH',body:JSON.stringify({qty:newQty})});
     await api('cashflow_transactions',{method:'POST',body:JSON.stringify({type:'sale',amount:total,description:`Sold ${qty} ${cleanCryptoTicker(h.ticker)||h.ticker}`,holding_id:assetId,holding_to_id:saleToId,date:dateIso})});
@@ -2674,7 +2752,7 @@ async function saveInvTransaction(){
     const catId=document.getElementById('inv-expinc-cat').value||null;
     const acctId=document.getElementById('inv-expinc-acct').value||null;
     const desc2=document.getElementById('inv-expinc-desc').value.trim();
-    if(amount<=0){alert('Please enter an amount.');return;}
+    if(amount<=0){await showAlert('Please enter an amount.');return;}
     await api('cashflow_transactions',{method:'POST',body:JSON.stringify({type:cfIType,amount,description:desc2||null,category_id:catId,holding_id:assetId,holding_to_id:null,date:dateIso})});
     await applyBalanceChange(cfIType,amount,acctId||assetId,null);
   }
@@ -2728,7 +2806,7 @@ function editCfTx(txId){
 }
 
 async function deleteCfTx(id,holdingId,holdingToId,type,amount){
-  if(!confirm('Delete this transaction? The holding balance will be reversed.')) return;
+  if(!await showConfirm('Delete this transaction? The holding balance will be reversed.')) return;
   const reverseType=type==='expense'?'income':type==='income'?'expense':type;
   await applyBalanceChange(reverseType,Number(amount),holdingId||null,holdingToId||null);
   await api(`cashflow_transactions?id=eq.${id}`,{method:'DELETE'});
@@ -2940,7 +3018,7 @@ async function saveCat(){
   const icon=document.getElementById('cat-icon').value.trim()||'ti-tag';
   const color=document.getElementById('cat-color').value||'#6366f1';
   const editId=document.getElementById('cat-edit-id').value;
-  if(!name){alert('Please enter a name.');return;}
+  if(!name){await showAlert('Please enter a name.');return;}
   if(editId){
     await api(`cashflow_categories?id=eq.${editId}`,{method:'PATCH',body:JSON.stringify({name,icon,color})});
   } else {
@@ -2956,9 +3034,9 @@ async function deleteCat(id){
   const recurCount = cfRecurrences.filter(r=>r.category_id===id).length;
   if(usedCount>0||recurCount>0){
     const msg = `This category is used in ${usedCount} transaction${usedCount!==1?'s':''}${recurCount>0?` and ${recurCount} recurrence${recurCount!==1?'s':''}`:''}.\n\nDeleting it will remove the category from those transactions.\n\nProceed?`;
-    if(!confirm(msg)) return;
+    if(!await showConfirm(msg)) return;
   } else {
-    if(!confirm('Delete this category?')) return;
+    if(!await showConfirm('Delete this category?')) return;
   }
   await api(`cashflow_categories?id=eq.${id}`,{method:'DELETE'});
   cfCategories=await api('cashflow_categories?order=name.asc');
@@ -2972,7 +3050,7 @@ async function toggleRecurActive(id,active){
 }
 
 async function deleteRecur(id){
-  if(!confirm('Delete this recurrence?')) return;
+  if(!await showConfirm('Delete this recurrence?')) return;
   await api(`recurrences?id=eq.${id}`,{method:'DELETE'});
   cfRecurrences=await api('recurrences?order=next_due.asc');
   renderSettings(); toast('Recurrence removed');
@@ -3088,7 +3166,7 @@ function updateBulkDeleteBtn(){
 
 async function bulkDeleteTx(){
   if(!selectedTxIds.size) return;
-  if(!confirm('Delete '+selectedTxIds.size+' selected transaction'+(selectedTxIds.size!==1?'s':'')+' with balance reversal? This cannot be undone.')) return;
+  if(!await showConfirm('Delete '+selectedTxIds.size+' selected transaction'+(selectedTxIds.size!==1?'s':'')+' with balance reversal? This cannot be undone.')) return;
   for(const id of selectedTxIds){
     const t = cfTransactions.find(x=>x.id===id);
     if(t){
@@ -3510,7 +3588,7 @@ async function loadSnapshots(){
 }
 
 async function restoreSnapshot(id, date){
-  if(!confirm(`Restore to snapshot from ${date}?\n\nThis will REPLACE all current data. This cannot be undone.\n\nProceed?`)) return;
+  if(!await showConfirm(`Restore to snapshot from ${date}?\n\nThis will REPLACE all current data. This cannot be undone.\n\nProceed?`)) return;
   showSnapshotStatus('<span class="spin" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px"></span> Restoring from '+date+'…', 'info');
   try{
     // Step 1: Fetch snapshot JSON FIRST — before touching any data
