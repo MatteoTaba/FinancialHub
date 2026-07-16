@@ -402,7 +402,7 @@ tbody tr:hover td{background:var(--surface2)}
     <div class="page-header">
       <div><div class="page-title">Holdings</div><div class="page-sub" id="h-subtitle">Loading prices…</div></div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn" onclick="refreshPrices()" id="h-refresh-btn"><i class="ti ti-refresh"></i> Refresh prices</button>
+        <button class="btn" onclick="refreshPrices(true)" id="h-refresh-btn"><i class="ti ti-refresh"></i> Refresh prices</button>
         <button class="btn btn-primary" onclick="openModal('modal-holding')"><i class="ti ti-plus"></i> Add holding</button>
       </div>
     </div>
@@ -3319,13 +3319,17 @@ function mkStat(label, val, cls=''){
   return `<div class="rpt-stat"><div class="rpt-stat-label">${label}</div><div class="rpt-stat-val ${cls}">${val}</div></div>`;
 }
 
-let rptFilterYear = 'all';
+let rptFilterYear = String(new Date().getFullYear());
 
 function populateRptYearSel(){
   const sel = document.getElementById('rpt-year-sel'); if(!sel) return;
   const years = [...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort((a,b)=>b-a);
+  // Ensure current year default is valid (fall back to 'all' if no transactions this year)
+  if(rptFilterYear !== 'all' && !years.includes(Number(rptFilterYear))) rptFilterYear = 'all';
   sel.innerHTML = '<option value="all">All time</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
   sel.value = rptFilterYear;
+  const lbl = document.getElementById('rpt-filter-label');
+  if(lbl) lbl.textContent = rptFilterYear==='all' ? '' : `Showing ${rptFilterYear} only`;
 }
 
 function onRptYearChange(){
