@@ -2699,44 +2699,60 @@ function updatePnl(){
   el.innerHTML=`<span style="color:${pnl>=0?'var(--green)':'var(--red)'};font-weight:600">${pnl>=0?'+':''}${fmt(pnl)} (${fmtPct(pct)})</span> vs avg cost of ${fmt(h.avg_cost)}/unit`;
 }
 
-function populateCfForm(){
+function populateCfForm(tx=null){
+  // tx = optional existing transaction to pre-fill (edit mode)
   const now=new Date(); now.setSeconds(0,0);
   const iso=now.toISOString().slice(0,16);
-  document.getElementById('cf-date').value=iso;
+
+  // Dates
+  document.getElementById('cf-date').value = tx ? new Date(tx.date).toISOString().slice(0,16) : iso;
   document.getElementById('cf-recur-start').value=iso;
   document.getElementById('cf-recurring').checked=false;
   document.getElementById('cf-recurring-opts').style.display='none';
-  document.getElementById('cf-amount').value='';
-  document.getElementById('cf-desc').value='';
+
+  // Amount & description
+  document.getElementById('cf-amount').value = tx ? (tx.amount||'') : '';
+  document.getElementById('cf-desc').value   = tx ? (tx.description||'') : '';
+
+  // Category dropdown — build then optionally select
   const catSel=document.getElementById('cf-cat');
   catSel.innerHTML='<option value="" disabled selected hidden>Select category</option>'+cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(tx?.category_id) catSel.value = tx.category_id;
+
+  // Account dropdowns
   const opts=holdings.map(h=>{
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
   }).join('');
-  const placeholder='<option value="" disabled selected hidden>Select account</option>';
-  document.getElementById('cf-from').innerHTML=placeholder+opts;
-  document.getElementById('cf-to').innerHTML=placeholder+opts;
+  const phAcct='<option value="" disabled selected hidden>Select account</option>';
+  document.getElementById('cf-from').innerHTML=phAcct+opts;
+  document.getElementById('cf-to').innerHTML=phAcct+opts;
+  if(tx?.holding_id)    document.getElementById('cf-from').value = tx.holding_id;
+  if(tx?.holding_to_id) document.getElementById('cf-to').value   = tx.holding_to_id;
+
+  // Investment asset dropdown
   const investHoldings=holdings.filter(h=>['stock','etf','crypto','bond'].includes(h.type));
-  const allOpts=holdings.map(h=>{
-    const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
-    return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
-  }).join('');
   document.getElementById('inv-asset').innerHTML='<option value="" disabled selected hidden>Select asset</option>'+investHoldings.map(h=>{
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${h.ticker})</option>`;
   }).join('');
   document.getElementById('inv-asset').onchange=updateInvCounterparts;
+  if(tx?.holding_id && ['purchase','sale'].includes(tx?.type)) document.getElementById('inv-asset').value = tx.holding_id;
   updateInvCounterparts();
+
   document.getElementById('inv-cat').innerHTML=catSel.innerHTML;
   document.getElementById('inv-expinc-cat').innerHTML=catSel.innerHTML;
   document.getElementById('inv-date').value=iso;
   document.getElementById('inv-sale-date').value=iso;
   document.getElementById('inv-expinc-date').value=iso;
   if(document.getElementById('inv-pnl-preview')) document.getElementById('inv-pnl-preview').style.display='none';
-  setCfCtx(cfCtx, null);
-  setCfType(cfType, null);
-  setCfIType(cfIType, null);
+
+  // Set context/type — use tx values in edit mode, globals otherwise
+  const ctx  = tx ? (['purchase','sale'].includes(tx.type) ? 'investment' : 'account') : cfCtx;
+  const type = tx?.type || cfType;
+  setCfCtx(ctx, null);
+  if(['purchase','sale'].includes(type)) setCfIType(type, null);
+  else setCfType(type, null);
 }
 
 async function saveCfTransaction(){
@@ -2849,82 +2865,29 @@ function editCfTx(txId){
   const t = cfTransactions.find(x=>x.id===txId); if(!t) return;
   editTxId = txId;
 
-  // Open the form (without calling showCfForm which would trigger populateCfForm and reset)
+  // Open the form
   document.getElementById('cf-main').style.display='none';
   document.getElementById('cf-form').style.display='';
   document.getElementById('cf-fab').style.display='none';
 
-  // First populate form (sets up all dropdowns with real options)
-  populateCfForm();
+  // Populate form with transaction data pre-filled in one pass
+  populateCfForm(t);
 
-  // Now override every field with the existing transaction values
-  const isInv = ['purchase','sale'].includes(t.type);
-  const ctx   = isInv ? 'investment' : 'account';
-
-  // 1. Context (Account vs Investment)
-  setCfCtx(ctx, null);
-
-  if(!isInv){
-    // 2. Type (Expense / Income / Transfer) — setCfType also resets recurring, that's fine here
-    setCfType(t.type, null);
-
-    // 3. Amount
-    const amtEl = document.getElementById('cf-amount');
-    if(amtEl) amtEl.value = t.amount || '';
-
-    // 4. Description
-    const descEl = document.getElementById('cf-desc');
-    if(descEl) descEl.value = t.description || '';
-
-    // 5. Category
-    if(t.category_id){
-      const catEl = document.getElementById('cf-cat');
-      if(catEl) catEl.value = t.category_id;
-    }
-
-    // 6. Date
-    if(t.date){
-      const dateEl = document.getElementById('cf-date');
-      if(dateEl) dateEl.value = new Date(t.date).toISOString().slice(0,16);
-    }
-
-    // 7. From account
-    if(t.holding_id){
-      const fromEl = document.getElementById('cf-from');
-      if(fromEl) fromEl.value = t.holding_id;
-    }
-
-    // 8. To account (transfers)
-    if(t.holding_to_id){
-      const toEl = document.getElementById('cf-to');
-      if(toEl) toEl.value = t.holding_to_id;
-    }
-  } else {
-    // Investment: set sub-type and asset
-    setCfIType(t.type, null);
-    if(t.holding_id){
-      const assetEl = document.getElementById('inv-asset');
-      if(assetEl){ assetEl.value = t.holding_id; updateInvCounterparts(); }
-    }
-    const invDescEl = document.getElementById('inv-desc');
-    if(invDescEl && t.description) invDescEl.value = t.description;
-  }
-
-  // Update form title
+  // Update title
   const titleEl = document.getElementById('cf-form-title');
   if(titleEl) titleEl.textContent = 'Edit Transaction';
 
-  // Hide recurring section (never edit the series from here)
+  // Hide recurring section when editing
   const recurWrap = document.getElementById('cf-recurring')?.closest('.form-group');
   if(recurWrap) recurWrap.style.display = 'none';
 
-  // Show note for recurring transactions
+  // Note for recurring transactions
   document.getElementById('edit-recur-note')?.remove();
   if(t.recurring_id){
     const note = document.createElement('div');
     note.id = 'edit-recur-note';
     note.style.cssText = 'font-size:12px;color:var(--text2);padding:8px 0;display:flex;align-items:center;gap:6px';
-    note.innerHTML = '<i class="ti ti-info-circle" style="color:var(--accent)"></i> Recurring transaction — only this occurrence will be modified.';
+    note.innerHTML = '<i class="ti ti-info-circle" style="color:var(--accent)"></i> Recurring — only this occurrence will be modified.';
     if(recurWrap?.parentElement) recurWrap.parentElement.insertBefore(note, recurWrap);
   }
 }
