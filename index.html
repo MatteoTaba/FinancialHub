@@ -3101,6 +3101,9 @@ async function saveCat(){
   const color=document.getElementById('cat-color').value||'#6366f1';
   const editId=document.getElementById('cat-edit-id').value;
   if(!name){await showAlert('Please enter a name.');return;}
+  // Duplicate name check (case-insensitive, excluding current if editing)
+  const duplicate = cfCategories.find(c=>c.name.toLowerCase()===name.toLowerCase()&&c.id!==editId);
+  if(duplicate){await showAlert(`A category named "${duplicate.name}" already exists. Please choose a different name.`);return;}
   if(editId){
     await api(`cashflow_categories?id=eq.${editId}`,{method:'PATCH',body:JSON.stringify({name,icon,color})});
   } else {
@@ -3120,9 +3123,21 @@ async function deleteCat(id){
   } else {
     if(!await showConfirm('Delete this category?')) return;
   }
+  // Uncategorize all linked transactions and recurrences first
+  if(usedCount>0){
+    await api(`cashflow_transactions?category_id=eq.${id}`,{method:'PATCH',body:JSON.stringify({category_id:null})});
+  }
+  if(recurCount>0){
+    await api(`recurrences?category_id=eq.${id}`,{method:'PATCH',body:JSON.stringify({category_id:null})});
+  }
   await api(`cashflow_categories?id=eq.${id}`,{method:'DELETE'});
-  cfCategories=await api('cashflow_categories?order=name.asc');
-  renderSettings(); toast('Category removed');
+  // Reload everything so UI reflects changes
+  [cfCategories, cfTransactions, cfRecurrences] = await Promise.all([
+    api('cashflow_categories?order=name.asc'),
+    api('cashflow_transactions?order=date.desc'),
+    api('recurrences?order=next_due.asc'),
+  ]);
+  renderSettings(); renderCashflow(); toast('Category removed');
 }
 
 async function toggleRecurActive(id,active){
