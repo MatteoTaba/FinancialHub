@@ -1,0 +1,21 @@
+{
+  "name": "Financial Hub",
+  "short_name": "Financial Hub",
+  "description": "Know your money — personal finance dashboard",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0e1117",
+  "theme_color": "#10d4b0",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='115' fill='%2310d4b0'/><polyline points='64,384 160,256 256,304 368,160 448,208' stroke='rgba(0,0,0,0.7)' stroke-width='52' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='448' cy='208' r='36' fill='rgba(0,0,0,0.7)'/></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity"],
+  "lang": "en"
+}
