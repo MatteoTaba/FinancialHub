@@ -2438,7 +2438,6 @@ function isIncomeSide(t,hId){
 function isOutcomeSide(t,hId){
   if(t.type==='expense') return t.holding_id===hId;
   if(t.type==='purchase') return t.holding_to_id===hId;
-  if(t.type==='transfer') return t.holding_id===hId;
   return false;
 }
 function isTransferSide(t){ return t.type==='transfer'; }
