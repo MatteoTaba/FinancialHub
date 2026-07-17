@@ -52,10 +52,7 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .topbar-left{display:flex;align-items:center;gap:20px}
 .topbar-logo{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.4px;font-family:'Outfit',sans-serif}
 .topbar-logo svg{box-shadow:0 0 0 1px rgba(16,212,176,0.1),0 0 12px -2px rgba(16,212,176,0.12)}
-.topbar-breadcrumb{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3);padding-left:20px;border-left:1px solid rgba(255,255,255,0.08)}
-.topbar-breadcrumb-sep{color:var(--text3)}
-.topbar-breadcrumb-sep{opacity:0.4;margin:0 1px}
-#topbar-section{color:var(--text2);font-weight:600}
+
 .topbar-right{display:flex;align-items:center;gap:8px}
 #live-price-indicator{display:none}
 body.page-holdings #live-price-indicator{display:flex}
@@ -74,14 +71,13 @@ body.page-holdings #live-price-indicator{display:flex}
 .page{display:none}.page.active{display:block}
 
 /* ── Overview stat cards (Meridian KpiCard) ── */
-.ov-hero{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.5rem 1.75rem;color:var(--text);position:relative;overflow:hidden;box-shadow:var(--card-shadow);transition:transform 0.2s}
+.ov-hero{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.75rem 2rem;color:var(--text);position:relative;overflow:hidden;box-shadow:var(--card-shadow);transition:transform 0.2s;margin-bottom:2rem}
 .ov-hero:hover{transform:scale(1.01)}
 .ov-hero-ghost{position:absolute;right:-8px;top:-12px;font-size:96px;color:rgba(255,255,255,0.025);pointer-events:none;line-height:1}
 .ov-hero-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;font-family:'DM Sans',sans-serif}
 .ov-hero-value{font-size:30px;font-weight:700;letter-spacing:-1.5px;line-height:1;color:var(--text);font-family:'JetBrains Mono','Courier New',monospace}
 .ov-hero-change{display:inline-flex;align-items:center;gap:4px;margin-top:12px;font-size:11px;font-weight:700;background:var(--green-bg);color:var(--green);border-radius:6px;padding:3px 8px;font-family:'JetBrains Mono',monospace}
 .ov-hero-change.neg{background:var(--red-bg);color:var(--red)}
-.ov-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:1.75rem}
 
 /* ── Chart card ── */
 .card{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(20,22,35,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.25rem;box-shadow:var(--card-shadow)}
@@ -100,12 +96,12 @@ body.page-holdings #live-price-indicator{display:flex}
 .holding-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:1.25rem}
 .holding-box{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.25rem 1.5rem;box-shadow:var(--card-shadow);transition:transform 0.2s,box-shadow 0.2s;cursor:pointer;position:relative;overflow:hidden}
 .holding-box:hover{transform:translateY(-3px);box-shadow:rgba(14,63,126,0.06) 0 0 0 1px,rgba(42,51,70,0.15) 0 12px 28px}
-.holding-box-ghost{position:absolute;right:-10px;top:-14px;font-size:90px;line-height:1;pointer-events:none;opacity:0.06}
+.holding-box-ghost{position:absolute;right:-8px;top:-10px;font-size:88px;line-height:1;pointer-events:none;opacity:0.12;z-index:0}
 .holding-box-icon{display:none}
-.holding-box-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px}
-.holding-box-value{font-size:22px;font-weight:700;letter-spacing:-1px;line-height:1;font-family:"JetBrains Mono","Courier New",monospace;color:var(--text)}
-.holding-box-pct{font-size:11px;margin-top:8px;color:var(--text2)}
-.holding-box-link{font-size:11px;color:var(--accent);margin-top:14px;display:flex;align-items:center;gap:4px;font-weight:500;opacity:0;transition:opacity 0.2s}
+.holding-box-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;position:relative;z-index:1}
+.holding-box-value{font-size:22px;font-weight:700;letter-spacing:-1px;line-height:1;font-family:"JetBrains Mono","Courier New",monospace;color:var(--text);position:relative;z-index:1}
+.holding-box-pct{font-size:11px;margin-top:8px;color:var(--text2);position:relative;z-index:1}
+.holding-box-link{font-size:11px;color:var(--accent);margin-top:14px;display:flex;align-items:center;gap:4px;font-weight:500;opacity:0;transition:opacity 0.2s;position:relative;z-index:1}
 .holding-box:hover .holding-box-link{opacity:1}
 
 /* Type colors */
@@ -328,7 +324,6 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
   .alloc-grid{grid-template-columns:1fr}
   .ov-hero-value{font-size:24px}
   .holding-grid{grid-template-columns:1fr 1fr}
-  .ov-stats-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -346,11 +341,7 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
       </svg>
       <span>Financial Hub</span>
     </div>
-    <div class="topbar-breadcrumb">
-      <span style="color:var(--text3)">Analytics</span>
-      <i class="ti ti-chevron-right" style="font-size:11px;opacity:0.4;margin:0 2px"></i>
-      <span id="topbar-section">Overview</span>
-    </div>
+    <div style="padding-left:20px;border-left:1px solid rgba(255,255,255,0.08);font-size:12px;color:var(--text3);letter-spacing:0.01em;font-style:italic">Know your money</div>
   </div>
   <div class="topbar-right">
     <div id="live-price-indicator" style="align-items:center;gap:8px">
@@ -381,6 +372,7 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
 
     <!-- Hero: net worth -->
     <div class="ov-hero">
+      <div class="ov-hero-ghost"><i class="ti ti-wallet"></i></div>
       <div class="ov-hero-label">Total Net Worth</div>
       <div class="ov-hero-value" id="ov-total">€ —</div>
       <div class="ov-hero-change" id="ov-change"><i class="ti ti-minus" style="font-size:13px"></i> —</div>
@@ -416,7 +408,7 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
   <!-- HOLDINGS -->
   <div class="page" id="page-holdings">
     <div class="page-header">
-      <div><div class="page-title">Holdings</div><div class="page-sub" id="h-subtitle">Loading prices…</div></div>
+      <div><div class="page-title">Holdings</div><div class="page-sub" id="h-subtitle" style="display:none"></div></div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn" onclick="refreshPrices(true)" id="h-refresh-btn"><i class="ti ti-refresh"></i> Refresh prices</button>
         <button class="btn btn-primary" onclick="openModal('modal-holding')"><i class="ti ti-plus"></i> Add holding</button>
@@ -1015,10 +1007,7 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 
 function showPage(name,btn){
   localStorage.setItem('fh_page', name);
-  // Update breadcrumb
-  const sectionNames={overview:'Overview',holdings:'Holdings',cashflow:'Cashflow',insights:'Insights',reports:'Reports',settings:'Settings'};
-  const bc=document.getElementById('topbar-section');
-  if(bc) bc.textContent=sectionNames[name]||name;
+
   // Collapse all accordions when leaving holdings
   document.querySelectorAll('.cat-header.open').forEach(h=>{
     h.classList.remove('open');
@@ -3800,6 +3789,13 @@ loadAll().then(()=>{ refreshPrices(); loadCashflow(); });
 function updateFooterTime(){
   const el=document.getElementById('footer-time');
   if(el) el.textContent='Last updated: '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' — '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'})+' CET';
+  const dt=document.getElementById('topbar-date');
+  if(dt){
+    const now=new Date();
+    const day=now.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',timeZone:'Europe/Rome'});
+    const time=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'});
+    dt.textContent=day+' · '+time;
+  }
 }
 updateFooterTime();
 setInterval(updateFooterTime,60000);
