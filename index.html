@@ -57,6 +57,8 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .topbar-breadcrumb-sep{opacity:0.4;margin:0 1px}
 #topbar-section{color:var(--text2);font-weight:600}
 .topbar-right{display:flex;align-items:center;gap:8px}
+#live-price-indicator{display:none}
+body.page-holdings #live-price-indicator{display:flex}
 
 /* ── Tab nav ── */
 .tabnav{height:52px;background:rgba(14,17,23,0.7);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:stretch;padding:0 2.5rem;gap:0;position:sticky;top:64px;z-index:29;overflow-x:auto;scrollbar-width:none}
@@ -72,14 +74,14 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .page{display:none}.page.active{display:block}
 
 /* ── Overview stat cards (Meridian KpiCard) ── */
-.ov-hero{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.25rem 1.5rem;color:var(--text);position:relative;overflow:hidden;box-shadow:var(--card-shadow);transition:transform 0.2s}
+.ov-hero{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.5rem 1.75rem;color:var(--text);position:relative;overflow:hidden;box-shadow:var(--card-shadow);transition:transform 0.2s}
 .ov-hero:hover{transform:scale(1.01)}
 .ov-hero-ghost{position:absolute;right:-8px;top:-12px;font-size:96px;color:rgba(255,255,255,0.025);pointer-events:none;line-height:1}
 .ov-hero-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;font-family:'DM Sans',sans-serif}
 .ov-hero-value{font-size:30px;font-weight:700;letter-spacing:-1.5px;line-height:1;color:var(--text);font-family:'JetBrains Mono','Courier New',monospace}
 .ov-hero-change{display:inline-flex;align-items:center;gap:4px;margin-top:12px;font-size:11px;font-weight:700;background:var(--green-bg);color:var(--green);border-radius:6px;padding:3px 8px;font-family:'JetBrains Mono',monospace}
 .ov-hero-change.neg{background:var(--red-bg);color:var(--red)}
-.ov-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:1.5rem}
+.ov-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:1.75rem}
 
 /* ── Chart card ── */
 .card{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(20,22,35,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.25rem;box-shadow:var(--card-shadow)}
@@ -96,12 +98,15 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 
 /* ── Holding boxes ── */
 .holding-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:1.25rem}
-.holding-box{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.125rem 1.25rem;box-shadow:var(--card-shadow);transition:transform 0.2s;cursor:pointer}
-.holding-box:hover{transform:translateY(-3px) scale(1.01);box-shadow:rgba(14,63,126,0.06) 0 0 0 1px,rgba(42,51,70,0.12) 0 8px 24px}
-.holding-box-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:0.75rem}
-.holding-box-label{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:4px}
-.holding-box-value{font-size:20px;font-weight:700;letter-spacing:-0.5px;line-height:1.2;font-family:"JetBrains Mono","Courier New",monospace}
-.holding-box-pct{font-size:12px;margin-top:4px}
+.holding-box{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.25rem 1.5rem;box-shadow:var(--card-shadow);transition:transform 0.2s,box-shadow 0.2s;cursor:pointer;position:relative;overflow:hidden}
+.holding-box:hover{transform:translateY(-3px);box-shadow:rgba(14,63,126,0.06) 0 0 0 1px,rgba(42,51,70,0.15) 0 12px 28px}
+.holding-box-ghost{position:absolute;right:-10px;top:-14px;font-size:90px;line-height:1;pointer-events:none;opacity:0.06}
+.holding-box-icon{display:none}
+.holding-box-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px}
+.holding-box-value{font-size:22px;font-weight:700;letter-spacing:-1px;line-height:1;font-family:"JetBrains Mono","Courier New",monospace;color:var(--text)}
+.holding-box-pct{font-size:11px;margin-top:8px;color:var(--text2)}
+.holding-box-link{font-size:11px;color:var(--accent);margin-top:14px;display:flex;align-items:center;gap:4px;font-weight:500;opacity:0;transition:opacity 0.2s}
+.holding-box:hover .holding-box-link{opacity:1}
 
 /* Type colors */
 .type-bank{--tc:#00c49a;--tb:rgba(0,196,154,0.1)}
@@ -348,10 +353,12 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
     </div>
   </div>
   <div class="topbar-right">
-    <span id="refresh-info" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace"></span>
-    <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(16,208,138,0.08);border:1px solid rgba(16,208,138,0.12)">
-      <span style="width:6px;height:6px;border-radius:50%;background:#10d08a;animation:pulse-soft 2s ease-in-out infinite;display:inline-block"></span>
-      <span style="font-size:11px;color:#10d08a;font-weight:600">Live</span>
+    <div id="live-price-indicator" style="align-items:center;gap:8px">
+      <span id="refresh-info" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace"></span>
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:rgba(16,208,138,0.08);border:1px solid rgba(16,208,138,0.12)">
+        <span style="width:5px;height:5px;border-radius:50%;background:#10d08a;animation:pulse-soft 2s ease-in-out infinite;display:inline-block"></span>
+        <span style="font-size:11px;color:#10d08a;font-weight:600">Live</span>
+      </div>
     </div>
   </div>
 </header>
@@ -1029,6 +1036,9 @@ function showPage(name,btn){
     });
   }
   if(name==='overview') renderOverview();
+  // Show live price indicator only on holdings page
+  document.body.className = document.body.className.replace(/page-\w+/g,'').trim();
+  document.body.classList.add('page-'+name);
   if(name==='insights'){ renderAllocation(); renderInsights(); }
   // prices only refresh manually via the Refresh button
   if(name==='cashflow'){ renderCashflow(); const fab=document.getElementById('cf-fab'); if(fab) fab.style.display=''; }
