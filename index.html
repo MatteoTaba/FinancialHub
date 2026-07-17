@@ -93,10 +93,10 @@ body.page-holdings #live-price-indicator{display:flex}
 .period-btn.active{background:var(--surface3);color:var(--accent);font-weight:600}
 
 /* ── Holding boxes ── */
-.holding-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:1.25rem}
+.holding-grid{display:grid;gap:12px;margin-bottom:1.25rem}
 .holding-box{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.25rem 1.5rem;box-shadow:var(--card-shadow);transition:transform 0.2s,box-shadow 0.2s;cursor:pointer;position:relative;overflow:hidden}
 .holding-box:hover{transform:translateY(-3px);box-shadow:rgba(14,63,126,0.06) 0 0 0 1px,rgba(42,51,70,0.15) 0 12px 28px}
-.holding-box-ghost{position:absolute;right:-8px;top:-10px;font-size:88px;line-height:1;pointer-events:none;opacity:0.12;z-index:0}
+.holding-box-ghost{position:absolute;right:-6px;top:-8px;font-size:96px;line-height:1;pointer-events:none;opacity:0.18;z-index:0}
 .holding-box-icon{display:none}
 .holding-box-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;position:relative;z-index:1}
 .holding-box-value{font-size:22px;font-weight:700;letter-spacing:-1px;line-height:1;font-family:"JetBrains Mono","Courier New",monospace;color:var(--text);position:relative;z-index:1}
@@ -1822,17 +1822,19 @@ function renderHoldingBoxes(){
     grid.innerHTML='<div class="empty" style="grid-column:1/-1;padding:2rem"><i class="ti ti-wallet" style="font-size:28px;display:block;margin-bottom:8px;color:var(--text3)"></i><p>No holdings yet</p></div>';
     return;
   }
+  // Set grid columns dynamically so boxes always fill the full row
+  grid.style.gridTemplateColumns = `repeat(${sorted.length}, 1fr)`;
   grid.innerHTML=sorted.map(type=>{
     const val=byType[type];
     const pct=(val/total*100).toFixed(1);
     const icon=TYPE_ICONS[type]||'ti-wallet';
     const label=TYPE_LABELS[type]||type;
     return `<div class="holding-box type-${type}" onclick="navigateToCategory('${type}')" role="button" title="View ${label} holdings">
-      <div class="holding-box-icon"><i class="ti ${icon}"></i></div>
+      <div class="holding-box-ghost"><i class="ti ${icon}" style="color:var(--tc)"></i></div>
       <div class="holding-box-label">${label}</div>
       <div class="holding-box-value">${fmt(val)}</div>
-      <div class="holding-box-pct" style="color:var(--text2)">${pct}% of portfolio</div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:3px"><i class="ti ti-arrow-right" style="font-size:12px"></i> View details</div>
+      <div class="holding-box-pct">${pct}% of portfolio</div>
+      <div class="holding-box-link"><i class="ti ti-arrow-right"></i> View details</div>
     </div>`;
   }).join('');
 }
