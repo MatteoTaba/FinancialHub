@@ -158,8 +158,8 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
 .form-full{grid-column:1/-1}
 .form-group{display:flex;flex-direction:column;gap:5px}
 .form-group label{font-size:12px;color:var(--text2);font-weight:500}
-.form-group input,.form-group select,.form-group textarea{border:1px solid rgba(38,45,61,0.8);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;background:rgba(14,17,23,0.9);color:var(--text);font-family:inherit;transition:border 0.15s;width:100%;box-sizing:border-box}
-select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%237a8599' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+.form-group input,.form-group select,.form-group textarea{border:1px solid rgba(38,45,61,0.8);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;background-color:rgba(14,17,23,0.9);color:var(--text);font-family:inherit;transition:border 0.15s;width:100%;box-sizing:border-box}
+select{-webkit-appearance:none;appearance:none;background-color:rgba(14,17,23,0.9);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%237a8599' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
 select option{background:#141927;color:#f2f4f0;padding:8px}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
 .form-group textarea{resize:vertical;min-height:44px}
@@ -827,8 +827,10 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
       <div class="ins-section-header"><i class="ti ti-droplet"></i> Liquidity</div>
       <div class="card">
         <div class="card-header">
-          <div class="card-title">Bank &amp; cash balance over time</div>
-          <div class="card-sub">Reconstructed from transaction history</div>
+          <div>
+            <div class="card-title">Bank &amp; cash balance over time</div>
+            <div class="card-sub">Reconstructed from transaction history</div>
+          </div>
         </div>
         <div id="liquidity-empty" style="display:none;text-align:center;padding:2rem;color:var(--text3)"><i class="ti ti-droplet" style="font-size:28px;display:block;margin-bottom:8px"></i><p>No bank or cash holdings yet</p></div>
         <div class="chart-wrap" id="liquidity-wrap" style="height:220px"><canvas id="liquidity-chart">Liquidity over time.</canvas></div>
@@ -1038,13 +1040,33 @@ function showPage(name,btn){
   document.body.classList.add('page-'+name);
   if(name==='insights'){ renderAllocation(); renderInsights(); }
   // prices only refresh manually via the Refresh button
-  if(name==='cashflow'){ renderCashflow(); const fab=document.getElementById('cf-fab'); if(fab) fab.style.display=''; }
+  if(name==='cashflow'){
+    // Reset cashflow to main view if form was open
+    const cfForm=document.getElementById('cf-form');
+    const cfMain=document.getElementById('cf-main');
+    const cfFab=document.getElementById('cf-fab');
+    if(cfForm&&cfForm.style.display!=='none'){ showCfMain(); }
+    else { renderCashflow(); if(cfFab) cfFab.style.display=''; }
+  }
   if(name!=='cashflow' && bulkSelectMode){
     bulkSelectMode=false; selectedTxIds.clear();
     const bt=document.getElementById('cf-bulk-toggle');
     if(bt){ bt.style.background=''; bt.innerHTML='<i class="ti ti-checkbox"></i> Select'; }
     const bd=document.getElementById('cf-bulk-delete-btn');
     if(bd) bd.style.display='none';
+  }
+  if(name!=='holdings'){
+    // Collapse all expanded cat-blocks and hide their delete buttons
+    document.querySelectorAll('.cat-block').forEach(block=>{
+      const header=block.querySelector('.cat-header');
+      const body=block.querySelector('.cat-body');
+      const delBtn=block.querySelector('.cat-delete-btn');
+      if(body&&body.classList.contains('open')){
+        body.classList.remove('open');
+        if(header){ header.classList.remove('open'); header.setAttribute('aria-expanded','false'); }
+        if(delBtn) delBtn.style.display='none';
+      }
+    });
   }
   if(name==='settings'){ renderSettings(); renderRecurCalendar(); loadSnapshots(); }
   if(name==='reports') renderReports();
@@ -1475,9 +1497,9 @@ function showInputDialog(title, label, defaultVal=''){
 }
 
 async function editBalance(id, name, currentBalance){
-  const input = prompt(`Edit balance for ${name}:`, currentBalance.toFixed(2));
-  if(input===null) return;
-  const newBalance = parseFloat(input);
+  const input = await showInputDialog('Edit balance', name, currentBalance.toFixed(2));
+  if(input===null||input.trim()==='') return;
+  const newBalance = parseFloat(input.replace(',','.'));
   if(isNaN(newBalance)||newBalance<0){ await showAlert('Please enter a valid positive amount.'); return; }
   await api(`holdings?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({avg_cost:newBalance})});
   await loadAll(); toast('Balance updated ✓');
@@ -2689,19 +2711,20 @@ function populateCfForm(){
   document.getElementById('cf-amount').value='';
   document.getElementById('cf-desc').value='';
   const catSel=document.getElementById('cf-cat');
-  catSel.innerHTML=cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  catSel.innerHTML='<option value="" disabled selected>Select category</option>'+cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   const opts=holdings.map(h=>{
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
   }).join('');
-  document.getElementById('cf-from').innerHTML=opts;
-  document.getElementById('cf-to').innerHTML=opts;
+  const placeholder='<option value="" disabled selected>Select account</option>';
+  document.getElementById('cf-from').innerHTML=placeholder+opts;
+  document.getElementById('cf-to').innerHTML=placeholder+opts;
   const investHoldings=holdings.filter(h=>['stock','etf','crypto','bond'].includes(h.type));
   const allOpts=holdings.map(h=>{
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
   }).join('');
-  document.getElementById('inv-asset').innerHTML=investHoldings.map(h=>{
+  document.getElementById('inv-asset').innerHTML='<option value="" disabled selected>Select asset</option>'+investHoldings.map(h=>{
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${h.ticker})</option>`;
   }).join('');
