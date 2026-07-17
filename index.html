@@ -71,8 +71,8 @@ body.page-holdings #live-price-indicator{display:flex}
 .page{display:none}.page.active{display:block}
 
 /* ── Overview stat cards (Meridian KpiCard) ── */
-.ov-hero{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.75rem 2rem;color:var(--text);position:relative;overflow:hidden;box-shadow:var(--card-shadow);transition:transform 0.2s;margin-bottom:2rem}
-.ov-hero:hover{transform:scale(1.01)}
+.ov-hero{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);padding:1.75rem 2rem;color:var(--text);position:relative;overflow:hidden;box-shadow:var(--card-shadow);margin-bottom:2rem}
+.ov-hero:hover{transform:none}
 .ov-hero-ghost{position:absolute;right:-8px;top:-12px;font-size:96px;color:rgba(255,255,255,0.025);pointer-events:none;line-height:1}
 .ov-hero-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;font-family:'DM Sans',sans-serif}
 .ov-hero-value{font-size:30px;font-weight:700;letter-spacing:-1.5px;line-height:1;color:var(--text);font-family:'JetBrains Mono','Courier New',monospace}
@@ -158,7 +158,9 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
 .form-full{grid-column:1/-1}
 .form-group{display:flex;flex-direction:column;gap:5px}
 .form-group label{font-size:12px;color:var(--text2);font-weight:500}
-.form-group input,.form-group select,.form-group textarea{border:1px solid rgba(38,45,61,0.8);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;background:rgba(255,255,255,0.04);color:var(--text);font-family:inherit;transition:border 0.15s;width:100%;box-sizing:border-box}
+.form-group input,.form-group select,.form-group textarea{border:1px solid rgba(38,45,61,0.8);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;background:rgba(14,17,23,0.9);color:var(--text);font-family:inherit;transition:border 0.15s;width:100%;box-sizing:border-box}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%237a8599' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+select option{background:#141927;color:#f2f4f0;padding:8px}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
 .form-group textarea{resize:vertical;min-height:44px}
 
@@ -703,7 +705,7 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
 
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div class="page-header"><div><div class="page-title">Settings</div><div class="page-sub">Manage categories and recurring transactions</div></div></div>
+    <div class="page-header"><div><div class="page-title">Settings</div><div class="page-sub">Customise your Financial Hub experience</div></div></div>
     <!-- Hidden recurrences list (still needed for logic) -->
     <div id="settings-recurrences" style="display:none"></div>
     <!-- Recurrences calendar -->
@@ -760,13 +762,15 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
       <div class="ins-section-header"><i class="ti ti-chart-pie"></i> Portfolio allocation</div>
       <div class="alloc-grid" style="margin-bottom:0.75rem">
         <div class="card">
-          <div class="card-title" style="margin-bottom:0.5rem">By asset type</div>
+          <div class="card-title">By asset type</div>
+          <div class="card-sub">Portfolio weight by category</div>
           <div id="alloc-type-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
             <div class="spin" style="width:24px;height:24px"></div>
           </div>
         </div>
         <div class="card">
-          <div class="card-title" style="margin-bottom:0.5rem">Investment portfolio breakdown</div>
+          <div class="card-title">Investment portfolio breakdown</div>
+          <div class="card-sub">Stocks, ETFs, crypto &amp; bonds only</div>
           <div id="alloc-hold-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
             <div class="spin" style="width:24px;height:24px"></div>
           </div>
@@ -777,10 +781,10 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
 
     <!-- ── Section 2: Cashflow ── -->
     <div class="ins-section-block">
-      <div class="ins-section-header"><i class="ti ti-arrows-exchange"></i> Cashflow <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:6px;text-transform:none;letter-spacing:0">Salary period: 27th → 26th</span></div>
+      <div class="ins-section-header"><i class="ti ti-arrows-exchange"></i> Cashflow</div>
       <div class="card" style="margin-bottom:0.75rem">
         <div class="card-header">
-          <div><div class="card-title">Monthly income &amp; outcomes</div></div>
+          <div><div class="card-title">Monthly income &amp; outcomes</div><div class="card-sub">Salary period: 27th → 26th</div></div>
           <div class="period-tabs" id="insights-year-sel-wrap">
             <select id="insights-year-sel" style="border:1px solid var(--border2);border-radius:var(--radius-xs);padding:4px 10px;font-size:12px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer"></select>
           </div>
@@ -789,11 +793,13 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
       </div>
       <div class="alloc-grid">
         <div class="card">
-          <div class="card-title" style="margin-bottom:1rem">Total income per year</div>
+          <div class="card-title">Total income per year</div>
+          <div class="card-sub">Gross income across all accounts</div>
           <div class="chart-wrap" style="height:200px"><canvas id="yearly-income-chart">Yearly income.</canvas></div>
         </div>
         <div class="card">
-          <div class="card-title" style="margin-bottom:1rem">Total outcomes per year</div>
+          <div class="card-title">Total outcomes per year</div>
+          <div class="card-sub">All expenses and transfers out</div>
           <div class="chart-wrap" style="height:200px"><canvas id="yearly-outcome-chart">Yearly outcomes.</canvas></div>
         </div>
       </div>
@@ -804,12 +810,13 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
       <div class="ins-section-header"><i class="ti ti-trending-up"></i> Wealth</div>
       <div class="alloc-grid">
         <div class="card">
-          <div class="card-title" style="margin-bottom:1rem">Savings per year</div>
+          <div class="card-title">Savings per year</div>
+          <div class="card-sub">Income minus outcomes per year</div>
           <div class="chart-wrap" style="height:220px"><canvas id="savings-chart">Savings per year.</canvas></div>
         </div>
         <div class="card">
-          <div class="card-title" style="margin-bottom:0.5rem">Invested capital over time</div>
-          <div class="card-sub" style="font-size:11px;color:var(--text3);margin-bottom:0.75rem">Cumulative money spent on investment purchases</div>
+          <div class="card-title">Invested capital over time</div>
+          <div class="card-sub">Cumulative spend on investment purchases</div>
           <div class="chart-wrap" style="height:200px"><canvas id="invested-chart">Invested capital over time.</canvas></div>
         </div>
       </div>
@@ -821,7 +828,7 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
       <div class="card">
         <div class="card-header">
           <div class="card-title">Bank &amp; cash balance over time</div>
-          <div class="card-sub" style="font-size:11px;color:var(--text3)">Reconstructed from transaction history · Most accurate with complete cashflow data</div>
+          <div class="card-sub">Reconstructed from transaction history</div>
         </div>
         <div id="liquidity-empty" style="display:none;text-align:center;padding:2rem;color:var(--text3)"><i class="ti ti-droplet" style="font-size:28px;display:block;margin-bottom:8px"></i><p>No bank or cash holdings yet</p></div>
         <div class="chart-wrap" id="liquidity-wrap" style="height:220px"><canvas id="liquidity-chart">Liquidity over time.</canvas></div>
@@ -870,7 +877,8 @@ tbody tr:hover td{background:rgba(255,255,255,0.025)}
     <div class="modal-title">Add holding</div>
     <div class="form-grid">
       <div class="form-group form-full"><label>Asset type</label>
-        <select id="h-type" onchange="onHoldingTypeChange(this.value)">
+        <select id="h-type" onchange="onHoldingTypeChange(this.value)" required>
+          <option value="" disabled selected>Select asset type</option>
           <option value="bank">Bank account</option>
           <option value="bond">Bond / Fixed income</option>
           <option value="cash">Cash</option>
@@ -2607,6 +2615,9 @@ function setCfType(type,btn){
   document.getElementById('cf-to-wrap').style.display=type==='transfer'?'':'none';
   document.getElementById('cf-cat-wrap').style.display=type==='transfer'?'none':'';
   document.getElementById('cf-from-label').textContent=type==='income'?'To account':'From account';
+  // Reset recurring when switching type
+  const recurChk=document.getElementById('cf-recurring');
+  if(recurChk){ recurChk.checked=false; toggleRecurring(false); }
 }
 
 function setCfIType(itype,btn){
@@ -3361,7 +3372,7 @@ function populateRptYearSel(){
   const years = [...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort((a,b)=>b-a);
   // Ensure current year default is valid (fall back to 'all' if no transactions this year)
   if(years.length && rptFilterYear !== 'all' && !years.includes(Number(rptFilterYear))) rptFilterYear = 'all';
-  sel.innerHTML = '<option value="all">All time</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  sel.innerHTML = '<option value="all">All years</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
   sel.value = rptFilterYear;
 
 }
