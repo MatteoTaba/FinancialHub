@@ -880,7 +880,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
     <div class="form-grid">
       <div class="form-group form-full"><label>Asset type</label>
         <select id="h-type" onchange="onHoldingTypeChange(this.value)" required>
-          <option value="" disabled selected>Select asset type</option>
+          <option value="" disabled selected hidden>Select asset type</option>
           <option value="bank">Bank account</option>
           <option value="bond">Bond / Fixed income</option>
           <option value="cash">Cash</option>
@@ -1056,16 +1056,14 @@ function showPage(name,btn){
     if(bd) bd.style.display='none';
   }
   if(name!=='holdings'){
-    // Collapse all expanded cat-blocks and hide their delete buttons
+    // Always fully reset holdings state when leaving the page
     document.querySelectorAll('.cat-block').forEach(block=>{
-      const header=block.querySelector('.cat-header');
-      const body=block.querySelector('.cat-body');
-      const delBtn=block.querySelector('.cat-delete-btn');
-      if(body&&body.classList.contains('open')){
-        body.classList.remove('open');
-        if(header){ header.classList.remove('open'); header.setAttribute('aria-expanded','false'); }
-        if(delBtn) delBtn.style.display='none';
-      }
+      const header = block.querySelector('.cat-header');
+      const body   = block.querySelector('.cat-body');
+      if(header){ header.classList.remove('open'); header.setAttribute('aria-expanded','false'); }
+      if(body)  { body.classList.remove('open'); body.style.display='none'; setTimeout(()=>{ if(body) body.style.display=''; }, 0); }
+      block.querySelectorAll('.cat-delete-btn').forEach(btn=>btn.style.display='none');
+      block.querySelectorAll('.holding-actions').forEach(td=>td.style.display='none');
     });
   }
   if(name==='settings'){ renderSettings(); renderRecurCalendar(); loadSnapshots(); }
@@ -2711,12 +2709,12 @@ function populateCfForm(){
   document.getElementById('cf-amount').value='';
   document.getElementById('cf-desc').value='';
   const catSel=document.getElementById('cf-cat');
-  catSel.innerHTML='<option value="" disabled selected>Select category</option>'+cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  catSel.innerHTML='<option value="" disabled selected hidden>Select category</option>'+cfCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   const opts=holdings.map(h=>{
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
   }).join('');
-  const placeholder='<option value="" disabled selected>Select account</option>';
+  const placeholder='<option value="" disabled selected hidden>Select account</option>';
   document.getElementById('cf-from').innerHTML=placeholder+opts;
   document.getElementById('cf-to').innerHTML=placeholder+opts;
   const investHoldings=holdings.filter(h=>['stock','etf','crypto','bond'].includes(h.type));
@@ -2724,7 +2722,7 @@ function populateCfForm(){
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${TYPE_LABELS[h.type]||h.type})</option>`;
   }).join('');
-  document.getElementById('inv-asset').innerHTML='<option value="" disabled selected>Select asset</option>'+investHoldings.map(h=>{
+  document.getElementById('inv-asset').innerHTML='<option value="" disabled selected hidden>Select asset</option>'+investHoldings.map(h=>{
     const n=h.type==='crypto'?cleanCryptoName(h.name||h.ticker):(h.name||h.ticker);
     return `<option value="${h.id}">${n} (${h.ticker})</option>`;
   }).join('');
