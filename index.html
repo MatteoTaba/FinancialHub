@@ -451,7 +451,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
       <div class="page-header" style="align-items:center">
         <div style="display:flex;align-items:center;gap:10px">
           <button class="btn" onclick="showCfMain()"><i class="ti ti-arrow-left"></i></button>
-          <div class="page-title">Add Transaction</div>
+          <div class="page-title" id="cf-form-title">Add Transaction</div>
         </div>
       </div>
       <!-- Context selector: bank/cash vs investment -->
@@ -2848,41 +2848,85 @@ let editTxId = null;
 function editCfTx(txId){
   const t = cfTransactions.find(x=>x.id===txId); if(!t) return;
   editTxId = txId;
-  // Use the existing add-transaction form, pre-filled
-  showCfForm();
-  // Restore values after form is populated
-  setTimeout(()=>{
-    const isInv = ['purchase','sale'].includes(t.type);
-    // Set ctx
-    const ctx = isInv ? 'investment' : 'account';
-    setCfCtx(ctx, document.querySelector(`.cf-type-btn[data-ctx="${ctx}"]`));
-    if(!isInv){
-      setCfType(t.type, document.querySelector(`.cf-type-btn[data-type="${t.type}"]`));
-      if(t.amount) document.getElementById('cf-amount').value = t.amount;
-      if(t.description) document.getElementById('cf-desc').value = t.description;
-      if(t.category_id){ const s=document.getElementById('cf-cat'); if(s) s.value=t.category_id; }
-      if(t.date) document.getElementById('cf-date').value = new Date(t.date).toISOString().slice(0,16);
-      if(t.holding_id){ const s=document.getElementById('cf-from'); if(s) s.value=t.holding_id; }
-      if(t.holding_to_id){ const s=document.getElementById('cf-to'); if(s) s.value=t.holding_to_id; }
-    } else {
-      setCfIType(t.type, document.querySelector(`.cf-type-btn[data-itype="${t.type}"]`));
-      if(t.holding_id){ const s=document.getElementById('inv-asset'); if(s) s.value=t.holding_id; }
-      if(t.description) document.getElementById('inv-desc-'+t.type) && (document.getElementById('cf-desc').value=t.description);
+
+  // Open the form (without calling showCfForm which would trigger populateCfForm and reset)
+  document.getElementById('cf-main').style.display='none';
+  document.getElementById('cf-form').style.display='';
+  document.getElementById('cf-fab').style.display='none';
+
+  // First populate form (sets up all dropdowns with real options)
+  populateCfForm();
+
+  // Now override every field with the existing transaction values
+  const isInv = ['purchase','sale'].includes(t.type);
+  const ctx   = isInv ? 'investment' : 'account';
+
+  // 1. Context (Account vs Investment)
+  setCfCtx(ctx, null);
+
+  if(!isInv){
+    // 2. Type (Expense / Income / Transfer) — setCfType also resets recurring, that's fine here
+    setCfType(t.type, null);
+
+    // 3. Amount
+    const amtEl = document.getElementById('cf-amount');
+    if(amtEl) amtEl.value = t.amount || '';
+
+    // 4. Description
+    const descEl = document.getElementById('cf-desc');
+    if(descEl) descEl.value = t.description || '';
+
+    // 5. Category
+    if(t.category_id){
+      const catEl = document.getElementById('cf-cat');
+      if(catEl) catEl.value = t.category_id;
     }
-    // Mark as edit mode
-    document.getElementById('cf-form-title') && (document.getElementById('cf-form-title').textContent='Edit Transaction');
-    // Hide recurring option when editing (don't modify series)
-    const recurWrap = document.querySelector('[id="cf-recurring"]')?.closest('.form-group');
-    if(recurWrap) recurWrap.style.display='none';
-    if(t.recurring_id){
-      const note = document.createElement('div');
-      note.id='edit-recur-note';
-      note.style.cssText='font-size:12px;color:var(--text2);padding:8px 0;display:flex;align-items:center;gap:6px';
-      note.innerHTML='<i class="ti ti-info-circle" style="color:var(--accent)"></i> This is a recurring transaction. Only this occurrence will be modified.';
-      const footer = document.querySelector('.modal-footer, #cf-form .modal-footer');
-      recurWrap?.parentElement?.insertBefore(note, recurWrap);
+
+    // 6. Date
+    if(t.date){
+      const dateEl = document.getElementById('cf-date');
+      if(dateEl) dateEl.value = new Date(t.date).toISOString().slice(0,16);
     }
-  }, 50);
+
+    // 7. From account
+    if(t.holding_id){
+      const fromEl = document.getElementById('cf-from');
+      if(fromEl) fromEl.value = t.holding_id;
+    }
+
+    // 8. To account (transfers)
+    if(t.holding_to_id){
+      const toEl = document.getElementById('cf-to');
+      if(toEl) toEl.value = t.holding_to_id;
+    }
+  } else {
+    // Investment: set sub-type and asset
+    setCfIType(t.type, null);
+    if(t.holding_id){
+      const assetEl = document.getElementById('inv-asset');
+      if(assetEl){ assetEl.value = t.holding_id; updateInvCounterparts(); }
+    }
+    const invDescEl = document.getElementById('inv-desc');
+    if(invDescEl && t.description) invDescEl.value = t.description;
+  }
+
+  // Update form title
+  const titleEl = document.getElementById('cf-form-title');
+  if(titleEl) titleEl.textContent = 'Edit Transaction';
+
+  // Hide recurring section (never edit the series from here)
+  const recurWrap = document.getElementById('cf-recurring')?.closest('.form-group');
+  if(recurWrap) recurWrap.style.display = 'none';
+
+  // Show note for recurring transactions
+  document.getElementById('edit-recur-note')?.remove();
+  if(t.recurring_id){
+    const note = document.createElement('div');
+    note.id = 'edit-recur-note';
+    note.style.cssText = 'font-size:12px;color:var(--text2);padding:8px 0;display:flex;align-items:center;gap:6px';
+    note.innerHTML = '<i class="ti ti-info-circle" style="color:var(--accent)"></i> Recurring transaction — only this occurrence will be modified.';
+    if(recurWrap?.parentElement) recurWrap.parentElement.insertBefore(note, recurWrap);
+  }
 }
 
 async function deleteCfTx(id,holdingId,holdingToId,type,amount){
