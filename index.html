@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2310d4b0'/><polyline points='4,24 10,16 16,20 22,10 28,14' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='28' cy='14' r='2.5' fill='white'/></svg>">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#10d4b0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Financial Hub">
 <title>Financial Hub</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -318,14 +323,54 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 .settings-recur-row:last-child{border-bottom:none}
 /* ── Cashflow ── */
 /* Mobile */
-@media(max-width:700px){
-  .main{padding:1rem 1rem}
-  .topbar{padding:0 1rem}
-  .tabnav{padding:0 1rem}
-  .form-grid{grid-template-columns:1fr}
+/* ── BOTTOM TAB BAR ── */
+.bottom-tabs{display:none;position:fixed;bottom:0;left:0;right:0;height:64px;background:rgba(14,17,23,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.07);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.bottom-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--text3);font-size:10px;font-weight:500;font-family:inherit;cursor:pointer;transition:color 0.15s;padding:6px 4px}
+.bottom-tab i{font-size:20px;line-height:1}
+.bottom-tab.active{color:var(--accent)}
+.bottom-tab.active i{filter:drop-shadow(0 0 4px rgba(16,212,176,0.4))}
+
+/* ── MOBILE SUB-NAV ── */
+.mobile-subnav{display:none;gap:4px;margin-bottom:1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px}
+.mobile-subnav-btn{flex:1;padding:8px;border:none;background:none;color:var(--text3);font-size:13px;font-weight:500;font-family:inherit;border-radius:var(--radius-xs);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s}
+.mobile-subnav-btn.active{background:var(--surface3);color:var(--accent);font-weight:600}
+
+@media(max-width:768px){
+  .bottom-tabs{display:flex}
+  .tabnav{display:none}
+  .main{padding:1rem;padding-bottom:80px}
+  .topbar{padding:0 1rem;height:52px}
+  .topbar-left>div:last-child{display:none}
+  .mobile-subnav{display:flex}
   .alloc-grid{grid-template-columns:1fr}
-  .ov-hero-value{font-size:24px}
+  .ov-stats-grid{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
   .holding-grid{grid-template-columns:1fr 1fr}
+  .ov-hero{padding:1.25rem}
+  .ov-hero-value{font-size:26px}
+  .holding-box-value{font-size:16px}
+  .holding-box-ghost{font-size:70px}
+  .cat-body table{font-size:10px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .cat-body th,.cat-body td{padding:5px 4px;white-space:nowrap}
+  .cat-total-val{font-size:14px}
+  .cf-tx-row{padding:10px 0.875rem;gap:8px}
+  .cf-tx-amount{font-size:13px}
+  .cf-account-header{padding:12px 0.875rem}
+  .rpt-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .rpt-section{padding:1rem}
+  .rpt-summary{grid-template-columns:1fr 1fr}
+  .overlay{align-items:flex-end;padding:0}
+  .modal{max-width:100%;width:100%;border-radius:20px 20px 0 0;padding:1.5rem 1.25rem;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto}
+  .ins-section-block{padding:1rem;margin-bottom:1rem}
+  .ins-section-header{font-size:13px}
+  .recur-cal{font-size:10px}
+  .recur-cal td{min-height:48px;padding:3px}
+  .recur-event{font-size:9px}
+  .page-header{flex-wrap:wrap;gap:10px;margin-bottom:1rem}
+  .page-title{font-size:17px}
+  .card{padding:1rem}
+  .cat-header{padding:0.875rem 1rem}
+  #live-price-indicator #refresh-info{display:none}
 }
 </style>
 </head>
@@ -358,12 +403,31 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 
 <!-- ── TAB NAV ── -->
 <nav class="tabnav">
-  <button class="nav-item active" onclick="showPage('overview',this)"><i class="ti ti-home-2"></i><span>Overview</span></button>
+  <button class="nav-item active" onclick="showPage('overview',this)"><i class="ti ti-home-2"></i><span>Home</span></button>
   <button class="nav-item" onclick="showPage('holdings',this)"><i class="ti ti-briefcase"></i><span>Holdings</span></button>
   <button class="nav-item" onclick="showPage('cashflow',this)"><i class="ti ti-arrows-exchange"></i><span>Cashflow</span></button>
   <button class="nav-item" onclick="showPage('insights',this)"><i class="ti ti-chart-bar"></i><span>Insights</span></button>
   <button class="nav-item" onclick="showPage('reports',this)"><i class="ti ti-table"></i><span>Reports</span></button>
   <button class="nav-item" onclick="showPage('settings',this)"><i class="ti ti-settings"></i><span>Settings</span></button>
+</nav>
+
+<!-- ── BOTTOM TAB BAR (mobile only) ── -->
+<nav class="bottom-tabs" id="bottom-tabs">
+  <button class="bottom-tab active" data-page="overview" onclick="showPage('overview',null)">
+    <i class="ti ti-home-2"></i><span>Home</span>
+  </button>
+  <button class="bottom-tab" data-page="holdings" onclick="showPage('holdings',null)">
+    <i class="ti ti-briefcase"></i><span>Holdings</span>
+  </button>
+  <button class="bottom-tab" data-page="cashflow" onclick="showPage('cashflow',null)">
+    <i class="ti ti-arrows-exchange"></i><span>Cashflow</span>
+  </button>
+  <button class="bottom-tab" data-page="rpt-insights" onclick="showMobileRptInsights()">
+    <i class="ti ti-chart-bar"></i><span>Analytics</span>
+  </button>
+  <button class="bottom-tab" data-page="settings" onclick="showPage('settings',null)">
+    <i class="ti ti-settings"></i><span>Settings</span>
+  </button>
 </nav>
 
 <!-- ── MAIN ── -->
@@ -757,6 +821,11 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
       <div><div class="page-title">Insights</div><div class="page-sub">Financial analytics across all your accounts</div></div>
     </div>
 
+    <!-- Mobile sub-nav for Analytics (Insights ↔ Reports) -->
+    <div class="mobile-subnav" id="mobile-analytics-subnav">
+      <button class="mobile-subnav-btn active" id="mobile-subnav-insights" onclick="switchMobileAnalytics('insights')"><i class="ti ti-chart-pie"></i> Insights</button>
+      <button class="mobile-subnav-btn" id="mobile-subnav-reports" onclick="switchMobileAnalytics('reports')"><i class="ti ti-table"></i> Reports</button>
+    </div>
     <!-- ── Section 1: Portfolio allocation ── -->
     <div class="ins-section-block">
       <div class="ins-section-header"><i class="ti ti-chart-pie"></i> Portfolio allocation</div>
@@ -1017,6 +1086,17 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 
 function showPage(name,btn){
   localStorage.setItem('fh_page', name);
+  // Sync bottom tab bar active state
+  document.querySelectorAll('.bottom-tab').forEach(t=>t.classList.remove('active'));
+  const mobilePageMap={overview:'overview',holdings:'holdings',cashflow:'cashflow',insights:'rpt-insights',reports:'rpt-insights',settings:'settings'};
+  const mobileTarget=mobilePageMap[name]||name;
+  const mobileBtn=document.querySelector(`.bottom-tab[data-page="${mobileTarget}"]`);
+  if(mobileBtn) mobileBtn.classList.add('active');
+  // Update mobile analytics sub-nav active state
+  const siBtn=document.getElementById('mobile-subnav-insights');
+  const srBtn=document.getElementById('mobile-subnav-reports');
+  if(siBtn) siBtn.classList.toggle('active', name==='insights');
+  if(srBtn) srBtn.classList.toggle('active', name==='reports');
 
   // Collapse all accordions when leaving holdings
   document.querySelectorAll('.cat-header.open').forEach(h=>{
@@ -3161,6 +3241,20 @@ async function deleteRecur(id){
 
 // ─────────────────────────────────────────
 // ─────────────────────────────────────────
+// MOBILE ANALYTICS (combined Insights + Reports)
+// ─────────────────────────────────────────
+let mobileAnalyticsPage = 'insights';
+
+function showMobileRptInsights(){
+  showPage(mobileAnalyticsPage, null);
+}
+
+function switchMobileAnalytics(page){
+  mobileAnalyticsPage = page;
+  showPage(page, null);
+}
+
+// ─────────────────────────────────────────
 // CASHFLOW SEARCH & BULK DELETE
 // ─────────────────────────────────────────
 function onCfSearch(q){
@@ -3840,6 +3934,10 @@ const lastPage = isReload ? (localStorage.getItem('fh_page')||'overview') : 'ove
 const matchingBtn=[...document.querySelectorAll('.nav-item')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+lastPage+"'"));
 showPage(lastPage,matchingBtn);
 loadAll().then(()=>{ refreshPrices(); loadCashflow(); });
+// Register PWA service worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));
+}
 // Footer timestamp
 function updateFooterTime(){
   const el=document.getElementById('footer-time');
