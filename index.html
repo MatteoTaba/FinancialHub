@@ -109,7 +109,7 @@ body.page-holdings #live-price-indicator{display:flex}
 .holding-box-link{font-size:11px;color:var(--accent);margin-top:10px;display:flex;align-items:center;gap:4px;font-weight:500;opacity:0;transition:opacity 0.2s;position:relative;z-index:1}
 .holding-box:hover .holding-box-link{opacity:1}
 @media(max-width:768px){
-  .holding-box{padding:0.875rem 1rem}
+  .holding-box{padding:1rem 1.125rem}
   .holding-box-ghost{font-size:64px;right:-4px;top:-6px}
   .holding-box-value{font-size:18px}
   .holding-box-label{margin-bottom:6px}
@@ -2396,7 +2396,7 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   const cx=W/2, cy=H/2;
   const outerR=Math.min(W,H)*0.27;
   const innerR=outerR*0.52;
-  const labelR=outerR+46;
+  const labelR=isMob ? outerR+28 : outerR+46;
 
   // Build arc geometry
   let startAngle=-Math.PI/2;
@@ -2459,7 +2459,7 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   left.forEach(a=>{ if(a.displayAngle>Math.PI) a.displayAngle-=2*Math.PI; });
 
   // Build SVG
-  let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">`;
+  let svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:hidden;display:block">`;
 
   // Draw slices
   arcs.forEach(a=>{
@@ -3132,37 +3132,64 @@ function renderRecurCalendar(){
   let trail = 1;
   while(cellCount%7!==0){ html+=`<td class="other-month"><div class="cal-day-num">${trail++}</div></td>`; cellCount++; }
   html+='</tr></tbody></table>';
-  // On mobile, show a compact event list instead of the full grid
+  // Mobile: Google Calendar-style compact grid
   if(window.innerWidth <= 768){
-    const monthName = new Date(recurCalYear, recurCalMonth, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-    const days = Object.keys(byDay).map(Number).sort((a,b)=>a-b);
-    if(!days.length){
-      calEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:1rem 0">No recurring transactions this month</div>';
-    } else {
-      let listHtml = '<div style="display:flex;flex-direction:column;gap:8px">';
-      days.forEach(d=>{
-        const isToday = today.getFullYear()===recurCalYear && today.getMonth()===recurCalMonth && today.getDate()===d;
-        const dow = new Date(recurCalYear,recurCalMonth,d).toLocaleDateString('en-GB',{weekday:'short'});
-        const dateLabel = `${dow} ${d}`;
-        listHtml += `<div style="border-radius:var(--radius-sm);overflow:hidden;background:${isToday?'rgba(16,212,176,0.06)':'rgba(255,255,255,0.02)'};border:1px solid ${isToday?'rgba(16,212,176,0.2)':'rgba(38,45,61,0.5)'}">
-          <div style="padding:6px 10px;font-size:11px;font-weight:600;color:${isToday?'var(--accent)':'var(--text3)'};text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(38,45,61,0.4)">${dateLabel}</div>
-          <div style="padding:4px 6px;display:flex;flex-direction:column;gap:3px">`;
+    const DNAMES=['M','T','W','T','F','S','S'];
+    let gcHtml = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;width:100%">`;
+    // Day name headers
+    DNAMES.forEach(d=>{ gcHtml+=`<div style="text-align:center;font-size:10px;font-weight:600;color:var(--text3);padding:4px 0;text-transform:uppercase">${d}</div>`; });
+    // Leading days from prev month
+    for(let i=startOffset-1;i>=0;i--){
+      gcHtml+=`<div style="min-height:46px;padding:3px 2px;opacity:0.3"><div style="text-align:center;font-size:12px;color:var(--text3);font-weight:500;width:24px;height:24px;line-height:24px;margin:0 auto">${daysInPrev-i}</div></div>`;
+    }
+    // Current month days
+    for(let d=1;d<=daysInMonth;d++){
+      const isToday=today.getFullYear()===recurCalYear&&today.getMonth()===recurCalMonth&&today.getDate()===d;
+      const dayEvents=byDay[d]||[];
+      const numStyle=isToday
+        ?'background:var(--accent);color:#0e1117;font-weight:700;border-radius:50%;'
+        :'color:var(--text);font-weight:500;';
+      gcHtml+=`<div style="min-height:46px;padding:2px;background:${dayEvents.length?'rgba(255,255,255,0.015)':'transparent'};border-radius:4px">
+        <div style="text-align:center;font-size:12px;${numStyle}width:24px;height:24px;line-height:24px;margin:0 auto 2px">${d}</div>`;
+      // Show up to 2 event dots/pills
+      dayEvents.slice(0,2).forEach(r=>{
+        const cat=cfCategories.find(c=>c.id===r.category_id);
+        const color=cat?.color||'var(--accent)';
+        gcHtml+=`<div style="width:4px;height:4px;border-radius:50%;background:${color};margin:1px auto" title="${r.description||cat?.name}"></div>`;
+      });
+      if(dayEvents.length>2) gcHtml+=`<div style="text-align:center;font-size:8px;color:var(--text3);line-height:1">+${dayEvents.length-2}</div>`;
+      gcHtml+=`</div>`;
+    }
+    // Trailing days
+    let trail=1;
+    let remaining=(7-(cellCount+daysInMonth)%7)%7;
+    for(let i=0;i<remaining;i++){
+      gcHtml+=`<div style="min-height:46px;padding:3px 2px;opacity:0.3"><div style="text-align:center;font-size:12px;color:var(--text3);font-weight:500;width:24px;height:24px;line-height:24px;margin:0 auto">${trail++}</div></div>`;
+    }
+    gcHtml+='</div>';
+    // Events legend for this month
+    const allDays=Object.keys(byDay).map(Number).sort((a,b)=>a-b);
+    if(allDays.length){
+      gcHtml+=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(38,45,61,0.5);display:flex;flex-direction:column;gap:5px">`;
+      allDays.forEach(d=>{
         (byDay[d]||[]).forEach(r=>{
-          const cat = cfCategories.find(c=>c.id===r.category_id);
-          const color = cat?.color||'var(--accent)';
-          const icon  = cat?.icon||'ti-repeat';
-          const label = r.description||cat?.name||'Recurring';
-          listHtml += `<div class="recur-event" style="background:${color}18;color:${color};padding:5px 8px">
-            <i class="ti ${icon}" style="font-size:11px;flex-shrink:0"></i>
-            <span style="flex:1;font-size:12px">${label}</span>
-            <span style="font-size:12px;font-weight:600;font-family:monospace">${fmt(r.amount)}</span>
+          const cat=cfCategories.find(c=>c.id===r.category_id);
+          const color=cat?.color||'var(--accent)';
+          const icon=cat?.icon||'ti-repeat';
+          const isToday=today.getFullYear()===recurCalYear&&today.getMonth()===recurCalMonth&&today.getDate()===d;
+          const dow=new Date(recurCalYear,recurCalMonth,d).toLocaleDateString('en-GB',{weekday:'short'});
+          gcHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+            <div style="width:28px;height:28px;border-radius:6px;background:${color}18;color:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ${icon}" style="font-size:13px"></i></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.description||cat?.name||'Recurring'}</div>
+              <div style="font-size:10px;color:var(--text3)">${isToday?'Today':dow+' '+d} · ${fmt(r.amount)}</div>
+            </div>
           </div>`;
         });
-        listHtml += '</div></div>';
       });
-      listHtml += '</div>';
-      calEl.innerHTML = listHtml;
+      gcHtml+='</div>';
     }
+    calEl.innerHTML = gcHtml;
     return;
   }
   calEl.innerHTML = '<div class="recur-cal-wrapper">' + html + '</div>';
