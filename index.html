@@ -400,15 +400,19 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .page-header{flex-wrap:wrap;gap:10px;margin-bottom:1rem}
   .page-title{font-size:17px}
   .card{padding:1rem}
-  .cat-header{padding:0.875rem 1rem;gap:10px}
-  .cat-info{min-width:0;flex:1}
-  .cat-name{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cat-count{font-size:11px;white-space:nowrap}
-  .cat-total{text-align:right;flex-shrink:0;min-width:0}
-  .cat-total-val{font-size:14px;white-space:nowrap}
-  .cat-total-pct{font-size:11px;white-space:nowrap}
-  .cat-gain{font-size:11px;white-space:nowrap}
-  .drag-handle{font-size:14px;flex-shrink:0}
+  .cat-header{padding:0.75rem 0.875rem;gap:8px}
+  .cat-header .drag-handle{display:none}
+  .cat-icon{width:32px;height:32px;font-size:15px}
+  .cat-info{min-width:0;flex:1;overflow:hidden}
+  .cat-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .cat-count{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cat-total{text-align:right;flex-shrink:0;max-width:48%;overflow:hidden}
+  .cat-total-val{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cat-total-pct{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* Hide gain row from cat header on mobile — shown in expanded body */
+  .cat-total>div:nth-child(3){display:none!important}
+  .cat-chevron{font-size:13px;flex-shrink:0}
+  .cat-delete-btn.btn-sm{padding:3px 6px!important}
   #live-price-indicator #refresh-info{display:none}
 }
 </style>
@@ -2347,8 +2351,8 @@ function renderAllocation(){
     if(!typesWithMultiple.length){
       breakdownContainer.innerHTML='';
     } else {
-      // Layout: up to 3 per row
-      const perRow=Math.min(typesWithMultiple.length,3);
+      // Layout: single column on mobile, up to 3 per row on desktop
+      const perRow=window.innerWidth<=768?1:Math.min(typesWithMultiple.length,3);
       const gridCols=perRow===1?'1fr':perRow===2?'1fr 1fr':'1fr 1fr 1fr';
       let html=`<div class="ins-section-title" style="margin-top:0.5rem">Asset type breakdown</div><div style="display:grid;grid-template-columns:${gridCols};gap:1rem">`;
       typesWithMultiple.forEach(type=>{
@@ -2357,7 +2361,7 @@ function renderAllocation(){
         const containerId=`alloc-breakdown-${type}`;
         html+=`<div class="card">
           <div class="card-title" style="margin-bottom:0.5rem">${TYPE_LABELS[type]||type} composition</div>
-          <div id="${containerId}" style="width:100%;min-height:220px;display:flex;align-items:center;justify-content:center">
+          <div id="${containerId}" style="width:100%;min-height:${window.innerWidth<=768?'260px':'220px'};display:flex;align-items:center;justify-content:center">
             <div class="spin" style="width:20px;height:20px"></div>
           </div>
         </div>`;
