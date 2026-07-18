@@ -103,11 +103,19 @@ body.page-holdings #live-price-indicator{display:flex}
 .holding-box:hover{transform:translateY(-3px);box-shadow:rgba(14,63,126,0.06) 0 0 0 1px,rgba(42,51,70,0.15) 0 12px 28px}
 .holding-box-ghost{position:absolute;right:-6px;top:-8px;font-size:96px;line-height:1;pointer-events:none;opacity:0.18;z-index:0}
 .holding-box-icon{display:none}
-.holding-box-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;position:relative;z-index:1}
+.holding-box-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;position:relative;z-index:1}
 .holding-box-value{font-size:22px;font-weight:700;letter-spacing:-1px;line-height:1;font-family:"JetBrains Mono","Courier New",monospace;color:var(--text);position:relative;z-index:1}
-.holding-box-pct{font-size:11px;margin-top:8px;color:var(--text2);position:relative;z-index:1}
-.holding-box-link{font-size:11px;color:var(--accent);margin-top:14px;display:flex;align-items:center;gap:4px;font-weight:500;opacity:0;transition:opacity 0.2s;position:relative;z-index:1}
+.holding-box-pct{font-size:11px;margin-top:6px;color:var(--text2);position:relative;z-index:1}
+.holding-box-link{font-size:11px;color:var(--accent);margin-top:10px;display:flex;align-items:center;gap:4px;font-weight:500;opacity:0;transition:opacity 0.2s;position:relative;z-index:1}
 .holding-box:hover .holding-box-link{opacity:1}
+@media(max-width:768px){
+  .holding-box{padding:0.875rem 1rem}
+  .holding-box-ghost{font-size:64px;right:-4px;top:-6px}
+  .holding-box-value{font-size:18px}
+  .holding-box-label{margin-bottom:6px}
+  .holding-box-pct{margin-top:4px}
+  .holding-box-link{display:none}
+}
 
 /* Type colors */
 .type-bank{--tc:#00c49a;--tb:rgba(0,196,154,0.1)}
@@ -255,7 +263,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 .cat-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 .cat-info { flex: 1; }
 .cat-name { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
-.cat-count { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.cat-info{flex:1;min-width:0}.cat-count { font-size: 12px; color: var(--text2); margin-top: 1px; }
 .cat-total { text-align: right; }
 .cat-total-val { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; font-family: "JetBrains Mono","Courier New",monospace; }
 .cat-total-pct { font-size: 12px; color: var(--text2); margin-top: 1px; }
@@ -349,7 +357,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .topbar{padding:0 1rem;height:52px}
   .topbar-left>div:last-child{display:none}
   .mobile-subnav{display:flex}
-  .alloc-grid{grid-template-columns:1fr}
+  .alloc-grid{grid-template-columns:1fr!important}
   .ov-stats-grid{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
   .holding-grid{grid-template-columns:1fr 1fr}
@@ -507,8 +515,8 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
     <div class="page-header">
       <div><div class="page-title">Holdings</div><div class="page-sub" id="h-subtitle" style="display:none"></div></div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn" onclick="refreshPrices(true)" id="h-refresh-btn"><i class="ti ti-refresh"></i> Refresh prices</button>
         <button class="btn btn-primary" onclick="openModal('modal-holding')"><i class="ti ti-plus"></i> Add holding</button>
+        <button class="btn" onclick="refreshPrices(true)" id="h-refresh-btn"><i class="ti ti-refresh"></i> Refresh prices</button>
       </div>
     </div>
     <div id="h-empty-state" style="display:none">
@@ -2377,7 +2385,9 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   const container=document.getElementById(containerId);
   if(!container) return;
 
-  const W=Math.max(container.clientWidth||400,400), H=320;
+  const isMob=window.innerWidth<=768;
+  const W=container.clientWidth>50?container.clientWidth:(isMob?320:400);
+  const H=isMob?260:320;
   const cx=W/2, cy=H/2;
   const outerR=Math.min(W,H)*0.27;
   const innerR=outerR*0.52;
