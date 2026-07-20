@@ -1,11 +1,11 @@
 {
   "name": "Financial Hub",
   "short_name": "Financial Hub",
-  "description": "Know your money — personal finance dashboard",
+  "description": "Know your money \u2014 personal finance dashboard",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "background_color": "#0e1117",
   "theme_color": "#10d4b0",
   "icons": [
@@ -16,6 +16,9 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["finance", "productivity"],
+  "categories": [
+    "finance",
+    "productivity"
+  ],
   "lang": "en"
 }
