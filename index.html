@@ -258,6 +258,8 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 }
 .cat-block { will-change: transform; }
 .cat-block.drag-source { opacity: 0.4; }
+/* Hide grip handle on desktop — whole header is draggable */
+@media(min-width:769px){ .drag-handle { display: none; } }
 .cat-header:not(.open):hover { border-color: rgba(16,212,176,0.15); }
 .cat-header.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
 .cat-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
@@ -1410,11 +1412,14 @@ function renderHoldings(){
         ondragover="onHoldingDragOver(event)"
         ondragleave="onHoldingDragLeave(event)"
         ondrop="onHoldingDrop(event,'${type}')">
-      <div class="cat-header${isOpen?' open':''}" onclick="toggleCat(this)" role="button" aria-expanded="${isOpen}">
-        <i class="ti ti-grip-vertical drag-handle"
+      <div class="cat-header${isOpen?' open':''}"
           draggable="true"
-          ondragstart="event.stopPropagation();onHoldingDragStart(event,'${type}')"
-          ondragend="event.stopPropagation()"
+          ondragstart="onHoldingDragStart(event,'${type}')"
+          ondragend="document.querySelectorAll('.cat-block').forEach(b=>{b.classList.remove('drag-source');b.style.opacity=\'\'})"
+          onclick="toggleCat(this)"
+          style="cursor:grab"
+          role="button" aria-expanded="${isOpen}">
+        <i class="ti ti-grip-vertical drag-handle"
           onclick="event.stopPropagation()"
           title="Drag to reorder"></i>
         <div class="cat-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
@@ -3567,38 +3572,53 @@ async function bulkDeleteTx(){
 // ─────────────────────────────────────────
 // TOUCH DRAG & DROP (HOLDINGS REORDER — MOBILE)
 // ─────────────────────────────────────────
-let _tdSrcType=null, _tdClone=null, _tdOrigEl=null, _tdOffY=0;
+let _tdSrcType=null, _tdClone=null, _tdOrigEl=null, _tdOffY=0, _tdOffX=0;
 
 function initTouchDnD(){
   if(window.innerWidth>768) return;
-  document.querySelectorAll('.drag-handle').forEach(h=>{
-    // Replace node to clear old listeners
-    const nh=h.cloneNode(true);
-    h.parentNode.replaceChild(nh,h);
-    nh.addEventListener('touchstart',_tdStart,{passive:false});
+  document.querySelectorAll('.cat-header').forEach(header=>{
+    // Attach to the whole header for easier touch target
+    if(header._tdBound) return; // avoid duplicate listeners
+    header._tdBound=true;
+    header.addEventListener('touchstart',_tdStart,{passive:false});
   });
 }
 
 function _tdStart(e){
-  e.preventDefault();
-  const handle=e.currentTarget;
-  const block=handle.closest('.cat-block');
+  // Only start drag if touch began on the drag handle or a long press on header
+  const block=e.currentTarget.closest('.cat-block');
   if(!block) return;
+  // Only initiate drag from the grip handle icon
+  if(!e.target.classList.contains('drag-handle')&&!e.target.closest('.drag-handle')) return;
+  e.preventDefault();
   _tdSrcType=block.dataset.type;
   _tdOrigEl=block;
   const t=e.touches[0];
   const rect=block.getBoundingClientRect();
   _tdOffY=t.clientY-rect.top;
+  _tdOffX=t.clientX-rect.left;
 
-  // Clone for visual drag ghost
+  // Floating clone for visual feedback
   _tdClone=block.cloneNode(true);
-  _tdClone.style.cssText=`position:fixed;z-index:999;width:${rect.width}px;left:${rect.left}px;top:${rect.top}px;opacity:0.92;pointer-events:none;transform:scale(1.02) translateZ(0);box-shadow:0 12px 40px rgba(0,0,0,0.5);border-radius:var(--radius);will-change:transform;transition:none`;
+  Object.assign(_tdClone.style,{
+    position:'fixed',zIndex:'999',
+    width:rect.width+'px',
+    left:rect.left+'px',
+    top:rect.top+'px',
+    opacity:'0.9',
+    pointerEvents:'none',
+    transform:'scale(1.03) translateZ(0)',
+    boxShadow:'0 16px 48px rgba(0,0,0,0.6)',
+    borderRadius:'var(--radius)',
+    willChange:'transform, top',
+    transition:'transform 0.1s',
+    borderColor:'rgba(16,212,176,0.4)'
+  });
   document.body.appendChild(_tdClone);
-  block.style.opacity='0.25';
-  block.style.transition='none';
+  block.style.cssText+='opacity:0.2;transition:opacity 0.15s;';
 
   document.addEventListener('touchmove',_tdMove,{passive:false});
-  document.addEventListener('touchend',_tdEnd,{passive:false});
+  document.addEventListener('touchend',_tdEnd,{passive:true});
 }
 
 function _tdMove(e){
@@ -3606,6 +3626,7 @@ function _tdMove(e){
   e.preventDefault();
   const t=e.touches[0];
   _tdClone.style.top=(t.clientY-_tdOffY)+'px';
+  _tdClone.style.left=(t.clientX-_tdOffX)+'px';
   // Highlight drop target
   _tdClone.style.pointerEvents='none';
   const below=document.elementFromPoint(t.clientX,t.clientY);
@@ -3619,19 +3640,22 @@ async function _tdEnd(e){
   document.removeEventListener('touchend',_tdEnd);
   if(!_tdClone) return;
   const t=e.changedTouches[0];
+  // Hide clone to allow elementFromPoint to find the real target
   _tdClone.style.display='none';
   const below=document.elementFromPoint(t.clientX,t.clientY);
   const targetBlock=below?.closest('.cat-block');
   const targetType=targetBlock?.dataset.type;
   // Cleanup
-  document.body.removeChild(_tdClone); _tdClone=null;
+  if(_tdClone.parentNode) _tdClone.parentNode.removeChild(_tdClone);
+  _tdClone=null;
+  if(_tdOrigEl){ _tdOrigEl.style.opacity=''; _tdOrigEl.style.transition=''; }
   document.querySelectorAll('.cat-block').forEach(b=>{
     b.classList.remove('drag-over');
     b.style.opacity=''; b.style.transition='';
   });
   if(targetType&&targetType!==_tdSrcType){
     dragSrcType=_tdSrcType;
-    await onHoldingDrop({preventDefault:()=>{}},targetType);
+    await onHoldingDrop(null,targetType);
   }
   _tdSrcType=null; _tdOrigEl=null;
 }
@@ -3658,8 +3682,8 @@ function onHoldingDragLeave(e){
 
 async function onHoldingDrop(e, targetType){
   if(e&&e.preventDefault) e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  document.querySelectorAll('.cat-block').forEach(b=>{b.classList.remove('drag-source');b.style.opacity='';});
+  // Remove all drag state (works for both mouse and touch)
+  document.querySelectorAll('.cat-block').forEach(b=>{b.classList.remove('drag-over');b.classList.remove('drag-source');b.style.opacity='';});
   if(!dragSrcType || dragSrcType === targetType){ dragSrcType=null; return; }
   const container = document.getElementById('h-categories');
   if(!container){ dragSrcType=null; return; }
