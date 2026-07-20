@@ -892,14 +892,14 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
         <div class="card">
           <div class="card-title">By asset type</div>
           <div class="card-sub">Portfolio weight by category</div>
-          <div id="alloc-type-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
+          <div id="alloc-type-container" style="width:100%;min-height:200px;display:flex;align-items:center;justify-content:center">
             <div class="spin" style="width:24px;height:24px"></div>
           </div>
         </div>
         <div class="card">
           <div class="card-title">Investment portfolio breakdown</div>
           <div class="card-sub">Stocks, ETFs, crypto &amp; bonds only</div>
-          <div id="alloc-hold-container" style="width:100%;min-height:260px;display:flex;align-items:center;justify-content:center">
+          <div id="alloc-hold-container" style="width:100%;min-height:200px;display:flex;align-items:center;justify-content:center">
             <div class="spin" style="width:24px;height:24px"></div>
           </div>
         </div>
@@ -1145,8 +1145,10 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 
 function showPage(name,btn){
   localStorage.setItem('fh_page', name);
-  // Scroll to top instantly on every navigation (fixes iOS zoom/offset)
-  window.scrollTo({top:0,behavior:'instant'});
+  // Scroll to top — multiple methods for iOS Safari compatibility
+  window.scrollTo(0,0);
+  document.documentElement.scrollTop=0;
+  document.body.scrollTop=0;
   // Sync bottom tab bar active state
   document.querySelectorAll('.bottom-tab').forEach(t=>t.classList.remove('active'));
   const mobilePageMap={overview:'overview',holdings:'holdings',cashflow:'cashflow',insights:'rpt-insights',reports:'rpt-insights',settings:'settings'};
@@ -1177,7 +1179,7 @@ function showPage(name,btn){
   // Show live price indicator only on holdings page
   document.body.className = document.body.className.replace(/page-\w+/g,'').trim();
   document.body.classList.add('page-'+name);
-  if(name==='insights'){ renderAllocation(); renderInsights(); }
+  if(name==='insights'){ renderAllocation(); renderInsights(); requestAnimationFrame(()=>{ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }); }
   // prices only refresh manually via the Refresh button
   if(name==='cashflow'){
     // Reset cashflow to main view if form was open
@@ -1206,7 +1208,7 @@ function showPage(name,btn){
     });
   }
   if(name==='settings'){ renderSettings(); renderRecurCalendar(); loadSnapshots(); }
-  if(name==='reports') renderReports();
+  if(name==='reports'){ renderReports(); requestAnimationFrame(()=>{ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }); }
   // Hide FAB when not on cashflow
   if(name!=='cashflow'){ const fab=document.getElementById('cf-fab'); if(fab) fab.style.display='none'; }
 }
@@ -2374,7 +2376,7 @@ function renderAllocation(){
         const containerId=`alloc-breakdown-${type}`;
         html+=`<div class="card">
           <div class="card-title" style="margin-bottom:0.5rem">${TYPE_LABELS[type]||type} composition</div>
-          <div id="${containerId}" style="width:100%;min-height:${window.innerWidth<=768?'260px':'220px'};display:flex;align-items:center;justify-content:center">
+          <div id="${containerId}" style="width:100%;min-height:${isMob?'180px':'220px'};display:flex;align-items:center;justify-content:center">
             <div class="spin" style="width:20px;height:20px"></div>
           </div>
         </div>`;
@@ -2404,7 +2406,7 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
 
   const isMob=window.innerWidth<=768;
   const W=container.clientWidth>50?container.clientWidth:(isMob?320:400);
-  const H=isMob?260:320;
+  const H=isMob?210:320;
   const cx=W/2, cy=H/2;
   const outerR=Math.min(W,H)*0.27;
   const innerR=outerR*0.52;
