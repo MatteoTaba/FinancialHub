@@ -553,7 +553,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
       <div style="display:flex;gap:8px;margin-bottom:1rem;align-items:center">
         <div style="position:relative;flex:1">
           <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px"></i>
-          <input type="text" id="cf-search" placeholder="Search transactions across all accounts…"
+          <input type="text" id="cf-search" placeholder="Search transactions"
             oninput="onCfSearch(this.value)"
             style="width:100%;padding:8px 10px 8px 32px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px">
         </div>
@@ -834,11 +834,11 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
     <!-- Recurrences calendar -->
     <div class="card" style="margin-bottom:1rem">
       <div class="card-header">
-        <div class="card-title">Recurring transactions</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="btn btn-sm" onclick="recurCalPrev()"><i class="ti ti-chevron-left"></i></button>
-          <span id="recur-cal-label" style="font-size:13px;font-weight:600;min-width:120px;text-align:center"></span>
-          <button class="btn btn-sm" onclick="recurCalNext()"><i class="ti ti-chevron-right"></i></button>
+        <div class="card-title" style="white-space:nowrap">Recurring transactions</div>
+        <div style="display:flex;align-items:center;gap:2px">
+          <button class="btn btn-sm" onclick="recurCalPrev()" style="padding:3px 7px;min-width:0"><i class="ti ti-chevron-left" style="font-size:12px"></i></button>
+          <span id="recur-cal-label" style="font-size:12px;font-weight:600;text-align:center;padding:0 4px"></span>
+          <button class="btn btn-sm" onclick="recurCalNext()" style="padding:3px 7px;min-width:0"><i class="ti ti-chevron-right" style="font-size:12px"></i></button>
         </div>
       </div>
       <div id="recur-calendar"></div>
@@ -1179,7 +1179,14 @@ function showPage(name,btn){
   // Show live price indicator only on holdings page
   document.body.className = document.body.className.replace(/page-\w+/g,'').trim();
   document.body.classList.add('page-'+name);
-  if(name==='insights'){ renderAllocation(); renderInsights(); requestAnimationFrame(()=>{ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }); }
+  if(name==='insights'){
+    renderAllocation(); renderInsights();
+    // Re-render allocation after paint so container.clientWidth is correct
+    requestAnimationFrame(()=>{
+      renderAllocation();
+      window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0;
+    });
+  }
   // prices only refresh manually via the Refresh button
   if(name==='cashflow'){
     // Reset cashflow to main view if form was open
@@ -2376,7 +2383,7 @@ function renderAllocation(){
         const containerId=`alloc-breakdown-${type}`;
         html+=`<div class="card">
           <div class="card-title" style="margin-bottom:0.5rem">${TYPE_LABELS[type]||type} composition</div>
-          <div id="${containerId}" style="width:100%;min-height:${isMob?'180px':'220px'};display:flex;align-items:center;justify-content:center">
+          <div id="${containerId}" style="width:100%;min-height:${window.innerWidth<=768?'180px':'220px'};display:flex;align-items:center;justify-content:center">
             <div class="spin" style="width:20px;height:20px"></div>
           </div>
         </div>`;
