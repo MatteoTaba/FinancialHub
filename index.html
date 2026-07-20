@@ -42,8 +42,9 @@
   --shadow-md: var(--card-shadow);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
-.layout{display:flex;flex-direction:column;min-height:100vh;position:relative}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+.layout{display:flex;flex-direction:column;height:100%;overflow:hidden;position:relative}
 
 /* ── Atmospheric background glow (Meridian signature) ── */
 .layout::before,.layout::after{content:'';position:fixed;pointer-events:none;border-radius:50%;z-index:0}
@@ -72,7 +73,7 @@ body.page-holdings #live-price-indicator{display:flex}
 .nav-item i{font-size:15px;flex-shrink:0}
 
 /* ── Main ── */
-.main{padding:2rem 2.5rem;flex:1;max-width:1240px;margin:0 auto;width:100%;position:relative;z-index:1}
+.main{padding:2rem 2.5rem;flex:1;max-width:1240px;margin:0 auto;width:100%;position:relative;z-index:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0}
 .page{display:none}.page.active{display:block}
 
 /* ── Overview stat cards (Meridian KpiCard) ── */
@@ -262,7 +263,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 @media(min-width:769px){ .drag-handle { display: none; } }
 .cat-header:not(.open):hover { border-color: rgba(16,212,176,0.15); }
 .cat-header.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
-.cat-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.cat-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
 .cat-info { flex: 1; }
 .cat-name { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
 .cat-info{flex:1;min-width:0}.cat-count { font-size: 12px; color: var(--text2); margin-top: 1px; }
@@ -370,7 +371,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 @media(max-width:768px){
   .bottom-tabs{display:flex}
   .tabnav{display:none}
-  .main{padding:1rem;padding-bottom:80px}
+  .main{padding:1rem;padding-bottom:80px;height:100%}
   .topbar{padding:0 1rem;height:52px}
   .topbar-left>div:last-child{display:none}
   .mobile-subnav{display:flex}
@@ -419,7 +420,8 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .card{padding:1rem}
   .cat-header{padding:0.75rem 0.875rem;gap:8px}
   .cat-header .drag-handle{display:none}
-  .cat-icon{width:32px;height:32px;font-size:15px}
+  .cat-icon{width:34px;height:34px;font-size:15px}
+  .cf-account-icon{width:34px;height:34px;font-size:15px}
   .cat-info{min-width:0;flex:1;overflow:hidden}
   .cat-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .cat-count{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -919,7 +921,12 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
       <div class="card" style="margin-bottom:0.75rem">
         <div class="card-header">
           <div><div class="card-title">Monthly income &amp; outcomes</div><div class="card-sub">Salary period: 27th → 26th</div></div>
-          <div id="insights-year-sel-wrap" style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:120px"></div>
+          <div style="position:relative">
+            <button id="insights-year-btn" onclick="toggleYearDropdown()" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:var(--radius-xs);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;min-width:64px;justify-content:space-between">
+              <span id="insights-year-label">—</span><i class="ti ti-chevron-down" style="font-size:11px;opacity:0.6"></i>
+            </button>
+            <div id="insights-year-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:50;min-width:80px;overflow:hidden"></div>
+          </div>
         </div>
         <div class="chart-wrap" style="height:260px"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
       </div>
@@ -1147,19 +1154,10 @@ function showConfirm(msg, title='', danger=false){
 function fmtPct(n){ return (n>=0?'+':'')+Number(n).toFixed(2)+'%'; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
-// Scroll to top — works on both iOS Safari and Android Chrome
+// Scroll to top — .main is the scroll container, not window
 function scrollToTop(){
-  // Method 1: window scroll APIs
-  if(document.scrollingElement) document.scrollingElement.scrollTop=0;
-  window.scrollTo(0,0);
-  document.documentElement.scrollTop=0;
-  document.body.scrollTop=0;
-  // Method 2: scroll the active page element itself
-  const activePage=document.querySelector('.page.active');
-  if(activePage) activePage.scrollTop=0;
-  // Method 3: scrollIntoView on the first child — most reliable on Android Chrome
-  const firstEl=activePage?.firstElementChild;
-  if(firstEl) firstEl.scrollIntoView({block:'start',behavior:'instant'});
+  const main=document.querySelector('.main');
+  if(main){ main.scrollTop=0; if(main.scrollTo) main.scrollTo(0,0); }
 }
 
 function showPage(name,btn){
@@ -2093,16 +2091,32 @@ function isOutcomeTx(t){ return t.type==='expense'||t.type==='purchase'; }
 
 // Year filter state for monthly chart
 let insightsYear = null; // null = all years
+function toggleYearDropdown(){
+  const dd=document.getElementById('insights-year-dropdown');
+  if(!dd) return;
+  const isOpen=dd.style.display!=='none';
+  dd.style.display=isOpen?'none':'block';
+  if(!isOpen){
+    // Close on outside click
+    setTimeout(()=>document.addEventListener('click',function close(e){
+      if(!e.target.closest('#insights-year-dropdown')&&!e.target.closest('#insights-year-btn')){
+        dd.style.display='none'; document.removeEventListener('click',close);
+      }
+    }),10);
+  }
+}
 
 function renderInsights(){
   // Populate year selector
   const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort((a,b)=>b-a);
   if(insightsYear===null && years.length) insightsYear=years[0];
-  const wrap=document.getElementById('insights-year-sel-wrap');
-  if(wrap){
-    wrap.innerHTML=years.map(y=>`<button class="period-btn${y===insightsYear?' active':''}"
-      onclick="insightsYear=${y};document.querySelectorAll('#insights-year-sel-wrap .period-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderMonthlyChart()"
-      style="font-size:11px;padding:3px 8px">${y}</button>`).join('');
+  const lbl=document.getElementById('insights-year-label');
+  const dd=document.getElementById('insights-year-dropdown');
+  if(lbl) lbl.textContent=insightsYear||'—';
+  if(dd){
+    dd.innerHTML=years.map(y=>`<button onclick="insightsYear=${y};document.getElementById('insights-year-label').textContent=${y};document.getElementById('insights-year-dropdown').style.display='none';renderMonthlyChart()"
+      style="display:block;width:100%;padding:8px 12px;border:none;background:${y===insightsYear?'var(--surface2)':'transparent'};color:${y===insightsYear?'var(--accent)':'var(--text)'};font-size:13px;font-weight:${y===insightsYear?'600':'400'};text-align:left;cursor:pointer;font-family:inherit"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='${y===insightsYear?'var(--surface2)':'transparent'}'">${y}</button>`).join('');
   }
   renderLiquidityChart();
   renderMonthlyChart();
