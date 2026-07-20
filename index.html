@@ -309,7 +309,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 #cf-fab:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(16,212,176,0.45)}
 /* Account blocks */
 .cf-account-block{background:linear-gradient(145deg,rgba(22,25,39,1),rgba(18,21,34,1));border:1px solid rgba(38,45,61,0.6);border-radius:var(--radius);margin-bottom:12px;box-shadow:var(--card-shadow);overflow:hidden}
-.cf-account-header{display:flex;align-items:center;gap:14px;padding:1rem 1.25rem;cursor:pointer;transition:background 0.12s}
+.cf-account-header{display:flex;align-items:center;gap:14px;padding:1.125rem 1.375rem;cursor:pointer;transition:background 0.12s}
 .cf-account-header:hover{background:rgba(255,255,255,0.03)}
 .cf-account-header.open{border-bottom:1px solid var(--border)}
 .cf-account-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
@@ -393,7 +393,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .cat-total-val{font-size:14px}
   .cf-tx-row{padding:10px 0.875rem;gap:8px}
   .cf-tx-amount{font-size:13px}
-  .cf-account-header{padding:12px 0.875rem}
+  .cf-account-header{padding:0.75rem 0.875rem}
   .rpt-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .rpt-section{padding:1rem}
   .rpt-summary{grid-template-columns:1fr 1fr}
@@ -4224,6 +4224,9 @@ sessionStorage.setItem('fh_loaded', '1');
 const lastPage = isReload ? (localStorage.getItem('fh_page')||'overview') : 'overview';
 const matchingBtn=[...document.querySelectorAll('.nav-item')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+lastPage+"'"));
 showPage(lastPage,matchingBtn);
+// Disable browser scroll restoration — we manage it ourselves
+if('scrollRestoration' in history) history.scrollRestoration='manual';
+
 loadAll().then(()=>{ refreshPrices(); loadCashflow(); });
 // Register PWA service worker
 if('serviceWorker' in navigator){
