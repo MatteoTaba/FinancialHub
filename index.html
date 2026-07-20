@@ -3133,40 +3133,44 @@ function renderRecurCalendar(){
   let trail = 1;
   while(cellCount%7!==0){ html+=`<td class="other-month"><div class="cal-day-num">${trail++}</div></td>`; cellCount++; }
   html+='</tr></tbody></table>';
-  // Mobile: Google Calendar-style grid with event pills in cells
+  // Mobile: Google Calendar-style grid — fixed cell size, no overflow
   if(window.innerWidth <= 768){
+    const CELL_H = 62; // px — fixed for all cells
     const DNAMES=['M','T','W','T','F','S','S'];
-    let gcHtml=`<div style="display:grid;grid-template-columns:repeat(7,1fr);width:100%">`;
+    // Cell style helpers
+    const cellBase = `box-sizing:border-box;height:${CELL_H}px;overflow:hidden;padding:3px 3px 2px;border:1px solid rgba(38,45,61,0.22);`;
+    let gcHtml=`<div style="display:grid;grid-template-columns:repeat(7,1fr);width:100%;overflow:hidden;box-sizing:border-box">`;
     // Day headers
     DNAMES.forEach(d=>{
-      gcHtml+=`<div style="text-align:center;font-size:9px;font-weight:700;color:var(--text3);padding:4px 0;letter-spacing:0.04em;text-transform:uppercase">${d}</div>`;
+      gcHtml+=`<div style="box-sizing:border-box;text-align:center;font-size:9px;font-weight:700;color:var(--text3);padding:5px 0 4px;text-transform:uppercase">${d}</div>`;
     });
     // Leading grey days
     for(let i=startOffset-1;i>=0;i--){
-      gcHtml+=`<div style="border:1px solid rgba(38,45,61,0.25);min-height:54px;padding:2px 3px"><div style="font-size:11px;color:var(--text3);opacity:0.35;font-weight:500;margin-bottom:2px">${daysInPrev-i}</div></div>`;
+      gcHtml+=`<div style="${cellBase}background:rgba(255,255,255,0.01)"><span style="font-size:11px;color:var(--text3);opacity:0.3">${daysInPrev-i}</span></div>`;
     }
     // Current month
     for(let d=1;d<=daysInMonth;d++){
       const isToday=today.getFullYear()===recurCalYear&&today.getMonth()===recurCalMonth&&today.getDate()===d;
       const dayEvents=byDay[d]||[];
+      const todayBg=isToday?'background:rgba(16,212,176,0.06);border-color:rgba(16,212,176,0.35);':'';
       const numEl=isToday
-        ?`<div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:var(--accent);color:#0e1117;border-radius:50%;font-size:10px;font-weight:700;margin-bottom:2px">${d}</div>`
-        :`<div style="font-size:11px;color:${dayEvents.length?'var(--text)':'var(--text2)'};font-weight:${dayEvents.length?'600':'400'};margin-bottom:2px">${d}</div>`;
-      let cellContent=numEl;
-      dayEvents.slice(0,3).forEach(r=>{
+        ?`<div style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:var(--accent);color:#0e1117;border-radius:50%;font-size:9px;font-weight:800;margin-bottom:2px;flex-shrink:0">${d}</div>`
+        :`<div style="font-size:11px;color:${dayEvents.length?'var(--text)':'var(--text3)'};font-weight:${dayEvents.length?'600':'400'};margin-bottom:2px;line-height:1">${d}</div>`;
+      let pills='';
+      dayEvents.slice(0,2).forEach(r=>{
         const cat=cfCategories.find(c=>c.id===r.category_id);
         const color=cat?.color||'var(--accent)';
         const label=r.description||cat?.name||'';
-        cellContent+=`<div style="background:${color};color:#fff;font-size:8.5px;font-weight:600;padding:1px 3px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px;width:100%">${label}</div>`;
+        pills+=`<div style="background:${color};color:#fff;font-size:8px;font-weight:700;padding:1px 3px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px;line-height:1.4">${label}</div>`;
       });
-      if(dayEvents.length>3) cellContent+=`<div style="font-size:8px;color:var(--text3);padding-left:2px">+${dayEvents.length-3}</div>`;
-      gcHtml+=`<div style="border:1px solid rgba(38,45,61,0.25);min-height:54px;padding:2px 3px;${isToday?'background:rgba(16,212,176,0.05);border-color:rgba(16,212,176,0.3)':''}">${cellContent}</div>`;
+      const more=dayEvents.length>2?`<div style="font-size:8px;color:var(--text3);line-height:1">+${dayEvents.length-2}</div>`:'';
+      gcHtml+=`<div style="${cellBase}${todayBg}">${numEl}${pills}${more}</div>`;
     }
     // Trailing grey days
-    const usedCells=(startOffset+daysInMonth);
+    const usedCells=startOffset+daysInMonth;
     const trailCount=(7-usedCells%7)%7;
     for(let i=1;i<=trailCount;i++){
-      gcHtml+=`<div style="border:1px solid rgba(38,45,61,0.25);min-height:54px;padding:2px 3px"><div style="font-size:11px;color:var(--text3);opacity:0.35;font-weight:500;margin-bottom:2px">${i}</div></div>`;
+      gcHtml+=`<div style="${cellBase}background:rgba(255,255,255,0.01)"><span style="font-size:11px;color:var(--text3);opacity:0.3">${i}</span></div>`;
     }
     gcHtml+='</div>';
     calEl.innerHTML=gcHtml;
