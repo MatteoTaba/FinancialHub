@@ -342,6 +342,14 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 .bottom-tabs{display:none;position:fixed;bottom:0;left:0;right:0;height:64px;background:rgba(14,17,23,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.07);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
 .bottom-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--text3);font-size:10px;font-weight:500;font-family:inherit;cursor:pointer;transition:color 0.15s;padding:6px 4px}
 .bottom-tab i{font-size:20px;line-height:1}
+@media(max-width:768px){
+  .btn:active{transform:scale(0.95);opacity:0.8;transition:none}
+  .bottom-tab:active{opacity:0.6;transition:none}
+  .holding-box:active{transform:scale(0.97);transition:none}
+  .cat-header:active{opacity:0.8;transition:none}
+  .cf-account-header:active{opacity:0.8;transition:none}
+  .bottom-tab-active-pulse{animation:none}
+}
 .bottom-tab.active{color:var(--accent)}
 .bottom-tab.active i{
   background:rgba(16,212,176,0.12);
@@ -589,7 +597,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
           <div class="form-grid">
             <div class="form-group form-full">
               <label>Amount (€)</label>
-              <input type="number" id="cf-amount" placeholder="0.00" step="any" min="0" style="font-size:22px;font-weight:700;padding:12px">
+              <input type="number" inputmode="decimal" id="cf-amount" placeholder="0.00" step="any" min="0" style="font-size:22px;font-weight:700;padding:12px">
             </div>
             <div class="form-group form-full">
               <label>Description</label>
@@ -664,15 +672,15 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
               <div class="form-grid" style="margin-bottom:0">
                 <div class="form-group">
                   <label>Quantity purchased</label>
-                  <input type="number" id="inv-qty" placeholder="0" step="any" min="0" oninput="calcInvTotal()">
+                  <input type="number" inputmode="decimal" id="inv-qty" placeholder="0" step="any" min="0" oninput="calcInvTotal()">
                 </div>
                 <div class="form-group">
                   <label>Price per unit (€)</label>
-                  <input type="number" id="inv-price" placeholder="0.00" step="any" min="0" oninput="calcInvTotal()">
+                  <input type="number" inputmode="decimal" id="inv-price" placeholder="0.00" step="any" min="0" oninput="calcInvTotal()">
                 </div>
                 <div class="form-group form-full">
                   <label>Total cost (€)</label>
-                  <input type="number" id="inv-total" placeholder="0.00" step="any" min="0" oninput="calcInvFromTotal()">
+                  <input type="number" inputmode="decimal" id="inv-total" placeholder="0.00" step="any" min="0" oninput="calcInvFromTotal()">
                 </div>
                 <div class="form-group form-full">
                   <label>Purchased with</label>
@@ -685,15 +693,15 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
               <div class="form-grid" style="margin-bottom:0">
                 <div class="form-group">
                   <label>Quantity sold</label>
-                  <input type="number" id="inv-sale-qty" placeholder="0" step="any" min="0" oninput="calcSaleTotal()">
+                  <input type="number" inputmode="decimal" id="inv-sale-qty" placeholder="0" step="any" min="0" oninput="calcSaleTotal()">
                 </div>
                 <div class="form-group">
                   <label>Price per unit (€)</label>
-                  <input type="number" id="inv-sale-price" placeholder="0.00" step="any" min="0" oninput="calcSaleTotal()">
+                  <input type="number" inputmode="decimal" id="inv-sale-price" placeholder="0.00" step="any" min="0" oninput="calcSaleTotal()">
                 </div>
                 <div class="form-group form-full">
                   <label>Total revenue (€)</label>
-                  <input type="number" id="inv-sale-total" placeholder="0.00" step="any" min="0" oninput="calcSaleFromTotal()">
+                  <input type="number" inputmode="decimal" id="inv-sale-total" placeholder="0.00" step="any" min="0" oninput="calcSaleFromTotal()">
                 </div>
                 <div class="form-group form-full">
                   <label>Proceeds credited to</label>
@@ -714,7 +722,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
               <div class="form-grid" style="margin-bottom:0">
                 <div class="form-group form-full">
                   <label>Amount (€)</label>
-                  <input type="number" id="inv-amount" placeholder="0.00" step="any" min="0" style="font-size:18px;font-weight:700;padding:10px">
+                  <input type="number" inputmode="decimal" id="inv-amount" placeholder="0.00" step="any" min="0" style="font-size:18px;font-weight:700;padding:10px">
                 </div>
                 <div class="form-group form-full">
                   <label id="inv-expinc-acct-label">From account</label>
@@ -1037,11 +1045,11 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
       </div>
       <div class="form-group" id="h-qty-wrap" style="display:none">
         <label>Quantity</label>
-        <input type="number" id="h-qty" placeholder="0" step="any" min="0">
+        <input type="number" inputmode="decimal" id="h-qty" placeholder="0" step="any" min="0">
       </div>
       <div class="form-group">
         <label id="h-cost-label">Current balance (€)</label>
-        <input type="number" id="h-cost" placeholder="0.00" step="any" min="0">
+        <input type="number" inputmode="decimal" id="h-cost" placeholder="0.00" step="any" min="0">
       </div>
     </div>
     <div class="modal-footer">
@@ -1065,8 +1073,8 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
       </div>
       <div class="form-group"><label>Ticker</label><input type="text" id="tx-ticker" placeholder="e.g. AAPL" style="text-transform:uppercase"></div>
       <div class="form-group"><label>Name</label><input type="text" id="tx-name" placeholder="e.g. Apple Inc."></div>
-      <div class="form-group"><label>Quantity</label><input type="number" id="tx-qty" placeholder="0" step="any" min="0"></div>
-      <div class="form-group"><label>Price per unit (€)</label><input type="number" id="tx-price" placeholder="0.00" step="any" min="0"></div>
+      <div class="form-group"><label>Quantity</label><input type="number" inputmode="decimal" id="tx-qty" placeholder="0" step="any" min="0"></div>
+      <div class="form-group"><label>Price per unit (€)</label><input type="number" inputmode="decimal" id="tx-price" placeholder="0.00" step="any" min="0"></div>
       <div class="form-group form-full"><label>Notes (optional)</label><input type="text" id="tx-notes" placeholder="Broker, account…"></div>
     </div>
     <div class="modal-footer">
@@ -1431,6 +1439,7 @@ function renderHoldings(){
       </div>
     </div>`;
   }).join('');
+  initTouchDnD();
 }
 
 function toggleCat(header){
@@ -1626,7 +1635,7 @@ function showInputDialog(title, label, defaultVal=''){
     document.getElementById('dialog-title').style.display = '';
     document.getElementById('dialog-message').innerHTML =
       `<div style="margin-bottom:8px;font-size:13px;color:var(--text2)">${label}</div>
-       <input type="text" id="dialog-input" value="${defaultVal.replace(/"/g,'&quot;')}"
+       <input type="text" id="dialog-input" value="${defaultVal.replace(/"/g,'&quot;')}" inputmode="decimal"
          style="width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;box-sizing:border-box">`;
     const footer = document.getElementById('dialog-footer');
     footer.innerHTML = '';
@@ -2022,6 +2031,7 @@ function renderHoldingBoxes(){
       <div class="holding-box-link"><i class="ti ti-arrow-right"></i> View details</div>
     </div>`;
   }).join('');
+  initTouchDnD();
 }
 
 // ── INSIGHTS ──
@@ -2639,6 +2649,7 @@ function renderCashflow(){
       <div class="cf-account-body">${subGroups}</div>
     </div>`;
   }).join('');
+  initTouchDnD();
 }
 
 function cfTxRow(t,h){
@@ -2761,9 +2772,20 @@ function showCfForm(){
     return;
   }
   document.getElementById('cf-main').style.display='none';
-  document.getElementById('cf-form').style.display='';
+  const cfForm=document.getElementById('cf-form');
+  cfForm.style.display='';
   document.getElementById('cf-fab').style.display='none';
   populateCfForm();
+  // Mobile: swipe down anywhere on form to close
+  if(window.innerWidth<=768){
+    let _sy=0;
+    cfForm._onTS=(e)=>{ _sy=e.touches[0].clientY; };
+    cfForm._onTE=(e)=>{ if(e.changedTouches[0].clientY-_sy>70) showCfMain(); };
+    cfForm.removeEventListener('touchstart',cfForm._onTS);
+    cfForm.removeEventListener('touchend',cfForm._onTE);
+    cfForm.addEventListener('touchstart',cfForm._onTS,{passive:true});
+    cfForm.addEventListener('touchend',cfForm._onTE,{passive:true});
+  }
 }
 function showCfMain(){
   editTxId=null;
@@ -3146,7 +3168,8 @@ function renderRecurCalendar(){
       </div>`;
     }).join('');
     const moreHtml = dayEvents.length>3 ? `<div style="font-size:9px;color:var(--text3);padding:1px 4px">+${dayEvents.length-3} more</div>` : '';
-    html+=`<td${isToday?' class="today"':''}><div class="cal-day-num">${d}</div>${evHtml}${moreHtml}</td>`;
+    const tdAttrs=dayEvents.length?` ${isToday?'class="today" ':''}onclick="showCalDayDetail(${d},${recurCalMonth},${recurCalYear})" style="cursor:pointer"`:isToday?' class="today"':'';
+    html+=`<td${tdAttrs}><div class="cal-day-num">${d}</div>${evHtml}${moreHtml}</td>`;
     cellCount++;
   }
   // Trailing days
@@ -3542,6 +3565,78 @@ async function bulkDeleteTx(){
 }
 
 // ─────────────────────────────────────────
+// TOUCH DRAG & DROP (HOLDINGS REORDER — MOBILE)
+// ─────────────────────────────────────────
+let _tdSrcType=null, _tdClone=null, _tdOrigEl=null, _tdOffY=0;
+
+function initTouchDnD(){
+  if(window.innerWidth>768) return;
+  document.querySelectorAll('.drag-handle').forEach(h=>{
+    // Replace node to clear old listeners
+    const nh=h.cloneNode(true);
+    h.parentNode.replaceChild(nh,h);
+    nh.addEventListener('touchstart',_tdStart,{passive:false});
+  });
+}
+
+function _tdStart(e){
+  e.preventDefault();
+  const handle=e.currentTarget;
+  const block=handle.closest('.cat-block');
+  if(!block) return;
+  _tdSrcType=block.dataset.type;
+  _tdOrigEl=block;
+  const t=e.touches[0];
+  const rect=block.getBoundingClientRect();
+  _tdOffY=t.clientY-rect.top;
+
+  // Clone for visual drag ghost
+  _tdClone=block.cloneNode(true);
+  _tdClone.style.cssText=`position:fixed;z-index:999;width:${rect.width}px;left:${rect.left}px;top:${rect.top}px;opacity:0.92;pointer-events:none;transform:scale(1.02) translateZ(0);box-shadow:0 12px 40px rgba(0,0,0,0.5);border-radius:var(--radius);will-change:transform;transition:none`;
+  document.body.appendChild(_tdClone);
+  block.style.opacity='0.25';
+  block.style.transition='none';
+
+  document.addEventListener('touchmove',_tdMove,{passive:false});
+  document.addEventListener('touchend',_tdEnd,{passive:false});
+}
+
+function _tdMove(e){
+  if(!_tdClone) return;
+  e.preventDefault();
+  const t=e.touches[0];
+  _tdClone.style.top=(t.clientY-_tdOffY)+'px';
+  // Highlight drop target
+  _tdClone.style.pointerEvents='none';
+  const below=document.elementFromPoint(t.clientX,t.clientY);
+  document.querySelectorAll('.cat-block').forEach(b=>b.classList.remove('drag-over'));
+  const target=below?.closest('.cat-block');
+  if(target&&target!==_tdOrigEl) target.classList.add('drag-over');
+}
+
+async function _tdEnd(e){
+  document.removeEventListener('touchmove',_tdMove);
+  document.removeEventListener('touchend',_tdEnd);
+  if(!_tdClone) return;
+  const t=e.changedTouches[0];
+  _tdClone.style.display='none';
+  const below=document.elementFromPoint(t.clientX,t.clientY);
+  const targetBlock=below?.closest('.cat-block');
+  const targetType=targetBlock?.dataset.type;
+  // Cleanup
+  document.body.removeChild(_tdClone); _tdClone=null;
+  document.querySelectorAll('.cat-block').forEach(b=>{
+    b.classList.remove('drag-over');
+    b.style.opacity=''; b.style.transition='';
+  });
+  if(targetType&&targetType!==_tdSrcType){
+    dragSrcType=_tdSrcType;
+    await onHoldingDrop({preventDefault:()=>{}},targetType);
+  }
+  _tdSrcType=null; _tdOrigEl=null;
+}
+
+// ─────────────────────────────────────────
 // DRAG & DROP (HOLDINGS REORDER)
 // ─────────────────────────────────────────
 function onHoldingDragStart(e, type){
@@ -3562,7 +3657,7 @@ function onHoldingDragLeave(e){
 }
 
 async function onHoldingDrop(e, targetType){
-  e.preventDefault();
+  if(e&&e.preventDefault) e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
   document.querySelectorAll('.cat-block').forEach(b=>{b.classList.remove('drag-source');b.style.opacity='';});
   if(!dragSrcType || dragSrcType === targetType){ dragSrcType=null; return; }
@@ -4095,6 +4190,10 @@ loadAll().then(()=>{ refreshPrices(); loadCashflow(); });
 // Register PWA service worker
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));
+}
+// Lock to portrait on PWA/mobile
+if(screen.orientation&&screen.orientation.lock){
+  screen.orientation.lock('portrait').catch(()=>{});
 }
 // Footer timestamp
 function updateFooterTime(){
