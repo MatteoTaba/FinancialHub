@@ -1950,8 +1950,8 @@ function renderTrendChart(){
         return g;
       },
       borderWidth:2.5,
-      pointRadius:3,
-      pointHoverRadius:6,
+      pointRadius:0,
+      pointHoverRadius:4,
       pointBackgroundColor:lineColor,
       tension:0.4,
       fill:true
@@ -2173,7 +2173,7 @@ function renderLiquidityChart(){
   if(liquidityChart) liquidityChart.destroy();
   liquidityChart=new Chart(el,{
     type:'line',
-    data:{labels:trimLabels,datasets:[{data:trimData,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,0.08)',borderWidth:2,tension:0.3,fill:true,pointRadius:trimData.length>24?0:3,pointBackgroundColor:'#0ea5e9',pointHoverRadius:5}]},
+    data:{labels:trimLabels,datasets:[{data:trimData,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,0.08)',borderWidth:2,tension:0.3,fill:true,pointRadius:0,pointHoverRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
   });
 }
@@ -2328,7 +2328,7 @@ function renderInvestedChart(){
   if(investedChart) investedChart.destroy();
   investedChart=new Chart(el,{
     type:'line',
-    data:{labels,datasets:[{data,borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.07)',borderWidth:2,borderDash:[6,3],tension:0,fill:true,pointRadius:3,pointBackgroundColor:'#818cf8',pointHoverRadius:5}]},
+    data:{labels,datasets:[{data,borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.07)',borderWidth:2,borderDash:[6,3],tension:0,fill:true,pointRadius:0,pointHoverRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
   });
 }
