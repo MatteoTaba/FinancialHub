@@ -366,9 +366,10 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .holding-box-value{font-size:16px}
   .holding-box-ghost{font-size:70px}
   .cat-body{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .cat-body table{font-size:10px}
-  .cat-body th,.cat-body td{padding:5px 4px;white-space:nowrap}
-  .cat-body table{min-width:unset}
+  .cat-body table{font-size:11px;width:100%}
+  .cat-body th,.cat-body td{padding:8px 6px;white-space:nowrap}
+  .cat-body td:first-child,.cat-body th:first-child{width:auto}
+  .cat-body .holding-actions{display:flex!important;justify-content:flex-end;gap:6px;min-width:80px}
   .cat-body .cat-simple-row td,.cat-body .cat-simple-row th{padding:8px 6px}
   .cat-total-val{font-size:14px}
   .cf-tx-row{padding:10px 0.875rem;gap:8px}
@@ -2459,7 +2460,7 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   left.forEach(a=>{ if(a.displayAngle>Math.PI) a.displayAngle-=2*Math.PI; });
 
   // Build SVG
-  let svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:hidden;display:block">`;
+  let svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" overflow="hidden" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:100%">`;
 
   // Draw slices
   arcs.forEach(a=>{
@@ -2485,7 +2486,7 @@ function renderDonutSVG(containerId, slices, total, textColor, dimColor){
   });
 
   svg+=`</svg>`;
-  container.innerHTML=svg;
+  container.innerHTML=`<div style="overflow:hidden;width:100%;border-radius:inherit">${svg}</div>`;
 }
 
 
@@ -3132,64 +3133,43 @@ function renderRecurCalendar(){
   let trail = 1;
   while(cellCount%7!==0){ html+=`<td class="other-month"><div class="cal-day-num">${trail++}</div></td>`; cellCount++; }
   html+='</tr></tbody></table>';
-  // Mobile: Google Calendar-style compact grid
+  // Mobile: Google Calendar-style grid with event pills in cells
   if(window.innerWidth <= 768){
     const DNAMES=['M','T','W','T','F','S','S'];
-    let gcHtml = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;width:100%">`;
-    // Day name headers
-    DNAMES.forEach(d=>{ gcHtml+=`<div style="text-align:center;font-size:10px;font-weight:600;color:var(--text3);padding:4px 0;text-transform:uppercase">${d}</div>`; });
-    // Leading days from prev month
+    let gcHtml=`<div style="display:grid;grid-template-columns:repeat(7,1fr);width:100%">`;
+    // Day headers
+    DNAMES.forEach(d=>{
+      gcHtml+=`<div style="text-align:center;font-size:9px;font-weight:700;color:var(--text3);padding:4px 0;letter-spacing:0.04em;text-transform:uppercase">${d}</div>`;
+    });
+    // Leading grey days
     for(let i=startOffset-1;i>=0;i--){
-      gcHtml+=`<div style="min-height:46px;padding:3px 2px;opacity:0.3"><div style="text-align:center;font-size:12px;color:var(--text3);font-weight:500;width:24px;height:24px;line-height:24px;margin:0 auto">${daysInPrev-i}</div></div>`;
+      gcHtml+=`<div style="border:1px solid rgba(38,45,61,0.25);min-height:54px;padding:2px 3px"><div style="font-size:11px;color:var(--text3);opacity:0.35;font-weight:500;margin-bottom:2px">${daysInPrev-i}</div></div>`;
     }
-    // Current month days
+    // Current month
     for(let d=1;d<=daysInMonth;d++){
       const isToday=today.getFullYear()===recurCalYear&&today.getMonth()===recurCalMonth&&today.getDate()===d;
       const dayEvents=byDay[d]||[];
-      const numStyle=isToday
-        ?'background:var(--accent);color:#0e1117;font-weight:700;border-radius:50%;'
-        :'color:var(--text);font-weight:500;';
-      gcHtml+=`<div style="min-height:46px;padding:2px;background:${dayEvents.length?'rgba(255,255,255,0.015)':'transparent'};border-radius:4px">
-        <div style="text-align:center;font-size:12px;${numStyle}width:24px;height:24px;line-height:24px;margin:0 auto 2px">${d}</div>`;
-      // Show up to 2 event dots/pills
-      dayEvents.slice(0,2).forEach(r=>{
+      const numEl=isToday
+        ?`<div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:var(--accent);color:#0e1117;border-radius:50%;font-size:10px;font-weight:700;margin-bottom:2px">${d}</div>`
+        :`<div style="font-size:11px;color:${dayEvents.length?'var(--text)':'var(--text2)'};font-weight:${dayEvents.length?'600':'400'};margin-bottom:2px">${d}</div>`;
+      let cellContent=numEl;
+      dayEvents.slice(0,3).forEach(r=>{
         const cat=cfCategories.find(c=>c.id===r.category_id);
         const color=cat?.color||'var(--accent)';
-        gcHtml+=`<div style="width:4px;height:4px;border-radius:50%;background:${color};margin:1px auto" title="${r.description||cat?.name}"></div>`;
+        const label=r.description||cat?.name||'';
+        cellContent+=`<div style="background:${color};color:#fff;font-size:8.5px;font-weight:600;padding:1px 3px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px;width:100%">${label}</div>`;
       });
-      if(dayEvents.length>2) gcHtml+=`<div style="text-align:center;font-size:8px;color:var(--text3);line-height:1">+${dayEvents.length-2}</div>`;
-      gcHtml+=`</div>`;
+      if(dayEvents.length>3) cellContent+=`<div style="font-size:8px;color:var(--text3);padding-left:2px">+${dayEvents.length-3}</div>`;
+      gcHtml+=`<div style="border:1px solid rgba(38,45,61,0.25);min-height:54px;padding:2px 3px;${isToday?'background:rgba(16,212,176,0.05);border-color:rgba(16,212,176,0.3)':''}">${cellContent}</div>`;
     }
-    // Trailing days
-    let trail=1;
-    let remaining=(7-(cellCount+daysInMonth)%7)%7;
-    for(let i=0;i<remaining;i++){
-      gcHtml+=`<div style="min-height:46px;padding:3px 2px;opacity:0.3"><div style="text-align:center;font-size:12px;color:var(--text3);font-weight:500;width:24px;height:24px;line-height:24px;margin:0 auto">${trail++}</div></div>`;
+    // Trailing grey days
+    const usedCells=(startOffset+daysInMonth);
+    const trailCount=(7-usedCells%7)%7;
+    for(let i=1;i<=trailCount;i++){
+      gcHtml+=`<div style="border:1px solid rgba(38,45,61,0.25);min-height:54px;padding:2px 3px"><div style="font-size:11px;color:var(--text3);opacity:0.35;font-weight:500;margin-bottom:2px">${i}</div></div>`;
     }
     gcHtml+='</div>';
-    // Events legend for this month
-    const allDays=Object.keys(byDay).map(Number).sort((a,b)=>a-b);
-    if(allDays.length){
-      gcHtml+=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(38,45,61,0.5);display:flex;flex-direction:column;gap:5px">`;
-      allDays.forEach(d=>{
-        (byDay[d]||[]).forEach(r=>{
-          const cat=cfCategories.find(c=>c.id===r.category_id);
-          const color=cat?.color||'var(--accent)';
-          const icon=cat?.icon||'ti-repeat';
-          const isToday=today.getFullYear()===recurCalYear&&today.getMonth()===recurCalMonth&&today.getDate()===d;
-          const dow=new Date(recurCalYear,recurCalMonth,d).toLocaleDateString('en-GB',{weekday:'short'});
-          gcHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0">
-            <div style="width:28px;height:28px;border-radius:6px;background:${color}18;color:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ${icon}" style="font-size:13px"></i></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.description||cat?.name||'Recurring'}</div>
-              <div style="font-size:10px;color:var(--text3)">${isToday?'Today':dow+' '+d} · ${fmt(r.amount)}</div>
-            </div>
-          </div>`;
-        });
-      });
-      gcHtml+='</div>';
-    }
-    calEl.innerHTML = gcHtml;
+    calEl.innerHTML=gcHtml;
     return;
   }
   calEl.innerHTML = '<div class="recur-cal-wrapper">' + html + '</div>';
