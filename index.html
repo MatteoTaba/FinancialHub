@@ -402,15 +402,11 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .ins-section-block{padding:1rem;margin-bottom:1rem}
   .ins-section-header{font-size:13px}
   /* Chart heights on mobile */
-  #monthly-chart{height:180px!important}
-  #yearly-income-chart,#yearly-outcome-chart{height:150px!important}
-  #savings-chart,#invested-chart,#liquidity-chart{height:160px!important}
-  canvas{max-height:240px}
-  .chart-wrap{height:180px !important}
-  #trend-chart{max-height:200px}
-  .chart-wrap[style*="height:260"]{height:220px !important}
-  .chart-wrap[style*="height:220"]{height:180px !important}
-  .chart-wrap[style*="height:200"]{height:160px !important}
+  #monthly-chart{height:170px!important}
+  #yearly-income-chart,#yearly-outcome-chart{height:130px!important}
+  #savings-chart,#invested-chart,#liquidity-chart{height:140px!important}
+  #trend-chart{height:180px!important}
+  .chart-wrap{height:140px!important}
   .recur-cal-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -1rem;padding:0 1rem}
   .recur-cal{font-size:10px;min-width:540px}
   .recur-cal td{min-height:44px;padding:2px}
@@ -923,9 +919,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
       <div class="card" style="margin-bottom:0.75rem">
         <div class="card-header">
           <div><div class="card-title">Monthly income &amp; outcomes</div><div class="card-sub">Salary period: 27th → 26th</div></div>
-          <div class="period-tabs" id="insights-year-sel-wrap">
-            <select id="insights-year-sel" style="border:1px solid var(--border2);border-radius:var(--radius-xs);padding:4px 10px;font-size:12px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer"></select>
-          </div>
+          <div id="insights-year-sel-wrap" style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:120px"></div>
         </div>
         <div class="chart-wrap" style="height:260px"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
       </div>
@@ -1153,14 +1147,19 @@ function showConfirm(msg, title='', danger=false){
 function fmtPct(n){ return (n>=0?'+':'')+Number(n).toFixed(2)+'%'; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
-// Scroll to top reliably on iOS Safari — called AFTER page is shown
+// Scroll to top — works on both iOS Safari and Android Chrome
 function scrollToTop(){
+  // Method 1: window scroll APIs
+  if(document.scrollingElement) document.scrollingElement.scrollTop=0;
   window.scrollTo(0,0);
   document.documentElement.scrollTop=0;
   document.body.scrollTop=0;
-  // Extra insurance: also reset the page element itself
+  // Method 2: scroll the active page element itself
   const activePage=document.querySelector('.page.active');
   if(activePage) activePage.scrollTop=0;
+  // Method 3: scrollIntoView on the first child — most reliable on Android Chrome
+  const firstEl=activePage?.firstElementChild;
+  if(firstEl) firstEl.scrollIntoView({block:'start',behavior:'instant'});
 }
 
 function showPage(name,btn){
@@ -1198,13 +1197,11 @@ function showPage(name,btn){
   document.body.className = document.body.className.replace(/page-\w+/g,'').trim();
   document.body.classList.add('page-'+name);
   if(name==='insights'){
-    renderAllocation(); renderInsights();
-    // Re-render after first paint so container.clientWidth is correct
+    // Render after page is visible so container.clientWidth is correct
     requestAnimationFrame(()=>{
-      renderAllocation();
+      renderAllocation(); renderInsights();
       scrollToTop();
-      // Second pass — catches any late layout shifts from chart rendering
-      setTimeout(scrollToTop, 80);
+      setTimeout(scrollToTop, 120);
     });
   }
   // prices only refresh manually via the Refresh button
@@ -2101,10 +2098,11 @@ function renderInsights(){
   // Populate year selector
   const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort((a,b)=>b-a);
   if(insightsYear===null && years.length) insightsYear=years[0];
-  const sel=document.getElementById('insights-year-sel');
-  if(sel){
-    sel.innerHTML=years.map(y=>`<option value="${y}"${y===insightsYear?'selected':''}>${y}</option>`).join('');
-    sel.onchange=e=>{ insightsYear=parseInt(e.target.value); renderMonthlyChart(); };
+  const wrap=document.getElementById('insights-year-sel-wrap');
+  if(wrap){
+    wrap.innerHTML=years.map(y=>`<button class="period-btn${y===insightsYear?' active':''}"
+      onclick="insightsYear=${y};document.querySelectorAll('#insights-year-sel-wrap .period-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderMonthlyChart()"
+      style="font-size:11px;padding:3px 8px">${y}</button>`).join('');
   }
   renderLiquidityChart();
   renderMonthlyChart();
