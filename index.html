@@ -1910,22 +1910,7 @@ function renderOverview(){
   if(pcEl){ pcEl.className='ov-hero-change'+(invGain<0?' neg':''); pcEl.innerHTML=(invGain>=0?'<i class="ti ti-trending-up"></i>':'<i class="ti ti-trending-down"></i>')+fmtPct(invGainPct)+' return'; }
   if(lvEl) lvEl.textContent=fmt(liqTotal);
 
-  // Change vs yesterday
-  const snaps=[...snapshots].sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date));
-  const changeEl=document.getElementById('ov-change');
-  if(changeEl){
-    if(snaps.length>=2){
-      const prev=snaps[snaps.length-2].total_value;
-      const diff=totalVal-prev;
-      const pct=prev>0?diff/prev*100:0;
-      const up=diff>=0;
-      changeEl.className='ov-hero-change'+(up?'':' neg');
-      changeEl.innerHTML=(up?'<i class="ti ti-trending-up"></i>':'<i class="ti ti-trending-down"></i>')+fmt(Math.abs(diff))+' ('+fmtPct(pct)+') vs yesterday';
-    } else {
-      changeEl.className='ov-hero-change';
-      changeEl.innerHTML='<i class="ti ti-minus"></i> No history yet';
-    }
-  }
+  // Change badge is updated by renderTrendChart() based on selected period
 
   renderTrendChart();
   renderHoldingBoxes();
@@ -1942,6 +1927,25 @@ function renderTrendChart(){
   let points=[...filtered];
   if(!points.find(p=>p.snapshot_date===todayStr) && todayVal>0) points.push({snapshot_date:todayStr,total_value:todayVal});
   points.sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date));
+
+  // ── Update net worth change badge based on selected period ──
+  const periodLabels={7:'vs last week',30:'vs last month',90:'vs 3 months ago',180:'vs 6 months ago',365:'vs last year'};
+  const changeEl=document.getElementById('ov-change');
+  if(changeEl){
+    if(points.length>=2){
+      const first=points[0].total_value;
+      const last=points[points.length-1].total_value;
+      const diff=last-first;
+      const pct=first>0?diff/first*100:0;
+      const up=diff>=0;
+      const label=periodLabels[activePeriod]||'vs period start';
+      changeEl.className='ov-hero-change'+(up?'':' neg');
+      changeEl.innerHTML=(up?'<i class="ti ti-trending-up"></i>':'<i class="ti ti-trending-down"></i>')+fmt(Math.abs(diff))+' ('+fmtPct(Math.abs(pct))+') '+label;
+    } else {
+      changeEl.className='ov-hero-change';
+      changeEl.innerHTML='<i class="ti ti-minus"></i> No history yet';
+    }
+  }
 
   const labels=points.map(p=>new Date(p.snapshot_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}));
   const data=points.map(p=>p.total_value);
