@@ -1153,12 +1153,18 @@ function showConfirm(msg, title='', danger=false){
 function fmtPct(n){ return (n>=0?'+':'')+Number(n).toFixed(2)+'%'; }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
-function showPage(name,btn){
-  localStorage.setItem('fh_page', name);
-  // Scroll to top — multiple methods for iOS Safari compatibility
+// Scroll to top reliably on iOS Safari — called AFTER page is shown
+function scrollToTop(){
   window.scrollTo(0,0);
   document.documentElement.scrollTop=0;
   document.body.scrollTop=0;
+  // Extra insurance: also reset the page element itself
+  const activePage=document.querySelector('.page.active');
+  if(activePage) activePage.scrollTop=0;
+}
+
+function showPage(name,btn){
+  localStorage.setItem('fh_page', name);
   // Sync bottom tab bar active state
   document.querySelectorAll('.bottom-tab').forEach(t=>t.classList.remove('active'));
   const mobilePageMap={overview:'overview',holdings:'holdings',cashflow:'cashflow',insights:'rpt-insights',reports:'rpt-insights',settings:'settings'};
@@ -1178,6 +1184,8 @@ function showPage(name,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
+  // Scroll after page is shown (works for most pages; insights/reports scroll after render)
+  if(name!=='insights'&&name!=='reports') requestAnimationFrame(scrollToTop);
   if(btn){
     btn.classList.add('active');
   } else {
@@ -1191,10 +1199,12 @@ function showPage(name,btn){
   document.body.classList.add('page-'+name);
   if(name==='insights'){
     renderAllocation(); renderInsights();
-    // Re-render allocation after paint so container.clientWidth is correct
+    // Re-render after first paint so container.clientWidth is correct
     requestAnimationFrame(()=>{
       renderAllocation();
-      window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0;
+      scrollToTop();
+      // Second pass — catches any late layout shifts from chart rendering
+      setTimeout(scrollToTop, 80);
     });
   }
   // prices only refresh manually via the Refresh button
@@ -1225,7 +1235,7 @@ function showPage(name,btn){
     });
   }
   if(name==='settings'){ renderSettings(); renderRecurCalendar(); loadSnapshots(); }
-  if(name==='reports'){ renderReports(); requestAnimationFrame(()=>{ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }); }
+  if(name==='reports'){ renderReports(); requestAnimationFrame(()=>{ scrollToTop(); setTimeout(scrollToTop,80); }); }
   // Hide FAB when not on cashflow
   if(name!=='cashflow'){ const fab=document.getElementById('cf-fab'); if(fab) fab.style.display='none'; }
 }
