@@ -2355,6 +2355,13 @@ function renderYearlyCharts(){
       y:{grid:{display:false},ticks:{color:c.text,font:{size:isMobNow?9:11}}}
     }
   });
+  // Dynamic height: each year needs ~40px, minimum 130px
+  const dynH = Math.max(130, years.length * 42);
+  const iWrap = document.getElementById('yearly-income-wrap');
+  const oWrap = document.getElementById('yearly-outcome-wrap');
+  if(iWrap) iWrap.style.height = dynH + 'px';
+  if(oWrap) oWrap.style.height = dynH + 'px';
+
   if(yearlyIncomeChart) yearlyIncomeChart.destroy();
   yearlyIncomeChart=new Chart(yIncome,{type:'bar',data:{labels:years,datasets:[{data:incByYear,backgroundColor:'rgba(16,185,129,0.85)',borderRadius:4,borderSkipped:false}]},options:hOpts('green'),plugins:[endLabelPlugin]});
   if(yearlyOutcomeChart) yearlyOutcomeChart.destroy();
@@ -2364,6 +2371,12 @@ function renderYearlyCharts(){
 // ── Savings per year (vertical, color-coded) ──
 function renderSavingsChart(){
   const el=document.getElementById('savings-chart'); if(!el) return;
+  // Dynamic height for savings: taller with more years
+  const sWrap=document.getElementById('savings-wrap');
+  if(sWrap){
+    const savYears=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].length;
+    sWrap.style.height=Math.max(180,savYears*55)+'px';
+  }
   const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort();
   const savings=years.map(y=>{
     const inc=cfTransactions.filter(t=>new Date(t.date).getFullYear()===y&&isIncomeTx(t)).reduce((s,t)=>s+t.amount,0);
@@ -2374,7 +2387,7 @@ function renderSavingsChart(){
   if(savingsChart) savingsChart.destroy();
   savingsChart=new Chart(el,{
     type:'bar',
-    data:{labels:years,datasets:[{data:savings,backgroundColor:savings.map(s=>s>=0?'rgba(16,185,129,0.85)':'rgba(248,113,113,0.85)') /* green=saved money, red=overspent */,borderRadius:4,borderSkipped:false}]},
+    data:{labels:years,datasets:[{data:savings,backgroundColor:savings.map(s=>s>=0?'rgba(96,168,245,0.85)':'rgba(224,80,80,0.85)') /* blue=saved, red=overspent */,borderRadius:4,borderSkipped:false}]},
     options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22,right:window.innerWidth<=768?36:20,bottom:8}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}},
     plugins:[{
       id:'savingsLabels',
