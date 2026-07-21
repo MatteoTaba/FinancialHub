@@ -400,13 +400,16 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .overlay{align-items:flex-end;padding:0}
   .modal{max-width:100%;width:100%;border-radius:20px 20px 0 0;padding:1.5rem 1.25rem;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto}
   .ins-section-block{padding:1rem;margin-bottom:1rem}
+  /* Chart heights at wrapper level — Chart.js reads parent, not canvas CSS */
+  #trend-wrap{height:200px!important}
+  #monthly-wrap{height:220px!important}
+  #savings-wrap{height:170px!important}
+  #invested-wrap{height:160px!important}
+  #liquidity-wrap{height:160px!important}
   .ins-section-header{font-size:13px}
   /* Chart heights on mobile */
-  #monthly-chart{height:170px!important}
-  #yearly-income-chart,#yearly-outcome-chart{height:130px!important}
-  #savings-chart,#invested-chart,#liquidity-chart{height:140px!important}
-  #trend-chart{height:180px!important}
-  .chart-wrap{height:140px!important}
+  /* Chart heights controlled via wrapper divs, not canvas elements */
+
   .recur-cal-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -1rem;padding:0 1rem}
   .recur-cal{font-size:10px;min-width:540px}
   .recur-cal td{min-height:44px;padding:2px}
@@ -522,7 +525,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
           <button class="period-btn" onclick="setPeriod(365,this)">1Y</button>
         </div>
       </div>
-      <div class="chart-wrap" style="height:220px">
+      <div class="chart-wrap" id="trend-wrap" style="height:220px">
         <canvas id="trend-chart" role="img" aria-label="Net worth over time">Net worth trend chart.</canvas>
       </div>
     </div>
@@ -929,7 +932,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
             <div id="insights-year-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:50;min-width:80px;overflow:hidden"></div>
           </div>
         </div>
-        <div class="chart-wrap" style="height:260px;overflow:hidden"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
+        <div class="chart-wrap" id="monthly-wrap" style="height:260px"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
       </div>
       <div class="alloc-grid">
         <div class="card">
@@ -952,12 +955,12 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
         <div class="card">
           <div class="card-title">Savings per year</div>
           <div class="card-sub">Income minus outcomes per year</div>
-          <div class="chart-wrap" style="height:220px"><canvas id="savings-chart">Savings per year.</canvas></div>
+          <div class="chart-wrap" id="savings-wrap" style="height:220px"><canvas id="savings-chart">Savings per year.</canvas></div>
         </div>
         <div class="card">
           <div class="card-title">Invested capital over time</div>
           <div class="card-sub">Cumulative spend on investment purchases</div>
-          <div class="chart-wrap" style="height:200px"><canvas id="invested-chart">Invested capital over time.</canvas></div>
+          <div class="chart-wrap" id="invested-wrap" style="height:200px"><canvas id="invested-chart">Invested capital over time.</canvas></div>
         </div>
       </div>
     </div>
@@ -1110,6 +1113,11 @@ const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
 
 let holdings=[], transactions=[], prices={}, snapshots=[], txFilter='all', activePeriod=30;
 let trendChart, liquidityChart, monthlyChart, yearlyIncomeChart, yearlyOutcomeChart, savingsChart, investedChart;
+// Use app font in all Chart.js charts
+if(typeof Chart!=='undefined'){
+  Chart.defaults.font.family="'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif";
+  Chart.defaults.font.size=11;
+}
 
 const TYPE_LABELS = {bank:'Bank',bond:'Bond',cash:'Cash',crypto:'Crypto',etf:'ETF',stock:'Stock'};
 const TYPE_ICONS  = {bank:'ti-building-bank',bond:'ti-certificate',cash:'ti-cash',crypto:'ti-currency-bitcoin',etf:'ti-trending-up',stock:'ti-chart-candle'};
@@ -2249,7 +2257,7 @@ function renderMonthlyChart(){
         legend:{labels:{color:c.text,font:{size:12},boxWidth:12}},
         tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}
       },
-      layout:{padding:{top:20,right:20,bottom:0}},
+      layout:{padding:{top:20,right:20,bottom:8}},
       scales:{
         x:{grid:{display:false},ticks:{color:c.text,font:{size:9},maxRotation:0,minRotation:0,maxTicksLimit:8}},
         y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}
