@@ -313,8 +313,8 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 .cf-account-header:hover{background:rgba(255,255,255,0.03)}
 .cf-account-header.open{border-bottom:1px solid var(--border)}
 .cf-account-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.cf-account-name{font-weight:600;font-size:14px}
-.cf-account-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.cf-account-text{flex:1;min-width:0;overflow:hidden}.cf-account-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-account-sub{font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cf-account-val{margin-left:auto;text-align:right}
 .cf-account-val-num{font-size:16px;font-weight:700;font-family:"JetBrains Mono","Courier New",monospace}
 .cf-account-chevron{color:var(--text3);font-size:16px;transition:transform 0.2s;margin-left:8px}
@@ -929,7 +929,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
             <div id="insights-year-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:50;min-width:80px;overflow:hidden"></div>
           </div>
         </div>
-        <div class="chart-wrap" style="height:260px"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
+        <div class="chart-wrap" style="height:260px;overflow:hidden"><canvas id="monthly-chart">Monthly income vs outcomes.</canvas></div>
       </div>
       <div class="alloc-grid">
         <div class="card">
@@ -1997,7 +1997,7 @@ function renderTrendChart(){
       },
       layout:{padding:{bottom:4}},
       scales:{
-        x:{grid:{display:false},ticks:{color:textColor,font:{size:11},maxTicksLimit:8}},
+        x:{grid:{display:false},ticks:{color:textColor,font:{size:11},maxTicksLimit:8,maxRotation:0,minRotation:0}},
         y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:11},callback:v=>'€'+Number(v).toLocaleString('it-IT')}}
       }
     }
@@ -2219,7 +2219,7 @@ function renderLiquidityChart(){
   liquidityChart=new Chart(el,{
     type:'line',
     data:{labels:trimLabels,datasets:[{data:trimData,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,0.08)',borderWidth:2,tension:0.3,fill:true,pointRadius:0,pointHoverRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16,bottom:4}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16,bottom:4}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},layout:{padding:{top:16,right:20,bottom:0}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:9},maxRotation:0,minRotation:0,maxTicksLimit:8}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
   });
 }
 
@@ -2249,8 +2249,9 @@ function renderMonthlyChart(){
         legend:{labels:{color:c.text,font:{size:12},boxWidth:12}},
         tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}
       },
+      layout:{padding:{top:20,right:20,bottom:0}},
       scales:{
-        x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxRotation:45}},
+        x:{grid:{display:false},ticks:{color:c.text,font:{size:9},maxRotation:0,minRotation:0,maxTicksLimit:8}},
         y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}
       }
     },
@@ -2336,7 +2337,7 @@ function renderSavingsChart(){
   savingsChart=new Chart(el,{
     type:'bar',
     data:{labels:years,datasets:[{data:savings,backgroundColor:savings.map(s=>s>=0?'rgba(16,185,129,0.85)':'rgba(248,113,113,0.85)') /* green=saved money, red=overspent */,borderRadius:4,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:false,clip:false,layout:{padding:{top:18,right:4}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}},
+    options:{responsive:true,maintainAspectRatio:false,clip:false,layout:{padding:{top:18,right:20,bottom:4}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}},
     plugins:[{
       id:'savingsLabels',
       afterDatasetsDraw(chart){
@@ -2374,7 +2375,7 @@ function renderInvestedChart(){
   investedChart=new Chart(el,{
     type:'line',
     data:{labels,datasets:[{data,borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.07)',borderWidth:2,borderDash:[6,3],tension:0,fill:true,pointRadius:0,pointHoverRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16,bottom:4}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16,bottom:4}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},layout:{padding:{top:16,right:20,bottom:0}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:9},maxRotation:0,minRotation:0,maxTicksLimit:8}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
   });
 }
 // ── ALLOCATION ──
@@ -2677,7 +2678,7 @@ function renderCashflow(){
     return `<div class="cf-account-block">
       <div class="cf-account-header" onclick="toggleCfAccount(this)">
         <div class="cf-account-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
-        <div><div class="cf-account-name">${typeLabel}</div><div class="cf-account-sub">${typeHoldings.length} holding${typeHoldings.length>1?'s':''} · ${typeTxCount} transaction${typeTxCount!==1?'s':''}</div></div>
+        <div class="cf-account-text"><div class="cf-account-name">${typeLabel}</div><div class="cf-account-sub">${typeHoldings.length} holding${typeHoldings.length>1?'s':''}</div></div>
         <div class="cf-account-val"><div class="cf-account-val-num">${fmt(typeTotal)}</div></div>
         <i class="ti ti-chevron-down cf-account-chevron"></i>
       </div>
@@ -3513,7 +3514,7 @@ function onCfSearch(q){
     html += '<div class="cf-account-block" style="margin-bottom:8px">'
       + '<div style="display:flex;align-items:center;gap:10px;padding:10px 1.25rem;background:var(--surface2);border-bottom:1px solid var(--border)">'
       + '<div class="cf-account-icon" style="background:'+color+'1a;color:'+color+'"><i class="ti '+icon+'"></i></div>'
-      + '<div><div class="cf-account-name">'+dispName+'</div>'
+      + '<div class="cf-account-text"><div class="cf-account-name">'+dispName+'</div>'
       + '<div class="cf-account-sub">'+txs.length+' matching transaction'+(txs.length!==1?'s':'')+'</div></div>'
       + '</div>'
       + txs.map(t=>cfTxRow(t,h)).join('')
