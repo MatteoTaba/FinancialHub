@@ -2275,7 +2275,7 @@ function renderMonthlyChart(){
             ctx.font='bold 9px -apple-system,BlinkMacSystemFont,sans-serif';
             ctx.textAlign='center';
             ctx.textBaseline='bottom';
-            ctx.fillText(fmtShort(val),bar.x,bar.y-2);
+            ctx.fillText(fmtShort(val),bar.x,Math.max(bar.y-2,chart.chartArea.top+10));
             ctx.restore();
           });
         });
@@ -2306,7 +2306,7 @@ function renderYearlyCharts(){
           ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
           ctx.textAlign='left';
           ctx.textBaseline='middle';
-          ctx.fillText(fmtShort(val),bar.x+5,bar.y);
+          ctx.fillText(fmtShort(val),Math.min(bar.x+5,chart.chartArea.right-28),bar.y);
           ctx.restore();
         });
       });
@@ -2343,7 +2343,7 @@ function renderSavingsChart(){
   savingsChart=new Chart(el,{
     type:'bar',
     data:{labels:years,datasets:[{data:savings,backgroundColor:savings.map(s=>s>=0?'rgba(16,185,129,0.85)':'rgba(248,113,113,0.85)') /* green=saved money, red=overspent */,borderRadius:4,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:false,clip:false,layout:{padding:{top:18,right:window.innerWidth<=768?36:20,bottom:8}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22,right:window.innerWidth<=768?36:20,bottom:8}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}},
     plugins:[{
       id:'savingsLabels',
       afterDatasetsDraw(chart){
@@ -2356,7 +2356,8 @@ function renderSavingsChart(){
           ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
           ctx.textAlign='center';
           ctx.textBaseline=val>=0?'bottom':'top';
-          ctx.fillText((val>=0?'+':'')+fmtShort(val),bar.x,val>=0?bar.y-3:bar.y+3);
+          const labelY=val>=0?Math.max(bar.y-3,chart.chartArea.top+12):Math.min(bar.y+3,chart.chartArea.bottom-4);
+          ctx.fillText((val>=0?'+':'')+fmtShort(val),bar.x,labelY);
           ctx.restore();
         });
       }
