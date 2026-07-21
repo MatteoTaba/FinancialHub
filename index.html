@@ -316,7 +316,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
 .cf-account-text{flex:1;min-width:0;overflow:hidden}.cf-account-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cf-account-pct{font-size:12px;color:var(--text2);margin-top:1px;text-align:right}
 .cf-account-sub{font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cf-account-val{margin-left:auto;text-align:right;flex-shrink:0;min-width:120px}
+.cf-account-val{text-align:right;flex-shrink:0}
 .cf-account-val-num{font-size:18px;font-weight:700;letter-spacing:-0.5px;font-family:"JetBrains Mono","Courier New",monospace}
 .cf-account-chevron{color:var(--text3);font-size:16px;transition:transform 0.2s;margin-left:8px}
 .cf-account-header.open .cf-account-chevron{transform:rotate(180deg)}
@@ -395,9 +395,10 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .cf-tx-row{padding:10px 0.875rem;gap:8px}
   .cf-tx-amount{font-size:13px}
   .cf-account-header{padding:0.75rem 0.875rem;gap:8px}
-  .cf-account-val{max-width:48%;overflow:hidden}
+  .cf-account-val{text-align:right;flex-shrink:0;max-width:48%;overflow:hidden;min-width:0}
   .cf-account-val-num{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cf-account-val .cf-account-pct{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cf-account-chevron{font-size:13px;flex-shrink:0}
   .rpt-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .rpt-section{padding:1rem}
   .rpt-summary{grid-template-columns:1fr 1fr}
@@ -426,9 +427,10 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .cf-account-icon{width:34px;height:34px;font-size:15px}
   .cat-icon{width:34px;height:34px;font-size:15px}
   .cf-account-header{padding:0.75rem 0.875rem;gap:8px}
-  .cf-account-val{max-width:48%;overflow:hidden}
+  .cf-account-val{text-align:right;flex-shrink:0;max-width:48%;overflow:hidden;min-width:0}
   .cf-account-val-num{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cf-account-val .cf-account-pct{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cf-account-chevron{font-size:13px;flex-shrink:0}
   .cat-info{min-width:0;flex:1;overflow:hidden}
   .cat-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .cat-count{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
