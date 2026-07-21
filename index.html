@@ -2334,11 +2334,11 @@ function renderYearlyCharts(){
         meta.data.forEach((bar,bi)=>{
           const val=ds.data[bi]; if(!val) return;
           ctx.save();
-          ctx.fillStyle=c.text;
+          ctx.fillStyle='rgba(255,255,255,0.9)';
           ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
-          ctx.textAlign='left';
+          ctx.textAlign='right';
           ctx.textBaseline='middle';
-          ctx.fillText(fmtShort(val),Math.min(bar.x+5,chart.chartArea.right-28),bar.y);
+          ctx.fillText(fmtShort(val),bar.x+6,bar.y);
           ctx.restore();
         });
       });
@@ -2348,7 +2348,7 @@ function renderYearlyCharts(){
   const hOpts=(color)=>({
     responsive:true,maintainAspectRatio:false,
     indexAxis:'y',
-    layout:{padding:{right:isMobNow?70:60,top:4,bottom:4}},
+    layout:{padding:{right:isMobNow?72:68,top:4,bottom:4}},
     plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},
     scales:{
       x:{grid:{color:c.grid},ticks:{color:c.text,font:{size:isMobNow?8:10},callback:v=>fmtShort(v),maxTicksLimit:isMobNow?4:8}},
@@ -2375,7 +2375,7 @@ function renderSavingsChart(){
   const sWrap=document.getElementById('savings-wrap');
   if(sWrap){
     const savYears=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].length;
-    sWrap.style.height=Math.max(180,savYears*55)+'px';
+    sWrap.style.height=Math.max(130,savYears*42)+'px';
   }
   const years=[...new Set(cfTransactions.map(t=>new Date(t.date).getFullYear()))].sort();
   const savings=years.map(y=>{
@@ -2385,28 +2385,40 @@ function renderSavingsChart(){
   });
   const c=getChartColors();
   if(savingsChart) savingsChart.destroy();
-  savingsChart=new Chart(el,{
-    type:'bar',
-    data:{labels:years,datasets:[{data:savings,backgroundColor:savings.map(s=>s>=0?'rgba(96,168,245,0.85)':'rgba(224,80,80,0.85)') /* blue=saved, red=overspent */,borderRadius:4,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22,right:window.innerWidth<=768?36:20,bottom:8}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}},
-    plugins:[{
-      id:'savingsLabels',
-      afterDatasetsDraw(chart){
-        const {ctx}=chart;
-        const meta=chart.getDatasetMeta(0);
-        meta.data.forEach((bar,i)=>{
-          const val=savings[i]; if(val===undefined) return;
+  const isMobSav=window.innerWidth<=768;
+  const sEndLabelPlugin={
+    id:'savingsEndLabels',
+    afterDatasetsDraw(chart){
+      const {ctx}=chart;
+      chart.data.datasets.forEach((ds,di)=>{
+        const meta=chart.getDatasetMeta(di);
+        meta.data.forEach((bar,bi)=>{
+          const val=ds.data[bi]; if(!val) return;
           ctx.save();
-          ctx.fillStyle=c.text;
+          ctx.fillStyle='rgba(255,255,255,0.9)';
           ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
-          ctx.textAlign='center';
-          ctx.textBaseline=val>=0?'bottom':'top';
-          const labelY=val>=0?Math.max(bar.y-3,chart.chartArea.top+12):Math.min(bar.y+3,chart.chartArea.bottom-4);
-          ctx.fillText((val>=0?'+':'')+fmtShort(val),bar.x,labelY);
+          ctx.textAlign='right';
+          ctx.textBaseline='middle';
+          ctx.fillText((val>=0?'+':'')+fmtShort(val),bar.x+6,bar.y);
           ctx.restore();
         });
+      });
+    }
+  };
+  savingsChart=new Chart(el,{
+    type:'bar',
+    data:{labels:years,datasets:[{data:savings,backgroundColor:savings.map(s=>s>=0?'rgba(96,168,245,0.85)':'rgba(224,80,80,0.85)'),borderRadius:4,borderSkipped:false}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      indexAxis:'y',
+      layout:{padding:{right:isMobSav?70:60,top:4,bottom:4}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},
+      scales:{
+        x:{grid:{color:c.grid},ticks:{color:c.text,font:{size:isMobSav?8:10},callback:v=>fmtShort(v),maxTicksLimit:isMobSav?4:8}},
+        y:{grid:{display:false},ticks:{color:c.text,font:{size:isMobSav?9:11}}}
       }
-    }]
+    },
+    plugins:[sEndLabelPlugin]
   });
 }
 
