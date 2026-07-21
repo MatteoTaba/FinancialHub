@@ -421,6 +421,7 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
   .cat-header .drag-handle{display:none}
   .cat-icon{width:34px;height:34px;font-size:15px}
   .cf-account-icon{width:34px;height:34px;font-size:15px}
+  .cat-icon{width:34px;height:34px;font-size:15px}
   .cf-account-header{padding:0.75rem 0.875rem}
   .cat-info{min-width:0;flex:1;overflow:hidden}
   .cat-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -1994,6 +1995,7 @@ function renderTrendChart(){
           callbacks:{label:ctx=>fmt(ctx.raw)}
         }
       },
+      layout:{padding:{bottom:4}},
       scales:{
         x:{grid:{display:false},ticks:{color:textColor,font:{size:11},maxTicksLimit:8}},
         y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:11},callback:v=>'€'+Number(v).toLocaleString('it-IT')}}
@@ -2217,7 +2219,7 @@ function renderLiquidityChart(){
   liquidityChart=new Chart(el,{
     type:'line',
     data:{labels:trimLabels,datasets:[{data:trimData,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,0.08)',borderWidth:2,tension:0.3,fill:true,pointRadius:0,pointHoverRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16,bottom:4}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
   });
 }
 
@@ -2372,7 +2374,7 @@ function renderInvestedChart(){
   investedChart=new Chart(el,{
     type:'line',
     data:{labels,datasets:[{data,borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.07)',borderWidth:2,borderDash:[6,3],tension:0,fill:true,pointRadius:0,pointHoverRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16,bottom:4}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},scales:{x:{grid:{display:false},ticks:{color:c.text,font:{size:10},maxTicksLimit:14,maxRotation:45}},y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:10},callback:v=>fmtShort(v)}}}}
   });
 }
 // ── ALLOCATION ──
@@ -2675,7 +2677,7 @@ function renderCashflow(){
     return `<div class="cf-account-block">
       <div class="cf-account-header" onclick="toggleCfAccount(this)">
         <div class="cf-account-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
-        <div><div class="cf-account-name">${typeLabel}</div><div class="cf-account-sub">${typeHoldings.length} holding${typeHoldings.length>1?'s':''}<br>${typeTxCount} transaction${typeTxCount!==1?'s':''}</div></div>
+        <div><div class="cf-account-name">${typeLabel}</div><div class="cf-account-sub">${typeHoldings.length} holding${typeHoldings.length>1?'s':''} · ${typeTxCount} transaction${typeTxCount!==1?'s':''}</div></div>
         <div class="cf-account-val"><div class="cf-account-val-num">${fmt(typeTotal)}</div></div>
         <i class="ti ti-chevron-down cf-account-chevron"></i>
       </div>
