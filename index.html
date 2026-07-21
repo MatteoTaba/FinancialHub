@@ -938,12 +938,12 @@ select option{background:#141927;color:#f2f4f0;padding:8px}
         <div class="card">
           <div class="card-title">Total income per year</div>
           <div class="card-sub">Gross income across all accounts</div>
-          <div class="chart-wrap" style="height:200px"><canvas id="yearly-income-chart">Yearly income.</canvas></div>
+          <div class="chart-wrap" id="yearly-income-wrap" style="height:200px"><canvas id="yearly-income-chart">Yearly income.</canvas></div>
         </div>
         <div class="card">
           <div class="card-title">Total outcomes per year</div>
           <div class="card-sub">All expenses and transfers out</div>
-          <div class="chart-wrap" style="height:200px"><canvas id="yearly-outcome-chart">Yearly outcomes.</canvas></div>
+          <div class="chart-wrap" id="yearly-outcome-wrap" style="height:200px"><canvas id="yearly-outcome-chart">Yearly outcomes.</canvas></div>
         </div>
       </div>
     </div>
@@ -1119,6 +1119,25 @@ if(typeof Chart!=='undefined'){
   Chart.defaults.font.size=11;
 }
 
+// Force correct chart heights on mobile (CSS alone can't beat Chart.js inline styles)
+function applyMobileChartHeights(){
+  if(window.innerWidth > 768) return;
+  const heights={
+    'trend-wrap':190, 'monthly-wrap':200,
+    'yearly-income-wrap':130, 'yearly-outcome-wrap':130,
+    'savings-wrap':150, 'invested-wrap':145, 'liquidity-wrap':145
+  };
+  Object.entries(heights).forEach(([id,h])=>{
+    const el=document.getElementById(id);
+    if(el) el.style.setProperty('height', h+'px', 'important');
+  });
+  // Tell Chart.js to re-render at new size
+  requestAnimationFrame(()=>{
+    [trendChart,monthlyChart,yearlyIncomeChart,yearlyOutcomeChart,
+     savingsChart,investedChart,liquidityChart].forEach(c=>{ if(c) c.resize(); });
+  });
+}
+
 const TYPE_LABELS = {bank:'Bank',bond:'Bond',cash:'Cash',crypto:'Crypto',etf:'ETF',stock:'Stock'};
 const TYPE_ICONS  = {bank:'ti-building-bank',bond:'ti-certificate',cash:'ti-cash',crypto:'ti-currency-bitcoin',etf:'ti-trending-up',stock:'ti-chart-candle'};
 const PALETTE = ['#6366f1','#10b981','#f59e0b','#ec4899','#0ea5e9','#84cc16','#f97316','#8b5cf6','#06b6d4','#a3e635'];
@@ -1206,11 +1225,10 @@ function showPage(name,btn){
   document.body.className = document.body.className.replace(/page-\w+/g,'').trim();
   document.body.classList.add('page-'+name);
   if(name==='insights'){
-    // Render after page is visible so container.clientWidth is correct
     requestAnimationFrame(()=>{
       renderAllocation(); renderInsights();
       scrollToTop();
-      setTimeout(scrollToTop, 120);
+      setTimeout(()=>{ afterInsightsRender(); scrollToTop(); }, 120);
     });
   }
   // prices only refresh manually via the Refresh button
@@ -2011,6 +2029,7 @@ function renderTrendChart(){
     }
   });
 
+  applyMobileChartHeights();
   const labelEl=document.getElementById('chart-range-label');
   if(points.length>0){
     const fmtD=d=>{const x=new Date(d);return x.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'})};
@@ -2390,6 +2409,9 @@ function renderInvestedChart(){
   });
 }
 // ── ALLOCATION ──
+function afterInsightsRender(){
+  applyMobileChartHeights();
+}
 function renderAllocation(){
   const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
   const textColor=dark?'#f1f5f9':'#111827';
