@@ -2719,17 +2719,17 @@ function renderCashflow(){
     const totalNW=holdings.reduce((s,h)=>s+getVal(h),0);
     const typePct=totalNW>0?(typeTotal/totalNW*100).toFixed(1):'0';
     return `<div class="cf-account-block">
-      <div class="cf-account-header" onclick="toggleCfAccount(this)">
-        <div class="cf-account-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
-        <div class="cf-account-text">
-          <div class="cf-account-name">${typeLabel}</div>
-          <div class="cf-account-count">${typeHoldings.length} holding${typeHoldings.length>1?'s':''}</div>
+      <div class="cat-header" onclick="toggleCfAccount(this)">
+        <div class="cat-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
+        <div class="cat-info">
+          <div class="cat-name">${typeLabel}</div>
+          <div class="cat-count">${typeHoldings.length} holding${typeHoldings.length>1?'s':''}</div>
         </div>
-        <div class="cf-account-val">
-          <div class="cf-account-val-num">${fmt(typeTotal)}</div>
-          <div class="cf-account-pct" style="color:var(--text2);margin-top:1px">${typePct}% of portfolio</div>
+        <div class="cat-total">
+          <div class="cat-total-val">${fmt(typeTotal)}</div>
+          <div class="cat-total-pct">${typePct}% of portfolio</div>
         </div>
-        <i class="ti ti-chevron-down cf-account-chevron"></i>
+        <i class="ti ti-chevron-down cat-chevron"></i>
       </div>
       <div class="cf-account-body">${subGroups}</div>
     </div>`;
@@ -2790,6 +2790,7 @@ function toggleCfAccount(header){
   const open=body.classList.contains('open');
   body.classList.toggle('open',!open);
   header.classList.toggle('open',!open);
+  header.setAttribute('aria-expanded',String(!open));
 }
 
 let allTxHoldingId=null, allTxFilter='all';
