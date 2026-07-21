@@ -753,7 +753,7 @@ html, body {
             <!-- Shared fields -->
             <div class="form-group form-full">
               <label>Description</label>
-              <textarea id="inv-desc" placeholder="e.g. Monthly DCA, Dividend reinvestment…" rows="2"></textarea>
+              <textarea id="inv-desc" placeholder="What was this for?" rows="2"></textarea>
             </div>
             <div class="form-group">
               <label>Category</label>
@@ -2704,11 +2704,16 @@ function renderCashflow(){
         <button class="cf-see-all" onclick="showAllTx('${h.id}')" style="border-top:1px solid var(--border)">See all transactions <i class="ti ti-chevron-right" style="font-size:11px;vertical-align:middle"></i></button>
       </div>`;
     }).join('');
+    const totalNW=holdings.reduce((s,h)=>s+getVal(h),0);
+    const typePct=totalNW>0?(typeTotal/totalNW*100).toFixed(1):'0';
     return `<div class="cf-account-block">
       <div class="cf-account-header" onclick="toggleCfAccount(this)">
         <div class="cf-account-icon" style="background:${color}1a;color:${color}"><i class="ti ${icon}"></i></div>
-        <div class="cf-account-text"><div class="cf-account-name">${typeLabel}</div><div class="cf-account-sub">${typeHoldings.length} holding${typeHoldings.length>1?'s':''}</div></div>
-        <div class="cf-account-val"><div class="cf-account-val-num">${fmt(typeTotal)}</div></div>
+        <div class="cf-account-text"><div class="cf-account-name">${typeLabel}</div></div>
+        <div class="cf-account-val">
+          <div class="cf-account-val-num">${fmt(typeTotal)}</div>
+          <div style="font-size:11px;color:var(--text2);text-align:right;margin-top:2px">${typePct}% of portfolio</div>
+        </div>
         <i class="ti ti-chevron-down cf-account-chevron"></i>
       </div>
       <div class="cf-account-body">${subGroups}</div>
