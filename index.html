@@ -2284,12 +2284,12 @@ function renderMonthlyChart(){
         legend:{labels:{color:c.text,font:{size:12},boxWidth:12}},
         tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}
       },
-      layout:{padding:{top:20,right:window.innerWidth<=768?24:20,bottom:10}},
+      layout:{padding:{top:30,right:window.innerWidth<=768?24:20,bottom:10}},
       barPercentage:0.55,
       categoryPercentage:0.65,
       scales:{
         x:{grid:{display:false},ticks:{color:c.text,font:{size:window.innerWidth<=768?8:10},maxRotation:0,minRotation:0,maxTicksLimit:window.innerWidth<=768?6:12}},
-        y:{grid:{color:c.grid},ticks:{color:c.text,font:{size:window.innerWidth<=768?8:10},callback:v=>fmtShort(v)}}
+        y:{grid:{color:c.grid},grace:'20%',ticks:{color:c.text,font:{size:window.innerWidth<=768?8:10},callback:v=>fmtShort(v)}}
       }
     },
     plugins:[{
