@@ -2328,20 +2328,24 @@ function renderYearlyCharts(){
   const endLabelPlugin={
     id:'endLabels',
     afterDatasetsDraw(chart){
-      const {ctx}=chart;
+      const {ctx,canvas}=chart;
+      // Reset clip to full canvas so labels outside chart area aren't clipped
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0,0,canvas.width,canvas.height);
+      ctx.clip();
       chart.data.datasets.forEach((ds,di)=>{
         const meta=chart.getDatasetMeta(di);
         meta.data.forEach((bar,bi)=>{
           const val=ds.data[bi]; if(!val) return;
-          ctx.save();
           ctx.fillStyle='rgba(255,255,255,0.9)';
-          ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
+          ctx.font=`bold 10px 'DM Sans',sans-serif`;
           ctx.textAlign='right';
           ctx.textBaseline='middle';
-          ctx.fillText(fmtShort(val),bar.x-22,bar.y);
-          ctx.restore();
+          ctx.fillText(fmtShort(val),bar.x-12,bar.y);
         });
       });
+      ctx.restore();
     }
   };
   const isMobNow=window.innerWidth<=768;
@@ -2389,20 +2393,23 @@ function renderSavingsChart(){
   const sEndLabelPlugin={
     id:'savingsEndLabels',
     afterDatasetsDraw(chart){
-      const {ctx}=chart;
+      const {ctx,canvas}=chart;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0,0,canvas.width,canvas.height);
+      ctx.clip();
       chart.data.datasets.forEach((ds,di)=>{
         const meta=chart.getDatasetMeta(di);
         meta.data.forEach((bar,bi)=>{
           const val=ds.data[bi]; if(!val) return;
-          ctx.save();
           ctx.fillStyle='rgba(255,255,255,0.9)';
-          ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
+          ctx.font=`bold 10px 'DM Sans',sans-serif`;
           ctx.textAlign='right';
           ctx.textBaseline='middle';
-          ctx.fillText((val>=0?'+':'')+fmtShort(val),bar.x-22,bar.y);
-          ctx.restore();
+          ctx.fillText((val>=0?'+':'')+fmtShort(val),bar.x-12,bar.y);
         });
       });
+      ctx.restore();
     }
   };
   savingsChart=new Chart(el,{
