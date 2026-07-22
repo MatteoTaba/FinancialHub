@@ -2338,7 +2338,7 @@ function renderYearlyCharts(){
           ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
           ctx.textAlign='right';
           ctx.textBaseline='middle';
-          ctx.fillText(fmtShort(val),bar.x-12,bar.y);
+          ctx.fillText(fmtShort(val),bar.x-22,bar.y);
           ctx.restore();
         });
       });
@@ -2399,7 +2399,7 @@ function renderSavingsChart(){
           ctx.font='bold 10px -apple-system,BlinkMacSystemFont,sans-serif';
           ctx.textAlign='right';
           ctx.textBaseline='middle';
-          ctx.fillText((val>=0?'+':'')+fmtShort(val),bar.x-12,bar.y);
+          ctx.fillText((val>=0?'+':'')+fmtShort(val),bar.x-22,bar.y);
           ctx.restore();
         });
       });
