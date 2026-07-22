@@ -2327,13 +2327,9 @@ function renderYearlyCharts(){
   const c=getChartColors();
   const endLabelPlugin={
     id:'endLabels',
-    afterDatasetsDraw(chart){
-      const {ctx,canvas}=chart;
-      // Reset clip to full canvas so labels outside chart area aren't clipped
+    afterRender(chart){
+      const {ctx}=chart;
       ctx.save();
-      ctx.beginPath();
-      ctx.rect(0,0,canvas.width,canvas.height);
-      ctx.clip();
       chart.data.datasets.forEach((ds,di)=>{
         const meta=chart.getDatasetMeta(di);
         meta.data.forEach((bar,bi)=>{
@@ -2392,12 +2388,9 @@ function renderSavingsChart(){
   const isMobSav=window.innerWidth<=768;
   const sEndLabelPlugin={
     id:'savingsEndLabels',
-    afterDatasetsDraw(chart){
-      const {ctx,canvas}=chart;
+    afterRender(chart){
+      const {ctx}=chart;
       ctx.save();
-      ctx.beginPath();
-      ctx.rect(0,0,canvas.width,canvas.height);
-      ctx.clip();
       chart.data.datasets.forEach((ds,di)=>{
         const meta=chart.getDatasetMeta(di);
         meta.data.forEach((bar,bi)=>{
