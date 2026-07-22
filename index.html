@@ -2327,9 +2327,13 @@ function renderYearlyCharts(){
   const c=getChartColors();
   const endLabelPlugin={
     id:'endLabels',
-    afterRender(chart){
+    afterDraw(chart){
       const {ctx}=chart;
+      // Use chart.width/height (CSS pixels) not canvas.width/height (physical pixels)
       ctx.save();
+      ctx.beginPath();
+      ctx.rect(0,0,chart.width,chart.height);
+      ctx.clip();
       chart.data.datasets.forEach((ds,di)=>{
         const meta=chart.getDatasetMeta(di);
         meta.data.forEach((bar,bi)=>{
@@ -2388,9 +2392,12 @@ function renderSavingsChart(){
   const isMobSav=window.innerWidth<=768;
   const sEndLabelPlugin={
     id:'savingsEndLabels',
-    afterRender(chart){
+    afterDraw(chart){
       const {ctx}=chart;
       ctx.save();
+      ctx.beginPath();
+      ctx.rect(0,0,chart.width,chart.height);
+      ctx.clip();
       chart.data.datasets.forEach((ds,di)=>{
         const meta=chart.getDatasetMeta(di);
         meta.data.forEach((bar,bi)=>{
