@@ -966,12 +966,12 @@ html, body {
         <div class="card">
           <div class="card-title">Total income per year</div>
           <div class="card-sub">Gross income across all accounts</div>
-          <div class="chart-wrap" id="yearly-income-wrap" style="height:180px"><canvas id="yearly-income-chart">Yearly income.</canvas></div>
+          <div class="chart-wrap" id="yearly-income-wrap" style="height:240px"><canvas id="yearly-income-chart">Yearly income.</canvas></div>
         </div>
         <div class="card">
           <div class="card-title">Total outcomes per year</div>
           <div class="card-sub">All expenses and transfers out</div>
-          <div class="chart-wrap" id="yearly-outcome-wrap" style="height:180px"><canvas id="yearly-outcome-chart">Yearly outcomes.</canvas></div>
+          <div class="chart-wrap" id="yearly-outcome-wrap" style="height:240px"><canvas id="yearly-outcome-chart">Yearly outcomes.</canvas></div>
         </div>
       </div>
     </div>
@@ -2348,10 +2348,10 @@ function renderYearlyCharts(){
   const hOpts=(color)=>({
     responsive:true,maintainAspectRatio:false,
     indexAxis:'y',
-    layout:{padding:{right:isMobNow?72:68,top:4,bottom:4}},
+    layout:{padding:{right:isMobNow?72:68,top:24,bottom:8}},
     plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)},backgroundColor:c.surface,titleColor:c.text,bodyColor:c.text,borderColor:c.border,borderWidth:1}},
     scales:{
-      x:{grid:{color:c.grid},ticks:{color:c.text,font:{size:isMobNow?8:10},callback:v=>fmtShort(v),maxTicksLimit:isMobNow?4:8}},
+      x:{grid:{color:c.grid},ticks:{color:c.text,font:{size:isMobNow?8:10},callback:v=>fmtShort(v),maxTicksLimit:isMobNow?4:8},grace:'15%'},
       y:{grid:{display:false},ticks:{color:c.text,font:{size:isMobNow?9:11}}}
     }
   });
